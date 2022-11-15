@@ -383,12 +383,10 @@ async function checkDB() {
               .attr("id", "database-status-error-message")
               .text("Database connection has been lost. Please try again later.");
         }
-        console.log("Lost connection to database");
     } else {
         if (!errorSpan.empty()) {
             errorSpan.remove();
         }
-        console.log("Database is ok");
     }
 }
 
