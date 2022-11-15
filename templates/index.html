@@ -20,7 +20,7 @@
   <meta property="og:type" content="website">
   <meta property="og:image" content="https://locusfocus.research.sickkids.ca/static/images/eqtl_co-localization_heatmap_slc26a9.png">
   <meta property="og:site_name" content="LocusFocus Web Application">
-  <meta property="og:description" content="LocusFocus is a web-based colocalization tool for the annotation and functional follow-up of GWAS. 
+  <meta property="og:description" content="LocusFocus is a web-based colocalization tool for the annotation and functional follow-up of GWAS.
   It applies the Simple Sum frequentist method to formally test colocalization between two SNP-based summary statistic datasets.">
   <meta property="og:url" content="https://locusfocus.research.sickkids.ca/">
   <!-- Font Awesome -->
@@ -42,7 +42,7 @@
   <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/d3Style.css') }}">
 </head>
 
-<body> 
+<body>
   <div class="container">
     <div class="row" id="myjumbotron"></div>
     <div class="row" id="navigation-bar"></div>
@@ -53,7 +53,7 @@
       <div class="row">
         <div class="col-md-12 borderit">
           <div class="col-md-4">
-              <h5 data-toggle="tooltip" data-html="true" 
+              <h5 data-toggle="tooltip" data-html="true"
               title="<p>Select the human coordinate system your files are stored in.</p>
               <p>
                 <ul>
@@ -87,7 +87,7 @@
                   <li>.html (optional): Secondary datasets to test colocalization. Each data table must be preceded by an &lt;h3&gt; title tag describing the table</li>
                   <ul>
                     <li>Refer to the <a href="https://locusfocus.readthedocs.io/en/latest/quick_start.html#formatting-custom-secondary-datasets">documentation</a> on how to generate the HTML file.</li>
-                    <li>You may use the <a href="https://github.com/naim-panjwani/LocusFocus/blob/master/merge_and_convert_to_html.py">merge_and_convert_to_html.py</a> script, 
+                    <li>You may use the <a href="https://github.com/naim-panjwani/LocusFocus/blob/master/merge_and_convert_to_html.py">merge_and_convert_to_html.py</a> script,
                       or <a href="https://github.com/naim-panjwani/LocusFocus/blob/master/merge_and_convert_to_html_coloc2.py">merge_and_convert_to_html_coloc2.py</a>.</li>
                     <li>You may use provided <a href="https://github.com/naim-panjwani/LocusFocus/tree/master/data/sample_datasets">sample datasets</a> as a guide to formatting your files.</li>
                   </ul>
@@ -97,7 +97,7 @@
             </p>
 
 
-            
+
           <div class="row">
             <div class="col-md-3" id="snp"></div>
           </div>
@@ -127,7 +127,7 @@
 
           <div class="row" id="statsDiv"></div>
           <div class="row" id="statsDiv2"></div>
-          
+
 
           <hr>
 
@@ -164,12 +164,12 @@
           </div>
         </div>
       </div>
-        
+
       <div class="row">
         <div class="col-md-12 borderit">
           <div class="col-md-4">
-            <h5 data-toggle="tooltip" data-html="true" 
-            title="<p>For the most accurate results, the LD (r<sup>2</sup>) matrix for your primary (e.g. GWAS) dataset is recommended to be uploaded as a .ld square matrix file. 
+            <h5 data-toggle="tooltip" data-html="true"
+            title="<p>For the most accurate results, the LD (r<sup>2</sup>) matrix for your primary (e.g. GWAS) dataset is recommended to be uploaded as a .ld square matrix file.
               If the .ld file is unavailable, you may choose one of the publicly-available 1000 Genomes population datasets.</p>
             <p>
             <ul>
@@ -196,12 +196,12 @@
 
       <div class="row">
         <div class="col-md-12 borderit">
-          <div class="col-md-4">            
-            <h5 data-toggle="tooltip" data-html="true" 
+          <div class="col-md-4">
+            <h5 data-toggle="tooltip" data-html="true"
             title="<p>For convenience, we are making available eQTL datasets from the GTEx project for use as secondary datasets.</p>
             <p>LocusFocus, however, can perform more custom colocalization analyses utilizing other secondary (e.g. eQTL, mQTL, other phenotypes) datasets provided by the user.</p>
             <p>Custom secondary datasets may be uploaded after conversion to HTML format as described above or in the documentation.</p>">Select GTEx eQTL Data to Render</h5>
-          </div>  
+          </div>
           <div class="col-md-12">
             <h6><i>Please allow sufficient time for analysis if selecting many tissues and genes.<br>Analyses may take >30 minutes when selecting many tissue-gene pairs.</i></h6>
           </div>
@@ -210,15 +210,15 @@
             <select id="GTEx-tissues" name="GTEx-tissues" multiple="multiple">
             </select>
           </div>
-          
+
           <hr>
-          
+
           <div class="col-md-6">
             <div id="genes-select" data-toggle="tooltip" title="Select the genes in the region you would like to test colocalization with.">Select Genes (enter coordinates above to populate)</div>
             <select id="region-genes" name="region-genes" multiple="multiple">
             </select>
           </div>
-          
+
           <hr>
 
           <div class="col-md-8">
@@ -244,7 +244,7 @@
       <div class="row">
         <div class="col-md-12"><h6><b><i>By hitting submit, you understand that you are uploading your dataset to a public server</i></b></h6></div>
       </div> <!-- row closing div -->
-    
+
     </form>
 
     <div class="row">
@@ -257,7 +257,7 @@
 
   <!-- JS -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/5.9.1/d3.js"></script>
-  
+
   <script src="{{ url_for('static', filename='js/app.js') }}"></script>
   <script src="{{ url_for('static', filename='js/navigation-bar.js') }}"></script>
   <script src="{{ url_for('static', filename='js/inputChecker.js') }}"></script>

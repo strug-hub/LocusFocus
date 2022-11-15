@@ -373,13 +373,35 @@ function loadGenes(build, region) {
     });
 }
 
+// Checks the database connection, and updates error messages appropriately
+async function checkDB() {
+    const response = await (await fetch("/dbstatus")).json();
+    const errorSpan = errorDiv.select("#database-status-error-message");
+    if (response.status !== "ok") {
+        if (errorSpan.empty()) {
+            errorDiv.append("span")
+              .attr("id", "database-status-error-message")
+              .text("Database connection has been lost. Please try again later.");
+        }
+        console.log("Lost connection to database");
+    } else {
+        if (!errorSpan.empty()) {
+            errorSpan.remove();
+        }
+        console.log("Database is ok");
+    }
+}
 
 function init() {
     String.prototype.replaceAll = function(search, replacement) {
         var target = this;
         return target.split(search).join(replacement);
     };
-    
+
+    // Check the database connection
+    checkDB();
+    setInterval(checkDB, 5*60_000);
+
     askSNPInput(markerColDiv);
     askChromInput(chromColDiv);
     askPosInput(posColDiv);
@@ -389,7 +411,7 @@ function init() {
     statsDiv.html("");
     var pvalueColDiv = statsDiv.append('div').attr('class','col-md-3').attr('id','p_value');
     askPvalueInput(pvalueColDiv);
-    
+
     // Build LD population selections depending on coordinate build chosen:
     var lddiv = d3.select("#LD-populations");
     if(coordinate.toLowerCase() === "hg19") {
@@ -427,7 +449,7 @@ function init() {
 
     console.log("Loading genes:")
     loadGenes('hg19', '1:205,500,000-206,000,000');
-      
+
     d3.json(gtexurl).then(response => {
         var gtex_tissues = response.map(k => k);
 
@@ -499,7 +521,7 @@ function init() {
             delay: { "show": 500, "hide": 100 }
         });
     });
-    
+
 }
 
 init();
