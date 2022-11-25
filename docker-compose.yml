@@ -7,7 +7,16 @@ services:
     environment:
       - DATABASE_URL=mongodb://db:27017
     volumes:
-      - ./flask:/app
+      # - ./flask:/usr/src/app
+      - type: bind
+        source: ./user-data/session_data
+        target: /usr/src/app/static/session_data
+      - type: bind
+        source: ./user-data/upload
+        target: /usr/src/app/static/upload
+      - type: bind
+        source: ./datasets
+        target: /usr/src/app/data
     depends_on:
       - db
     stop_signal: SIGINT
