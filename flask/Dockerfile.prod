@@ -1,0 +1,10 @@
+# Production image
+FROM python:3.7
+WORKDIR /usr/src/app
+COPY requirements.txt .
+RUN pip3 install --no-cache-dir -r requirements.txt
+COPY . .
+EXPOSE 8000
+ENV FLASK_ENV production
+ENV TZ America/Toronto
+ENTRYPOINT ["gunicorn", "--timeout", "6000", "app:app", "--bind=0.0.0.0:8000", "--name", "locusfocus", "--workers=3"]

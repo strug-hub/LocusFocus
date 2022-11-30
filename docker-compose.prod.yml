@@ -1,11 +1,11 @@
 version: '3'
 services:
-  web_dev:
+  web_prod:
     build:
       context: flask
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.prod
     ports:
-      - '5000:5000'
+      - '8000:8000'
     environment:
       - DATABASE_URL=mongodb://db:27017
     volumes:
@@ -23,14 +23,14 @@ services:
       - ./user-data/upload:/usr/src/app/static/upload
       - ./datasets:/usr/src/app/data
     depends_on:
-      - db_dev
+      - db_prod
     stop_signal: SIGINT
-  db_dev:
+  db_prod:
     image: mongo
     ports:
       - '27017:27017'
     volumes:
-      - db_dev:/data/db
+      - db_prod:/data/db
 volumes:
-  web_dev:
-  db_dev:
+  web_prod:
+  db_prod:
