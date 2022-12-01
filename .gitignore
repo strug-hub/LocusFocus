@@ -143,3 +143,6 @@ flask/data/*lookup_table.txt.gz
 node_modules
 locusfocus_env
 locusfocusR.tar.gz
+user-data/session_data/*
+user-data/upload/*
+datasets/*
