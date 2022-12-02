@@ -70,7 +70,10 @@ app.config['UPLOADED_FILES_DEST'] = os.path.join(MYDIR, 'static/upload/')
 app.config['MAX_CONTENT_LENGTH'] = fileSizeLimit
 ALLOWED_EXTENSIONS = set(['txt', 'tsv', 'ld', 'html'])
 app.config['UPLOADED_FILES_ALLOW'] = ALLOWED_EXTENSIONS
-#app.secret_key = mysecrets.mysecret
+app.secret_key = os.getenv("FLASK_SECRET_KEY", None)
+if app.secret_key is None or app.secret_key == "":
+    raise Exception("FLASK_SECRET_KEY environment variable is unset/empty!")
+
 files = UploadSet('files', DATA)
 configure_uploads(app, files)
 
@@ -80,7 +83,6 @@ collapsed_genes_df_hg38 = pd.read_csv(os.path.join(MYDIR, 'data/collapsed_gencod
 collapsed_genes_df = collapsed_genes_df_hg19 # For now
 ld_mat_diag_constant = 1e-6
 
-#conn = "mongodb://db:27017"
 conn = os.getenv('DATABASE_URL', 'mongodb://localhost:27017')
 print(conn)
 client = MongoClient(conn)
