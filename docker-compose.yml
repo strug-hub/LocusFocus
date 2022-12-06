@@ -10,16 +10,6 @@ services:
       - DATABASE_URL=mongodb://db_dev:27017
       - FLASK_SECRET_KEY=${FLASK_SECRET_KEY:-bigsecret}
     volumes:
-      # - ./flask:/usr/src/app
-      # - type: bind
-      #   source: ./user-data/session_data
-      #   target: /usr/src/app/static/session_data
-      # - type: bind
-      #   source: ./user-data/upload
-      #   target: /usr/src/app/static/upload
-      # - type: bind
-      #   source: ./datasets
-      #   target: /usr/src/app/data
       - ./user-data/session_data:/usr/src/app/static/session_data
       - ./user-data/upload:/usr/src/app/static/upload
       - ./datasets:/usr/src/app/data

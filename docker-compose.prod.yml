@@ -7,31 +7,13 @@ services:
     ports:
       - '8000:8000'
     environment:
-      - DATABASE_URL=mongodb://db_prod:27017
+      - DATABASE_URL=mongodb://${MONGO_CONNECTION_STRING}
       - FLASK_SECRET_KEY
     volumes:
-      # - ./flask:/usr/src/app
-      # - type: bind
-      #   source: ./user-data/session_data
-      #   target: /usr/src/app/static/session_data
-      # - type: bind
-      #   source: ./user-data/upload
-      #   target: /usr/src/app/static/upload
-      # - type: bind
-      #   source: ./datasets
-      #   target: /usr/src/app/data
       - ./user-data/session_data:/usr/src/app/static/session_data
       - ./user-data/upload:/usr/src/app/static/upload
       - ./datasets:/usr/src/app/data
-    depends_on:
-      - db_prod
     stop_signal: SIGINT
-  db_prod:
-    image: mongo
-    ports:
-      - '27017:27017'
-    volumes:
-      - db_prod:/data/db
+    # Use existing mongoDB instance on host
 volumes:
   web_prod:
-  db_prod:
