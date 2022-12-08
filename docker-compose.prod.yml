@@ -1,6 +1,6 @@
 version: '3'
 services:
-  web_prod:
+  web:
     build:
       context: flask
       dockerfile: Dockerfile.prod
@@ -14,6 +14,7 @@ services:
       - ./user-data/upload:/usr/src/app/static/upload
       - ./datasets:/usr/src/app/data
     stop_signal: SIGINT
+    network_mode: "host"
     # Use existing mongoDB instance on host
 volumes:
-  web_prod:
+  web:
