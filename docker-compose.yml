@@ -1,27 +1,18 @@
 version: '3'
 services:
-  web_dev:
+  web:
     build:
       context: flask
-      dockerfile: Dockerfile
-    ports:
-      - '5000:5000'
+      dockerfile: Dockerfile.prod
     environment:
-      - DATABASE_URL=mongodb://db_dev:27017
-      - FLASK_SECRET_KEY=${FLASK_SECRET_KEY:-bigsecret}
+      - DATABASE_URL=mongodb://${MONGO_CONNECTION_STRING}
+      - FLASK_SECRET_KEY
     volumes:
       - ./user-data/session_data:/usr/src/app/static/session_data
       - ./user-data/upload:/usr/src/app/static/upload
       - ./datasets:/usr/src/app/data
-    depends_on:
-      - db_dev
     stop_signal: SIGINT
-  db_dev:
-    image: mongo
-    ports:
-      - '27017:27017'
-    volumes:
-      - db_dev:/data/db
+    network_mode: "host"
+    # Use existing mongoDB instance on host
 volumes:
-  web_dev:
-  db_dev:
+  web:
