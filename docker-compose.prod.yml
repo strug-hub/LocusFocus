@@ -4,8 +4,6 @@ services:
     build:
       context: flask
       dockerfile: Dockerfile.prod
-    ports:
-      - '8000:8000'
     environment:
       - DATABASE_URL=mongodb://${MONGO_CONNECTION_STRING}
       - FLASK_SECRET_KEY
