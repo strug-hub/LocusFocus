@@ -13,6 +13,7 @@ services:
       - ./datasets:/usr/src/app/data
     stop_signal: SIGINT
     network_mode: "host"
+    restart: always
     # Use existing mongoDB instance on host
 volumes:
   web:
