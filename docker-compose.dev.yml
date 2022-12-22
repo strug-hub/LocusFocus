@@ -12,6 +12,7 @@ services:
     volumes:
       - ./user-data/session_data:/usr/src/app/static/session_data
       - ./user-data/upload:/usr/src/app/static/upload
+      - ./user-data/archive:/usr/src/app/static/archive
       - ./datasets:/usr/src/app/data
     depends_on:
       - db_dev
