@@ -434,7 +434,7 @@ if (!file.exists(outfolder)) dir.create(outfolder)
   rsq_filter = 0.6 #Imputation quality filter applied to datasets
 
 ###
-if (!is.null(biom.df$type) && unique(biom.df$type) == "cc") cc=TRUE else cc=FALSE
+if (!is.na(biom.df$type) && !is.null(biom.df$type) && unique(biom.df$type[which(!is.na(biom.df$type) && !is.null(biom.df$type))]) == "cc") cc=TRUE else cc=FALSE
 
 maf.eqtl = ifelse("MAF" %in% names(eqtl.df), TRUE, FALSE)
 maf.biom = ifelse("MAF" %in% names(biom.df), TRUE, FALSE)
@@ -976,7 +976,7 @@ if (!file.exists(outfolder)) dir.create(outfolder)
   rsq_filter = 0.6 #Imputation quality filter applied to datasets
 
 ###
-if (!is.null(biom.df$type) && unique(biom.df$type) == "cc") cc=TRUE else cc=FALSE
+if (!is.na(biom.df$type) && !is.null(biom.df$type) && unique(biom.df$type[which(!is.na(biom.df$type) && !is.null(biom.df$type))]) == "cc") cc=TRUE else cc=FALSE
 #if (all(c("CHR", "POS") %in% names(biom.df))) haveCHRPOS.biom=TRUE else haveCHRPOS.biom=FALSE
 #if (all(c("CHR", "POS") %in% names(eqtl.df))) haveCHRPOS.eqtl=TRUE else haveCHRPOS.eqtl=FALSE
 maf.eqtl = ifelse("MAF" %in% names(eqtl.df), TRUE, FALSE)
