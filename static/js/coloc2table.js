@@ -10,13 +10,13 @@ function buildColoc2Table(tabledata) {
         .text('ProbeID');
     header
         .append('th')
-        .attr('class','th-sm')
+        .attr('class', 'th-sm')
         .text('PP.H4.abf');
-    
-    
+
+
     // Table body:
     tbody = tableselect.append('tbody');
-    for(i=0; i<tabledata['ProbeID'].length; i++) {
+    for (i = 0; i < tabledata['ProbeID'].length; i++) {
         var row = tbody.append('tr');
         row.append('td').text(tabledata['ProbeID'][i]);
         row.append('td').text(tabledata['PPH4abf'][i]);
@@ -37,7 +37,7 @@ function buildColoc2Table(tabledata) {
                     filename: 'COLOC2_table',
                     messageTop: 'COLOC2 Posterior Probabilites'
                 }
-                ]
+            ]
         });
     });
 }

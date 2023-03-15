@@ -5,7 +5,7 @@ function buildSSguidanceTable(genes, tissues, SSP, SSP2) {
     var tbody = d3.select("#SSguidance-table").select("tbody");
 
     // Clear table:
-    if ( $.fn.dataTable.isDataTable( '#SSguidance-table' ) ) {
+    if ($.fn.dataTable.isDataTable('#SSguidance-table')) {
         var mytable = $('#SSguidance-table').DataTable();
         mytable.destroy();
     }
@@ -14,7 +14,7 @@ function buildSSguidanceTable(genes, tissues, SSP, SSP2) {
     tbody.text("");
 
     // Clear table:
-    if ( $.fn.dataTable.isDataTable( '#SSguidance-table' ) ) {
+    if ($.fn.dataTable.isDataTable('#SSguidance-table')) {
         var mytable = $('#SSguidance-table').DataTable();
         mytable.destroy();
     }
@@ -27,7 +27,7 @@ function buildSSguidanceTable(genes, tissues, SSP, SSP2) {
         .text('Field');
     header
         .append('th')
-        .attr('class','th-sm')
+        .attr('class', 'th-sm')
         .text('Value');
 
     var numGTEx = 0;
@@ -36,30 +36,30 @@ function buildSSguidanceTable(genes, tissues, SSP, SSP2) {
     var numFirstStage = 0;
     var numTested = 0;
     var numFailed = 0;
-    for(i=0; i<tissues.length; i++) { // for each tissue
-        for(j=0; j<genes.length; j++) { // for each gene
+    for (i = 0; i < tissues.length; i++) { // for each tissue
+        for (j = 0; j < genes.length; j++) { // for each gene
             numGTEx += 1
-            if(SSP[i][j] == -1) {
+            if (SSP[i][j] == -1) {
                 numNoeQTL += 1
-            } else if(SSP[i][j] == -2) {
+            } else if (SSP[i][j] == -2) {
                 numFirstStage += 1
-            } else if(SSP[i][j] == -3) {
+            } else if (SSP[i][j] == -3) {
                 numFailed += 1
-            } else if(SSP[i][j] > 0) {
+            } else if (SSP[i][j] > 0) {
                 numTested += 1
             } else {
                 numFailed += 1
             }
         }
     }
-    for(i=0; i<SSP2.length; i++) {
-        if(SSP2[i] == -1) {
+    for (i = 0; i < SSP2.length; i++) {
+        if (SSP2[i] == -1) {
             numNoeQTL += 1
-        } else if(SSP2[i] == -2) {
+        } else if (SSP2[i] == -2) {
             numFirstStage += 1
-        } else if(SSP2[i] == -3) {
+        } else if (SSP2[i] == -3) {
             numFailed += 1
-        } else if(SSP2[i] > 0) {
+        } else if (SSP2[i] > 0) {
             numTested += 1
         } else {
             numFailed += 1
@@ -70,31 +70,31 @@ function buildSSguidanceTable(genes, tissues, SSP, SSP2) {
 
     // Table body:
     var row = tbody.append('tr');
-        row.append('td').text('Total number of secondary datasets (including GTEx)');
-        row.append('td').text(numGTEx+numSecondary);
+    row.append('td').text('Total number of secondary datasets (including GTEx)');
+    row.append('td').text(numGTEx + numSecondary);
     var row = tbody.append('tr');
-        row.append('td').text('Total number of GTEx datasets');
-        row.append('td').text(numGTEx);
+    row.append('td').text('Total number of GTEx datasets');
+    row.append('td').text(numGTEx);
     var row = tbody.append('tr');
-        row.append('td').text('Total number of user-uploaded secondary datasets');
-        row.append('td').text(numSecondary);
+    row.append('td').text('Total number of user-uploaded secondary datasets');
+    row.append('td').text(numSecondary);
     var row = tbody.append('tr');
-        row.append('td').text('Number of datasets with no eQTL data (-1)');
-        row.append('td').text(numNoeQTL);
+    row.append('td').text('Number of datasets with no eQTL data (-1)');
+    row.append('td').text(numNoeQTL);
     var row = tbody.append('tr');
-        row.append('td').text('Number of datasets not passing first stage (-2)');
-        row.append('td').text(numFirstStage);
+    row.append('td').text('Number of datasets not passing first stage (-2)');
+    row.append('td').text(numFirstStage);
     var row = tbody.append('tr');
-        row.append('td').text('Number of datasets with computation error (-3)');
-        row.append('td').text(numFailed);
+    row.append('td').text('Number of datasets with computation error (-3)');
+    row.append('td').text(numFailed);
     var row = tbody.append('tr');
-        row.append('td').text('Number of datasets tested for colocalization');
-        row.append('td').text(numTested);
+    row.append('td').text('Number of datasets tested for colocalization');
+    row.append('td').text(numTested);
     var row = tbody.append('tr');
-        row.append('td').text('Suggested Simple Sum colocalization threshold at alpha 0.05 (-log10P)');
-        row.append('td').text(suggested_SSP);
+    row.append('td').text('Suggested Simple Sum colocalization threshold at alpha 0.05 (-log10P)');
+    row.append('td').text(suggested_SSP);
 
-    
+
     // Add DataTables functionality:
     SSguidanceTable = $(document).ready(function () {
         var thedatatable3 = $('#SSguidance-table').DataTable({

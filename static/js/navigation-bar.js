@@ -3,7 +3,7 @@ var myjumbotron = d3.select("#myjumbotron").append('div').classed('col-md-12 jum
 var navbar = d3.select("#navigation-bar").append('div').classed('col-md-12 borderit clearfix', true);
 
 
-myjumbotron.append('h1').append('a').attr('href','/').text('LocusFocus');
+myjumbotron.append('h1').append('a').attr('href', '/').text('LocusFocus');
 myjumbotron.append('p').append('h4').text("Colocalization Testing Across Datasets");
 myjumbotron.append('p').append('h5').text(`Version release: ${version}`);
 
@@ -13,7 +13,7 @@ function addLink(thelink, thetext) {
         .append('a')
         .attr("href", `${thelink}`)
         .text(`${thetext}`)
-        .attr('role','button')
+        .attr('role', 'button')
         .classed('btn btn-primary btn-lg', true);
 }
 addLink("/previous_session", "Session ID");
@@ -24,8 +24,8 @@ addLink("https://mailchi.mp/752ab1c4d516/locusfocus", "Subscribe");
 
 var citationButton = navbar.append('button')
     .classed('btn btn-primary btn-lg', true)
-    .attr('data-toggle','modal')
-    .attr('data-target','#citeModal')
+    .attr('data-toggle', 'modal')
+    .attr('data-target', '#citeModal')
     .text('Citation');
 
 var modal = navbar
@@ -36,24 +36,24 @@ var modal = navbar
 var modalContent = modal
     .append('div')
     .classed('modal-dialog modal-lg modal-dialog-centered', true)
-        .append('div')
-        .classed('modal-content', true);
+    .append('div')
+    .classed('modal-content', true);
 var modalHeader = modalContent
     .append('div')
-    .classed('modal-header',true);
+    .classed('modal-header', true);
 modalHeader
     .append('h4')
-    .classed('modal-title',true)
+    .classed('modal-title', true)
     .text("LocusFocus: Web-based colocalization for the annotation and functional follow-up of GWAS")
 modalHeader
     .append('button')
-    .attr('type',"button")
-    .attr('class',"close")
-    .attr('data-dismiss',"modal")
+    .attr('type', "button")
+    .attr('class', "close")
+    .attr('data-dismiss', "modal")
     .html("&times;");
 var modalBody = modalContent
     .append('div')
-    .classed('modal-body',true);
+    .classed('modal-body', true);
 modalBody
     .append("p")
     .text("Authors:");
@@ -62,15 +62,15 @@ modalBody
     .text("Naim Panjwani, Fan Wang, Scott Mastromatteo, Allen Bao, Cheng Wang, Gengming He, Jiafen Gong, Johanna M. Rommens, Lei Sun, Lisa J. Strug");
 var modalFooter = modalContent
     .append('div')
-    .classed('modal-footer',true);
+    .classed('modal-footer', true);
 modalFooter
     .append('p')
     .append('a')
-    .attr('href','https://doi.org/10.1371/journal.pcbi.1008336')
+    .attr('href', 'https://doi.org/10.1371/journal.pcbi.1008336')
     .text("PLoS Comput Biol 2020 16(10): e1008336.");
 modalFooter
     .append('button')
-    .attr('type','button')
+    .attr('type', 'button')
     .classed("btn btn-default", true)
-    .attr('data-dismiss','modal')
+    .attr('data-dismiss', 'modal')
     .text("Close");
