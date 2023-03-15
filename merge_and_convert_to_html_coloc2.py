@@ -5,7 +5,7 @@ Created on Tue Nov 26 17:43:52 2019
 
 @author: naim
 
-This script is similar to merge_and_convert_to_html.py, but adds 
+This script is similar to merge_and_convert_to_html.py, but adds
 the additional columns required for coloc2 secondary datasets
 
 Description file should contain the following information per row:
@@ -87,7 +87,7 @@ def parseRegionText(regiontext):
 
 def checkColnames(filename, cols):
     '''
-    Checks if the 'filename' has the column names in cols (a list of column names); 
+    Checks if the 'filename' has the column names in cols (a list of column names);
     returns False if any column is absent
     '''
     num_lines_to_check = 1000
@@ -116,7 +116,7 @@ def checkColnames(filename, cols):
                 return True
             else:
                 return False
-        
+
 def getNumHeaderLines(file, num_lines_to_check = 1000):
     num_header_lines = 0
     num_lines_checked = 0
@@ -145,10 +145,10 @@ class Logger(object):
 
     def write(self, message):
         self.terminal.write(message)
-        self.log.write(message)  
+        self.log.write(message)
 
     def flush(self):
-        pass    
+        pass
 
 
 ##############################
@@ -156,7 +156,7 @@ class Logger(object):
 ##############################
 if __name__=='__main__':
     parser = argparse.ArgumentParser(description='Merge several datasets together into HTML tables separated by <h3> title tags')
-    parser.add_argument('filelist_filename', 
+    parser.add_argument('filelist_filename',
                         help='Filename containing the list of files to be merged together.\n \
                         The second column (tab-delimited) may contain descriptions of the datasets.\n \
                         The remaining columns should contain the following information per row:\n \
@@ -175,7 +175,7 @@ if __name__=='__main__':
                             13. ProbeID column name')
     parser.add_argument('coordinates', help="The region coordinates to subset from each file (e.g. 1:500,000-600,000")
     parser.add_argument('outfilename', help="Desired output filename for the merged file")
-    args = parser.parse_args()  
+    args = parser.parse_args()
 
     filelist_filename = str(args.filelist_filename)
     chrom, startbp, endbp = parseRegionText(args.coordinates)
@@ -189,7 +189,7 @@ if __name__=='__main__':
 
     old_stdout = sys.stdout
     sys.stdout = Logger(logfilename)
-    
+
     print('Start: ' + datetime.now().strftime('%c'))
     print('filelist_filename: ' + filelist_filename)
     print('Region: ' + str(chrom)+':'+str(startbp)+'-'+str(endbp))
@@ -204,7 +204,7 @@ if __name__=='__main__':
     bp_colnames = list(filelist.iloc[:,3])
     snp_colnames = list(filelist.iloc[:,4])
     pval_colnames = list(filelist.iloc[:,5])
-    
+
     print('Verifying settings in filelist_filename')
     for i in np.arange(len(files)):
         if not checkColnames(files[i], list(filelist.iloc[i,2:12])):
@@ -237,11 +237,11 @@ if __name__=='__main__':
         df_html_str = df.to_html(index=False)
         final_merge += h3tag + df_html_str
     final_merge += '</html>'
-    
+
     print('Writing merged output')
     with open(outfilename, 'w') as f_out:
         f_out.write(final_merge)
-    
+
     # Quick check:
 #    with open(outfilename, encoding='utf-8', errors='replace') as f:
 #        html = f.read()
@@ -254,4 +254,4 @@ if __name__=='__main__':
     print('End: ' + datetime.now().strftime('%c'))
     sys.stdout = old_stdout
 
-    
+
