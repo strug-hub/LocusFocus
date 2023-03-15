@@ -9,84 +9,84 @@ function buildParamsTable(data, sessionid) {
         .text('Field');
     header
         .append('th')
-        .attr('class','th-sm')
+        .attr('class', 'th-sm')
         .text('Value');
-    
+
     chrom = data['chrom']
     startbp = data['startbp'];
     endbp = data['endbp'];
     SS_start = data['SS_region'][0];
     SS_end = data['SS_region'][1];
-    
+
     // Table body:
     tbody = tableselect.append('tbody');
     var row = tbody.append('tr');
-        row.append('td').text('Session ID');
-        row.append('td').text(sessionid);
+    row.append('td').text('Session ID');
+    row.append('td').text(sessionid);
     var row = tbody.append('tr');
-        row.append('td').text('Lead SNP');
-        row.append('td').text(data['lead_snp']);
+    row.append('td').text('Lead SNP');
+    row.append('td').text(data['lead_snp']);
     var row = tbody.append('tr');
-        row.append('td').text('Chromosome');
-        row.append('td').text(chrom);
+    row.append('td').text('Chromosome');
+    row.append('td').text(chrom);
     var row = tbody.append('tr');
-        row.append('td').text('Start position');
-        row.append('td').text(startbp);
+    row.append('td').text('Start position');
+    row.append('td').text(startbp);
     var row = tbody.append('tr');
-        row.append('td').text('End position');
-        row.append('td').text(endbp);
+    row.append('td').text('End position');
+    row.append('td').text(endbp);
     var row = tbody.append('tr');
-        row.append('td').text('Build');
-        row.append('td').text(data['coordinate']);
+    row.append('td').text('Build');
+    row.append('td').text(data['coordinate']);
     var row = tbody.append('tr');
-        row.append('td').text('Infer variants');
-        row.append('td').text(data['inferVariant']);
+    row.append('td').text('Infer variants');
+    row.append('td').text(data['inferVariant']);
     var row = tbody.append('tr');
-        row.append('td').text(`Number of SNPs in ${chrom}:${startbp}-${endbp}`);
-        row.append('td').text(data['snps'].length);
+    row.append('td').text(`Number of SNPs in ${chrom}:${startbp}-${endbp}`);
+    row.append('td').text(data['snps'].length);
     var row = tbody.append('tr');
-        row.append('td').text('LD Population');
-        row.append('td').text(data['ld_populations']);
+    row.append('td').text('LD Population');
+    row.append('td').text(data['ld_populations']);
     var row = tbody.append('tr');
-        row.append('td').text('GTEx version');
-        row.append('td').text(data['gtex_version']);
+    row.append('td').text('GTEx version');
+    row.append('td').text(data['gtex_version']);
     var row = tbody.append('tr');
-        row.append('td').text('Number of GTEx tissues selected');
-        row.append('td').text(data['gtex_tissues'].length);
+    row.append('td').text('Number of GTEx tissues selected');
+    row.append('td').text(data['gtex_tissues'].length);
     gtexgenes = data['gtex_genes'];
-    if(typeof gtexgenes !== 'undefined') {
+    if (typeof gtexgenes !== 'undefined') {
         var row = tbody.append('tr');
-            row.append('td').text('Number of GTEx genes selected');
-            row.append('td').text(data['gtex_genes'].length);
+        row.append('td').text('Number of GTEx genes selected');
+        row.append('td').text(data['gtex_genes'].length);
     }
     var row = tbody.append('tr');
-        row.append('td').text('SS region');
-        row.append('td').text(data['SS_region']);
+    row.append('td').text('SS region');
+    row.append('td').text(data['SS_region']);
     var row = tbody.append('tr');
-        row.append('td').text(`Number of SNPs in ${chrom}:${SS_start}-${SS_end}`);
-        row.append('td').text(data['num_SS_snps']);
+    row.append('td').text(`Number of SNPs in ${chrom}:${SS_start}-${SS_end}`);
+    row.append('td').text(data['num_SS_snps']);
     var row = tbody.append('tr');
-        row.append('td').text('First stage -log10(SS P-value) threshold');
-        row.append('td').text(data['set_based_p']);
+    row.append('td').text('First stage -log10(SS P-value) threshold');
+    row.append('td').text(data['set_based_p']);
     var row = tbody.append('tr');
-        row.append('td').text('Many SNPs not matching GTEx SNPs');
-        row.append('td').text(data['snp_warning']);
+    row.append('td').text('Many SNPs not matching GTEx SNPs');
+    row.append('td').text(data['snp_warning']);
     var row = tbody.append('tr');
-        row.append('td').text('SNPs matching threshold level');
-        row.append('td').text(data['thresh']);
+    row.append('td').text('SNPs matching threshold level');
+    row.append('td').text(data['thresh']);
     var row = tbody.append('tr');
-        row.append('td').text('Number of SNPs matching with GTEx');
-        row.append('td').text(data['numGTExMatches']);
+    row.append('td').text('Number of SNPs matching with GTEx');
+    row.append('td').text(data['numGTExMatches']);
     var row = tbody.append('tr');
-        row.append('td').text('Number of user-provided secondary datasets');
-        row.append('td').text(data['secondary_dataset_titles'].length);
+    row.append('td').text('Number of user-provided secondary datasets');
+    row.append('td').text(data['secondary_dataset_titles'].length);
     var row = tbody.append('tr');
-        row.append('td').text('Run COLOC2');
-        row.append('td').text(data['runcoloc2']);
-        
-    
+    row.append('td').text('Run COLOC2');
+    row.append('td').text(data['runcoloc2']);
 
-    
+
+
+
 
     // Add DataTables functionality:
     paramsTable = $(document).ready(function () {
@@ -103,7 +103,7 @@ function buildParamsTable(data, sessionid) {
                     filename: 'parameters_table',
                     messageTop: 'Input parameters'
                 }
-                ]
+            ]
         });
     });
 }

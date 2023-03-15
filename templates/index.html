@@ -6,7 +6,7 @@
   <script async src="https://www.googletagmanager.com/gtag/js?id=UA-147321656-2"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
+    function gtag() { dataLayer.push(arguments); }
     gtag('js', new Date());
 
     gtag('config', 'UA-147321656-2');
@@ -16,28 +16,32 @@
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
   <title>LocusFocus: A Colocalization Tool to Prioritize Genes and Tissues from GWAS and eQTL Integration</title>
   <link rel="shortcut icon" href="#" />
-  <meta property="og:title" content="LocusFocus: A Colocalization Tool to Prioritize Genes and Tissues from GWAS and eQTL Integration">
+  <meta property="og:title"
+    content="LocusFocus: A Colocalization Tool to Prioritize Genes and Tissues from GWAS and eQTL Integration">
   <meta property="og:type" content="website">
-  <meta property="og:image" content="https://locusfocus.research.sickkids.ca/static/images/eqtl_co-localization_heatmap_slc26a9.png">
+  <meta property="og:image"
+    content="https://locusfocus.research.sickkids.ca/static/images/eqtl_co-localization_heatmap_slc26a9.png">
   <meta property="og:site_name" content="LocusFocus Web Application">
-  <meta property="og:description" content="LocusFocus is a web-based colocalization tool for the annotation and functional follow-up of GWAS.
+  <meta property="og:description"
+    content="LocusFocus is a web-based colocalization tool for the annotation and functional follow-up of GWAS.
   It applies the Simple Sum frequentist method to formally test colocalization between two SNP-based summary statistic datasets.">
   <meta property="og:url" content="https://locusfocus.research.sickkids.ca/">
   <!-- Font Awesome -->
   <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.0/css/all.css">
   <!-- JQuery-UI -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/jquery-ui.css') }}"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/jquery-ui.css') }}" />
   <!-- JQuery -->
   <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
   <!-- JQuery-UI -->
   <script type="text/javascript" src="{{ url_for('static', filename='js/jquery-ui.js') }}"></script>
   <!-- Bootstrap core CSS -->
-  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+    integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
   <!-- Material Design Bootstrap -->
   <link href="https://cdnjs.cloudflare.com/ajax/libs/mdbootstrap/4.7.4/css/mdb.min.css" rel="stylesheet">
   <!-- DataTables -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/jquery.dataTables.min.css') }}"/>
-  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/bootstrap-multiselect.css') }}"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/jquery.dataTables.min.css') }}" />
+  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/bootstrap-multiselect.css') }}" />
   <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/style.css') }}">
   <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/d3Style.css') }}">
 </head>
@@ -49,127 +53,144 @@
 
 
     <div class="inputs-and-upload-form">
-    <form method=post enctype=multipart/form-data>
-      <div class="row">
-        <div class="col-md-12 borderit">
-          <div class="col-md-4">
-              <h5 data-toggle="tooltip" data-html="true"
-              title="<p>Select the human coordinate system your files are stored in.</p>
+      <form method=post enctype=multipart/form-data>
+        <div class="row">
+          <div class="col-md-12 borderit">
+            <div class="col-md-4">
+              <h5 data-toggle="tooltip" data-html="true" title="<p>Select the human coordinate system your files are stored in.</p>
               <p>
                 <ul>
                   <li>hg19 is GRCh37</li>
                   <li>hg38 is GRCh38</li>
                 </ul>
               </p>">Select coordinate system</h5>
-            <select id="coordinate" name="coordinate" onchange="coordinateChange(this.value)">
-              <option id="hg19" value="hg19" label="hg19" selected="selected"></option>
-              <option id="hg38" value="hg38" label="hg38"></option>
-            </select>
+              <select id="coordinate" name="coordinate" onchange="coordinateChange(this.value)">
+                <option id="hg19" value="hg19" label="hg19" selected="selected"></option>
+                <option id="hg38" value="hg38" label="hg38"></option>
+              </select>
+            </div>
           </div>
         </div>
-      </div>
-      <div class="row">
-        <div class="col-md-12 borderit">
-          <h5>Select files to upload</h5>
+        <div class="row">
+          <div class="col-md-12 borderit">
+            <h5>Select files to upload</h5>
             <dl>
               <p>
-                <input type="file" name="files[]" multiple="true" autocomplete="off" required
-                data-toggle="tooltip" title="Up to 3 files may be uploaded as described below (press and hold the Ctrl key to select multiple files).">
+                <input type="file" name="files[]" multiple="true" autocomplete="off" required data-toggle="tooltip"
+                  title="Up to 3 files may be uploaded as described below (press and hold the Ctrl key to select multiple files).">
               </p>
             </dl>
             <p>
-              <div class="alert alert-dismissible alert-info">
-                <button type="button" class="close" data-dismiss="alert">&times;</button>
-                <strong>You may upload up to 3 files:</strong>
+            <div class="alert alert-dismissible alert-info">
+              <button type="button" class="close" data-dismiss="alert">&times;</button>
+              <strong>You may upload up to 3 files:</strong>
+              <ul>
+                <li>.txt or .tsv (required): tab-separated primary summary statistics (eg. GWAS)</li>
+                <li>.ld (optional): PLINK-generated LD matrix -- must have the same number of SNPs as primary file</li>
+                <li>.html (optional): Secondary datasets to test colocalization. Each data table must be preceded by an
+                  &lt;h3&gt; title tag describing the table</li>
                 <ul>
-                  <li>.txt or .tsv (required): tab-separated primary summary statistics (eg. GWAS)</li>
-                  <li>.ld (optional): PLINK-generated LD matrix -- must have the same number of SNPs as primary file</li>
-                  <li>.html (optional): Secondary datasets to test colocalization. Each data table must be preceded by an &lt;h3&gt; title tag describing the table</li>
-                  <ul>
-                    <li>Refer to the <a href="https://locusfocus.readthedocs.io/en/latest/quick_start.html#formatting-custom-secondary-datasets">documentation</a> on how to generate the HTML file.</li>
-                    <li>You may use the <a href="https://github.com/naim-panjwani/LocusFocus/blob/master/merge_and_convert_to_html.py">merge_and_convert_to_html.py</a> script,
-                      or <a href="https://github.com/naim-panjwani/LocusFocus/blob/master/merge_and_convert_to_html_coloc2.py">merge_and_convert_to_html_coloc2.py</a>.</li>
-                    <li>You may use provided <a href="https://github.com/naim-panjwani/LocusFocus/tree/master/data/sample_datasets">sample datasets</a> as a guide to formatting your files.</li>
-                  </ul>
+                  <li>Refer to the <a
+                      href="https://locusfocus.readthedocs.io/en/latest/quick_start.html#formatting-custom-secondary-datasets">documentation</a>
+                    on how to generate the HTML file.</li>
+                  <li>You may use the <a
+                      href="https://github.com/naim-panjwani/LocusFocus/blob/master/merge_and_convert_to_html.py">merge_and_convert_to_html.py</a>
+                    script,
+                    or <a
+                      href="https://github.com/naim-panjwani/LocusFocus/blob/master/merge_and_convert_to_html_coloc2.py">merge_and_convert_to_html_coloc2.py</a>.
+                  </li>
+                  <li>You may use provided <a
+                      href="https://github.com/naim-panjwani/LocusFocus/tree/master/data/sample_datasets">sample
+                      datasets</a> as a guide to formatting your files.</li>
                 </ul>
-                <strong>File size limit is 500 MB for all 3 files</strong>
-              </div>
+              </ul>
+              <strong>File size limit is 500 MB for all 3 files</strong>
+            </div>
             </p>
 
 
 
-          <div class="row">
-            <div class="col-md-3" id="snp"></div>
-          </div>
-          <div class="row">
-            <div class="col-md-6">
-              <input type="checkbox" id="markerCheckbox" name="markerCheckbox" onclick="inferVariant(this)"><label for="markerCheckbox" style="margin: 0px; padding: 10px;  height:42px"
-              data-toggle="tooltip" data-html="true" title="<p>If checked, the variant ID will be used to infer the chromosome, position, reference and alternate alleles using dbSNP151.</p>
+            <div class="row">
+              <div class="col-md-3" id="snp"></div>
+            </div>
+            <div class="row">
+              <div class="col-md-6">
+                <input type="checkbox" id="markerCheckbox" name="markerCheckbox" onclick="inferVariant(this)"><label
+                  for="markerCheckbox" style="margin: 0px; padding: 10px;  height:42px" data-toggle="tooltip"
+                  data-html="true"
+                  title="<p>If checked, the variant ID will be used to infer the chromosome, position, reference and alternate alleles using dbSNP151.</p>
               <p>This option is <em>not</em> recommended due to multi-mapping of some rsid's and ambiguity for multi-allelic rsid variants.</p>""> Use marker ID column to infer variant position and alleles
             </div>
           </div>
-          <div class="row" id="variantInputs">
-            <div class="col-md-3" id="chrom"></div>
-            <div class="col-md-3" id="pos"></div>
-            <div class="col-md-3" id="ref"></div>
-            <div class="col-md-3" id="alt"></div>
-          </div>
+          <div class=" row" id="variantInputs">
+                  <div class="col-md-3" id="chrom"></div>
+                  <div class="col-md-3" id="pos"></div>
+                  <div class="col-md-3" id="ref"></div>
+                  <div class="col-md-3" id="alt"></div>
+              </div>
 
 
-          <hr>
+              <hr>
 
-          <div class="row">
-            <div class="col-md-4">
-              <input type="checkbox" id="coloc2check" name="coloc2check" onclick="addColoc2Inputs(this)"><label for="coloc2check" style="margin: 0px; padding: 10px;  height:42px"
-              data-toggle="tooltip" title='If you would also like to run and compare colocalization analysis with Coloc2 method, extra input fields are required.'> Add required inputs for COLOC2
-            </div>
-          </div>
+              <div class="row">
+                <div class="col-md-4">
+                  <input type="checkbox" id="coloc2check" name="coloc2check" onclick="addColoc2Inputs(this)"><label
+                    for="coloc2check" style="margin: 0px; padding: 10px;  height:42px" data-toggle="tooltip"
+                    title='If you would also like to run and compare colocalization analysis with Coloc2 method, extra input fields are required.'>
+                    Add required inputs for COLOC2
+                </div>
+              </div>
 
-          <div class="row" id="statsDiv"></div>
-          <div class="row" id="statsDiv2"></div>
+              <div class="row" id="statsDiv"></div>
+              <div class="row" id="statsDiv2"></div>
 
 
-          <hr>
+              <hr>
 
-          <div class="row">
-            <div class="col-md-3">
-              <label for="region" id="locusText" data-html="true" data-toggle="tooltip" title="<p>Enter the region you would like to visualize on the colocalization plot.</p>
+              <div class="row">
+                <div class="col-md-3">
+                  <label for="region" id="locusText" data-html="true" data-toggle="tooltip"
+                    title="<p>Enter the region you would like to visualize on the colocalization plot.</p>
               <p>Your input format will be checked for correctness and genes in the region will be populated when selecting GTEx genes below.</p>">Coordinates </label>
-              <input class="form-control" id="locus" name="locus" type="text" value="1:205,500,000-206,000,000" onchange=checkLocusInput(this.value)
-              data-html="true" data-toggle="tooltip" title="<p>Enter the region you would like to visualize on the colocalization plot.</p>
+                  <input class="form-control" id="locus" name="locus" type="text" value="1:205,500,000-206,000,000"
+                    onchange=checkLocusInput(this.value) data-html="true" data-toggle="tooltip"
+                    title="<p>Enter the region you would like to visualize on the colocalization plot.</p>
               <p>Your input format will be checked for correctness and genes in the region will be populated when selecting GTEx genes below.</p>">
-              <div class="input-error" id="locusErrorDiv"></div>
-            </div>
-            <div class="col-md-3">
-              <label for="lead-snp" id="lead_snp" data-html="true" data-toggle="tooltip" title="<p>If you would like to use a marker different from the top marker in your file, enter the marker name here.</p>
-              <p>Please note that if the marker is not in the 1000 Genomes biallelic SNP set (matched by chromosome and position only), then the next best marker will be chosen automatically.</p>">Lead Marker Name:</label>
-              <input class="form-control" id="leadsnp" name="leadsnp" type="text" placeholder="default: top marker"
-              data-html="true" data-toggle="tooltip" title="<p>If you would like to use a marker different from the top marker in your file, enter the marker name here.</p>
+                  <div class="input-error" id="locusErrorDiv"></div>
+                </div>
+                <div class="col-md-3">
+                  <label for="lead-snp" id="lead_snp" data-html="true" data-toggle="tooltip"
+                    title="<p>If you would like to use a marker different from the top marker in your file, enter the marker name here.</p>
+              <p>Please note that if the marker is not in the 1000 Genomes biallelic SNP set (matched by chromosome and position only), then the next best marker will be chosen automatically.</p>">Lead
+                    Marker Name:</label>
+                  <input class="form-control" id="leadsnp" name="leadsnp" type="text" placeholder="default: top marker"
+                    data-html="true" data-toggle="tooltip"
+                    title="<p>If you would like to use a marker different from the top marker in your file, enter the marker name here.</p>
               <p>Please note that if the marker is not in the 1000 Genomes biallelic SNP set, then the next best marker will be chosen automatically.</p>">
+                </div>
+              </div>
+            </div>
+          </div> <!-- row closing div -->
+
+          <div class="row">
+            <div class="col-md-12 borderit">
+              <h5>Select Simple Sum Colocalization Region</h5>
+              <h6><i>Leave blank for default (+/- 0.1Mbp from the lead SNP)</i></h6>
+              <div class="col-md-3">
+                <label for="region" id="SSText" data-html="true" data-toggle="tooltip"
+                  title="<p>By convention, colocalization methods default to testing colocalization +/- 0.1 Mbp of the top variant in the primary (e.g. GWAS) dataset.</p>
+            <p>You can override this behaviour by entering the subregion to test colocalization on.</p>">Coordinates:</label>
+                <input class="form-control" id="SSlocus" name="SSlocus" type="text" placeholder="chr:start-end"
+                  data-html="true" data-toggle="tooltip" title="<p>By convention, colocalization methods default to testing colocalization +/- 0.1 Mbp of the top variant in the primary (e.g. GWAS) dataset.</p>
+            <p>You can override this behaviour by entering the subregion to test colocalization on.</p>">
+              </div>
             </div>
           </div>
-        </div>
-      </div> <!-- row closing div -->
 
-      <div class="row">
-        <div class="col-md-12 borderit">
-          <h5>Select Simple Sum Colocalization Region</h5>
-          <h6><i>Leave blank for default (+/- 0.1Mbp from the lead SNP)</i></h6>
-          <div class="col-md-3">
-            <label for="region" id="SSText" data-html="true" data-toggle="tooltip" title="<p>By convention, colocalization methods default to testing colocalization +/- 0.1 Mbp of the top variant in the primary (e.g. GWAS) dataset.</p>
-            <p>You can override this behaviour by entering the subregion to test colocalization on.</p>">Coordinates:</label>
-            <input class="form-control" id="SSlocus" name="SSlocus" type="text" placeholder="chr:start-end"
-            data-html="true" data-toggle="tooltip" title="<p>By convention, colocalization methods default to testing colocalization +/- 0.1 Mbp of the top variant in the primary (e.g. GWAS) dataset.</p>
-            <p>You can override this behaviour by entering the subregion to test colocalization on.</p>">
-          </div>
-        </div>
-      </div>
-
-      <div class="row">
-        <div class="col-md-12 borderit">
-          <div class="col-md-4">
-            <h5 data-toggle="tooltip" data-html="true"
-            title="<p>For the most accurate results, the LD (r<sup>2</sup>) matrix for your primary (e.g. GWAS) dataset is recommended to be uploaded as a .ld square matrix file.
+          <div class="row">
+            <div class="col-md-12 borderit">
+              <div class="col-md-4">
+                <h5 data-toggle="tooltip" data-html="true" title="<p>For the most accurate results, the LD (r<sup>2</sup>) matrix for your primary (e.g. GWAS) dataset is recommended to be uploaded as a .ld square matrix file.
               If the .ld file is unavailable, you may choose one of the publicly-available 1000 Genomes population datasets.</p>
             <p>
             <ul>
@@ -180,80 +201,88 @@
               <li>SAS: South Asian</li>
               <li>AMR: Ad Mixed American</li>
             </ul></p>">Select Populations for LD</h5>
-          </div>
-          <div class="col-md-6">
-            <select id="LD-populations" name="LD-populations">
-            </select>
-          </div>
-          <!--
+              </div>
+              <div class="col-md-6">
+                <select id="LD-populations" name="LD-populations">
+                </select>
+              </div>
+              <!--
           <select id="ld-type" name="ld-type">
             <option id="r2" value="r2">r<sup>2</sup></option>
             <option id="D-prime" value="d">D'</option>
           </select>
           -->
-        </div>
-      </div> <!-- row closing div -->
+            </div>
+          </div> <!-- row closing div -->
 
-      <div class="row">
-        <div class="col-md-12 borderit">
-          <div class="col-md-4">
-            <h5 data-toggle="tooltip" data-html="true"
-            title="<p>For convenience, we are making available eQTL datasets from the GTEx project for use as secondary datasets.</p>
+          <div class="row">
+            <div class="col-md-12 borderit">
+              <div class="col-md-4">
+                <h5 data-toggle="tooltip" data-html="true"
+                  title="<p>For convenience, we are making available eQTL datasets from the GTEx project for use as secondary datasets.</p>
             <p>LocusFocus, however, can perform more custom colocalization analyses utilizing other secondary (e.g. eQTL, mQTL, other phenotypes) datasets provided by the user.</p>
-            <p>Custom secondary datasets may be uploaded after conversion to HTML format as described above or in the documentation.</p>">Select GTEx eQTL Data to Render</h5>
-          </div>
-          <div class="col-md-12">
-            <h6><i>Please allow sufficient time for analysis if selecting many tissues and genes.<br>Analyses may take >30 minutes when selecting many tissue-gene pairs.</i></h6>
-          </div>
-          <div class="col-md-6">
-            <div id="tissue-select" data-toggle="tooltip" title="Select the tissues you would like to test colocalization with.">Select GTEx (V7) Tissues</div>
-            <select id="GTEx-tissues" name="GTEx-tissues" multiple="multiple">
-            </select>
-          </div>
+            <p>Custom secondary datasets may be uploaded after conversion to HTML format as described above or in the documentation.</p>">Select GTEx eQTL Data
+                  to Render</h5>
+              </div>
+              <div class="col-md-12">
+                <h6><i>Please allow sufficient time for analysis if selecting many tissues and genes.<br>Analyses may
+                    take >30 minutes when selecting many tissue-gene pairs.</i></h6>
+              </div>
+              <div class="col-md-6">
+                <div id="tissue-select" data-toggle="tooltip"
+                  title="Select the tissues you would like to test colocalization with.">Select GTEx (V7) Tissues</div>
+                <select id="GTEx-tissues" name="GTEx-tissues" multiple="multiple">
+                </select>
+              </div>
 
-          <hr>
+              <hr>
 
-          <div class="col-md-6">
-            <div id="genes-select" data-toggle="tooltip" title="Select the genes in the region you would like to test colocalization with.">Select Genes (enter coordinates above to populate)</div>
-            <select id="region-genes" name="region-genes" multiple="multiple">
-            </select>
-          </div>
+              <div class="col-md-6">
+                <div id="genes-select" data-toggle="tooltip"
+                  title="Select the genes in the region you would like to test colocalization with.">Select Genes (enter
+                  coordinates above to populate)</div>
+                <select id="region-genes" name="region-genes" multiple="multiple">
+                </select>
+              </div>
 
-          <hr>
+              <hr>
 
-          <div class="col-md-8">
-            <label for="set-based-P" id="set-based-P-label" data-toggle="tooltip" data-html="true"
-            title="<p>For the Simple Sum method, a first-stage set-based Bonferroni p-value threshold is used for the set of secondary datasets with alpha 0.05 (0.05 divided by the number of secondary datasets)</p>
-            <p>Enter a value if you would like to override the default threshold.</p>">Stage one set-based p-value threshold</label>
-            <input class="form-control" id="setbasedP" name="setbasedP" type="text" placeholder="default: 0.05 / (number of tissues &times; number of genes + additional secondary datasets uploaded)"
-            data-toggle="tooltip" data-html="true"
-            title="<p>For the Simple Sum method, a first-stage set-based Bonferroni p-value threshold is used for the set of secondary datasets with alpha 0.05 (0.05 divided by the number of secondary datasets)</p>
+              <div class="col-md-8">
+                <label for="set-based-P" id="set-based-P-label" data-toggle="tooltip" data-html="true" title="<p>For the Simple Sum method, a first-stage set-based Bonferroni p-value threshold is used for the set of secondary datasets with alpha 0.05 (0.05 divided by the number of secondary datasets)</p>
+            <p>Enter a value if you would like to override the default threshold.</p>">Stage one set-based p-value
+                  threshold</label>
+                <input class="form-control" id="setbasedP" name="setbasedP" type="text"
+                  placeholder="default: 0.05 / (number of tissues &times; number of genes + additional secondary datasets uploaded)"
+                  data-toggle="tooltip" data-html="true" title="<p>For the Simple Sum method, a first-stage set-based Bonferroni p-value threshold is used for the set of secondary datasets with alpha 0.05 (0.05 divided by the number of secondary datasets)</p>
             <p>Enter a value if you would like to override the default threshold.</p>">
-          </div>
-          <!--
+              </div>
+              <!--
               <label for="gencodeId" id="gencode-id">Enter Gene Name or Gencode ID:</label>
               <input class="form-control" id="gencodeID" name="gencodeID" type="text" placeholder="e.g. SLC26A9">
           -->
+            </div>
+          </div> <!-- row closing div -->
+
+          <div class="row">
+            <div class="col-md-12"><input id="submit-btn" type="submit" class="btn btn-default" value="Submit"></div>
+          </div> <!-- row closing div -->
+
+          <div class="row">
+            <div class="col-md-12">
+              <h6><b><i>By hitting submit, you understand that you are uploading your dataset to a public server</i></b>
+              </h6>
+            </div>
+          </div> <!-- row closing div -->
+
+      </form>
+
+      <div class="row">
+        <div class="col-md-12">
+          <div id="error-messages" class="error-text"></div>
         </div>
-      </div> <!-- row closing div -->
-
-      <div class="row">
-        <div class="col-md-12"><input id="submit-btn" type="submit" class="btn btn-default" value="Submit"></div>
-      </div> <!-- row closing div -->
-
-      <div class="row">
-        <div class="col-md-12"><h6><b><i>By hitting submit, you understand that you are uploading your dataset to a public server</i></b></h6></div>
-      </div> <!-- row closing div -->
-
-    </form>
-
-    <div class="row">
-      <div class="col-md-12">
-        <div id="error-messages" class="error-text"></div>
       </div>
-    </div>
-  </div> <!-- inputs-and-upload-form closing div -->
-</div> <!-- container closing div -->
+    </div> <!-- inputs-and-upload-form closing div -->
+  </div> <!-- container closing div -->
 
   <!-- JS -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/5.9.1/d3.js"></script>
@@ -262,10 +291,12 @@
   <script src="{{ url_for('static', filename='js/navigation-bar.js') }}"></script>
   <script src="{{ url_for('static', filename='js/inputChecker.js') }}"></script>
   <!-- Bootstrap tooltips -->
-  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.4/umd/popper.min.js"></script>
+  <script type="text/javascript"
+    src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.4/umd/popper.min.js"></script>
   <script type="text/javascript" src="{{ url_for('static', filename='js/tooltip.min.js') }}"></script>
   <!-- Bootstrap core JavaScript -->
-  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.3.1/js/bootstrap.min.js"></script>
+  <script type="text/javascript"
+    src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.3.1/js/bootstrap.min.js"></script>
   <!-- MDB core JavaScript -->
   <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mdbootstrap/4.7.4/js/mdb.min.js"></script>
   <!-- DataTables -->
