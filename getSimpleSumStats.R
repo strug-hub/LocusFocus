@@ -208,15 +208,17 @@ if (!all(is.na(ldmat))) {
   stop("LD matrix has all missing values")
 }
 
-num_iterations = nrow(P_eqtl)
+num_genes = nrow(P_eqtl)
 
 Pss <- NULL
 n <- NULL
 comp_used <- NULL
+first_stages <- NULL
 
-for (i in 1:num_iterations) {
+for (i in 1:num_genes) {
   tempmat <- cbind(P_gwas, P_eqtl[i, ])
   ld_mat_i <- ldmat
+  set_based_test_result <- NA
 
   # Remove NA rows
   NArows = which(is.na(tempmat[, 1]) | is.na(tempmat[, 2]))
@@ -235,12 +237,14 @@ for (i in 1:num_iterations) {
   if (snp_count < 1) {
     Pss <- c(Pss, -1) # no eQTL data
     comp_used <- c(comp_used, "na")
+    first_stages <- c(first_stages, NA)
     next
   }
 
   # do pretest (set_based_test)
   t <- try({
-    if (set_based_test(P_eqtl_i, ld_mat_i, num_iterations)) {
+    set_based_test_result <- set_based_test(P_eqtl_i, ld_mat_i, num_genes)
+    if (set_based_test_result) {
       # if(TRUE) {
       P = simple_sum_p(P_gwas = P_gwas_i, P_eqtl = P_eqtl_i, ld.mat = ld_mat_i, cut = 0, m = snp_count, meth = "davies")
       if (P == 0 | P < 0) {
@@ -255,14 +259,16 @@ for (i in 1:num_iterations) {
       Pss <- c(Pss, -2) # not significant eQTL as per set-based test
       comp_used <- c(comp_used, "na")
     }
+    first_stages <- c(first_stages, set_based_test_result)
   })
   if ("try-error" %in% class(t)) {
     print(t[1])
     Pss <- c(Pss, -3)
     comp_used <- c(comp_used, "na")
+    first_stages <- c(first_stages, set_based_test_result)
   } # could not compute a SS p-value (SNPs not dense enough? can also get this if the LD matrix if not positive definite)
 }
 
 sessionid <- gsub(".txt", "", gsub("Pvalues-", "", P_values_filename))
-result <- data.frame(Pss = Pss, n = n, comp_used = comp_used)
+result <- data.frame(Pss = Pss, n = n, comp_used = comp_used, first_stages = first_stages)
 write.table(result, outfilename, row.names = F, col.names = T, quote = F, sep = "\t")
