@@ -37,12 +37,14 @@ p <- add_argument(p, "--set_based_p", default = NULL, help = paste0(
   "Entering a value will override the default threshold."
 ))
 p <- add_argument(p, "--outfilename", default = "SSPvalues.txt", help = "Output filename")
+p <- add_argument(p, "--first_stage_only", action = "store_true", help = "Whether to only perform and record first-stage set-based tests on secondary datasets.")
 argv <- parse_args(p)
 P_values_filename <- argv$P_values_filename
 ld_matrix_filename <- argv$ld_matrix_filename
 set_based_p <- argv$set_based_p
 if (as.character(set_based_p) == "default") set_based_p <- NULL
 outfilename <- argv$outfilename
+first_stage_only <- argv$first_stage_only
 
 # test
 # id <- "f4f9f7ac-64ea-4cd3-9c15-887eabd38a02"
@@ -66,15 +68,15 @@ set_based_test <- function(summary_stats, ld, num_genes, alpha = 0.05) {
   pv <- abs(imhof(statistic, eigenvalues)$Qq)
   if (is.null(set_based_p)) {
     if (pv < (alpha / num_genes)) {
-      return(TRUE)
+      return(list(TRUE, pv))
     } else {
-      return(FALSE)
+      return(list(FALSE, pv))
     }
   } else if (!is.na(as.numeric(set_based_p))) {
     if (pv < as.numeric(set_based_p)) {
-      return(TRUE)
+      return(list(TRUE, pv))
     } else {
-      return(FALSE)
+      return(list(FALSE, pv))
     }
   } else {
     stop(paste0("Provided set-based p-value (", set_based_p, ") is invalid."))
@@ -210,15 +212,23 @@ if (!all(is.na(ldmat))) {
 
 num_genes = nrow(P_eqtl)
 
+# Columns for final returned result
 Pss <- NULL
 n <- NULL
 comp_used <- NULL
 first_stages <- NULL
+first_stage_p <- NULL
+
+if (first_stage_only) {
+  print("Performing first stage tests only (set_based_test)")
+}
 
 for (i in 1:num_genes) {
   tempmat <- cbind(P_gwas, P_eqtl[i, ])
   ld_mat_i <- ldmat
   set_based_test_result <- NA
+  set_based_test_passed <- NA
+  set_based_test_p <- NA
 
   # Remove NA rows
   NArows = which(is.na(tempmat[, 1]) | is.na(tempmat[, 2]))
@@ -243,8 +253,10 @@ for (i in 1:num_genes) {
 
   # do pretest (set_based_test)
   t <- try({
-    set_based_test_result <- set_based_test(P_eqtl_i, ld_mat_i, num_genes)
-    if (set_based_test_result) {
+    set_based_test_result <- set_based_test(P_eqtl_i, ld_mat_i, num_genes) # [1] is TRUE/FALSE, [2] is p value
+    set_based_test_passed <- set_based_test_result[1]
+    set_based_test_p <- set_based_test_result[2]
+    if (set_based_test_passed && !first_stage_only) {
       # if(TRUE) {
       P = simple_sum_p(P_gwas = P_gwas_i, P_eqtl = P_eqtl_i, ld.mat = ld_mat_i, cut = 0, m = snp_count, meth = "davies")
       if (P == 0 | P < 0) {
@@ -256,19 +268,22 @@ for (i in 1:num_genes) {
         Pss <- c(Pss, P)
       }
     } else {
+      # always happens if first_stage_only, but we only look at first_stages afterwards anyways
       Pss <- c(Pss, -2) # not significant eQTL as per set-based test
       comp_used <- c(comp_used, "na")
     }
-    first_stages <- c(first_stages, set_based_test_result)
+    first_stages <- c(first_stages, set_based_test_passed)
+    first_stage_p <- c(first_stage_p, set_based_test_p)
   })
   if ("try-error" %in% class(t)) {
     print(t[1])
     Pss <- c(Pss, -3)
     comp_used <- c(comp_used, "na")
-    first_stages <- c(first_stages, set_based_test_result)
+    first_stages <- c(first_stages, set_based_test_passed)
+    first_stage_p <- c(first_stage_p, set_based_test_p)
   } # could not compute a SS p-value (SNPs not dense enough? can also get this if the LD matrix if not positive definite)
 }
 
 sessionid <- gsub(".txt", "", gsub("Pvalues-", "", P_values_filename))
-result <- data.frame(Pss = Pss, n = n, comp_used = comp_used, first_stages = first_stages)
+result <- data.frame(Pss = Pss, n = n, comp_used = comp_used, first_stages = first_stages, first_stage_p = first_stage_p)
 write.table(result, outfilename, row.names = F, col.names = T, quote = F, sep = "\t")

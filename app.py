@@ -1377,8 +1377,6 @@ def index():
                 if not all(isinstance(x, float) for x in list(gwas_data[mafcol])):
                     raise InvalidUsage(f'MAF column ({mafcol}) has non-numeric entries')
 
-
-
             # Further check column names provided:
             if len(set(columnnames)) != len(columnnames):
                 raise InvalidUsage(f'Duplicate column names provided: {columnnames}')
@@ -1400,9 +1398,6 @@ def index():
                 raise InvalidUsage('Please select one or more genes to complement your GTEx tissue(s) selection', status_code=410)
             elif len(gtex_genes) > 0 and len(gtex_tissues) == 0:
                 raise InvalidUsage('Please select one or more tissues to complement your GTEx gene(s) selection', status_code=410)
-            # old code remnant:
-            # if gtex_version=="V7": gene='ENSG00000174502.14'
-            # if gtex_version=="V8": gene='ENSG00000174502.18'
             if len(gtex_genes)>0:
                 gene = gtex_genes[0]
             elif coordinate == 'hg19':
@@ -1421,6 +1416,11 @@ def index():
                         raise InvalidUsage('Set-based p-value threshold given is not between 0 and 1')
                 except:
                     raise InvalidUsage('Invalid value provided for the set-based p-value threshold. Value must be numeric between 0 and 1.')
+
+            # Set-based results only checkbox
+            setBasedOnly = False
+            if 'setBasedOnly' in request.form:
+                setBasedOnly = True
 
             # Ensure custom LD matrix and GWAS files are sorted for accurate matching:
             if ldmat_filepath != '' and poscol != '' and not isSorted(list(gwas_data[poscol])):
@@ -1447,8 +1447,6 @@ def index():
                 altcol = default_altname
                 gwas_data = gwas_data.loc[ [str(x) != '.' for x in list(gwas_data[chromcol])] ].copy()
                 gwas_data.reset_index(drop=True, inplace=True)
-
-
 
             #######################################################
             # Subsetting GWAS file
@@ -1549,7 +1547,6 @@ def index():
             data['thresh'] = thresh
             data['numGTExMatches'] = numGTExMatches
 
-
             #######################################################
             # Loading any secondary datasets uploaded
             #######################################################
@@ -1632,7 +1629,6 @@ def index():
                 SSlocustext = str(chrom) + ":" + str(SS_start) + "-" + str(SS_end)
             data['SS_region'] = [SS_start, SS_end]
 
-
             # # Getting Simple Sum P-values
             # 2. Subset the region (step 1 was determining the region to do the SS calculation on - see above SS_start and SS_end variables):
             t1 = datetime.now() # timer for subsetting SS region
@@ -1663,11 +1659,11 @@ def index():
             #print(gwas_data.shape)
             #print(SS_gwas_data.shape)
             #print(SS_gwas_data)
-            if SS_gwas_data.shape[0] == 0: InvalidUsage('No data points found for entered Simple Sum region', status_code=410)
+            if SS_gwas_data.shape[0] == 0:
+                raise InvalidUsage('No data points found for entered Simple Sum region', status_code=410)
             PvaluesMat = [list(SS_gwas_data[pcol])]
             SS_snp_list = list(SS_gwas_data[snpcol])
             SS_snp_list = cleanSNPs(SS_snp_list, regionstr, coordinate)
-
 
             # optimizing best match variant if given a mix of rsids and non-rsid variants
             # varids = SS_snp_list
@@ -1854,20 +1850,27 @@ def index():
             Rscript_code_path = os.path.join(MYDIR, 'getSimpleSumStats.R')
             # Rscript_path = subprocess.run(args=["which","Rscript"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
             SSresult_path = os.path.join(MYDIR, 'static', f'session_data/SSPvalues-{my_session_id}.txt')
+            Rscript_args = [
+                'Rscript',
+                Rscript_code_path,
+                Pvalues_filepath,
+                ldmatrix_filepath,
+                '--set_based_p', str(setbasedP),
+                '--outfilename', SSresult_path
+                ]
+            if (setBasedOnly):
+                Rscript_args.append("--first_stage_only")
 
-            RscriptRun = subprocess.run(args=['Rscript', Rscript_code_path, Pvalues_filepath, ldmatrix_filepath, '--set_based_p', str(setbasedP), '--outfilename', SSresult_path], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
+            RscriptRun = subprocess.run(args=Rscript_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
             if RscriptRun.returncode != 0:
                 raise InvalidUsage(RscriptRun.stdout, status_code=410)
             SSdf = pd.read_csv(SSresult_path, sep='\t', encoding='utf-8')
 
-            # SSPvalues = RscriptRun.stdout.replace('\n',' ').split(' ')
-            # SSPvalues = [float(SSP) for SSP in SSPvalues if SSP!='']
-
-            #SSPvalues, num_SNP_used_for_SS, comp_used = getSimpleSumStats.get_simple_sum_p(np.asarray(PvaluesMat), np.asarray(ld_mat))
-
             SSPvalues = SSdf['Pss'].tolist()
             num_SNP_used_for_SS = SSdf['n'].tolist()
             comp_used = SSdf['comp_used'].tolist()
+            first_stages = SSdf['first_stages'].tolist()
+            first_stage_p = SSdf['first_stage_p'].tolist()
 
             for i in np.arange(len(SSPvalues)):
                 if SSPvalues[i] > 0:
