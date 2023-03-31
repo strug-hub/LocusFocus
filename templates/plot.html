@@ -348,36 +348,36 @@
                 ];
 
                 Promise.allSettled(filePromises).then(results => {
-                    let [response, genesResponse, SSResponse, coloc2response] = results;
+                    let [sessionResponseJson, genesResponseJson, SSResponseJson, coloc2ResponseJson] = results.map(v => v.status === "fulfilled" ? v.value : null);
 
-                    var data = response;
+                    var data = sessionResponseJson;
                     if (data["snp_warning"] === true) {
                         d3.select('#snpWarning').append('div').classed('alert alert-danger', true).append('p').append('center').append('strong')
                             .html('Warning: The number of SNPs that match GTEx variants is lower than 80%.<br> Please ensure variant names given are accurate, including REF and ALT columns.');
                     }
                     buildParamsTable(data, sessionid);
-                    var genesdata = genesResponse;
+                    var genesdata = genesResponseJson;
                     populate_genes(genesdata, data);
-                    if (SSResponse['Tissues'].length === 0) {
+                    if (SSResponseJson['Tissues'].length === 0) {
                         d3.selectAll('.gtex_heatmap_message').append("p").attr("class", "text-warning").text(`No GTEx tissues were selected`);
                     }
-                    if (SSResponse['Tissues'].length > 0) {
-                        plot_heatmap(SSResponse.Genes, SSResponse.Tissues, SSResponse.SSPvalues);
-                        buildTable(SSResponse.Genes, SSResponse.Tissues, SSResponse.SSPvalues);
-                        buildNTable(SSResponse.Genes, SSResponse.Tissues, SSResponse.Num_SNPs_Used_for_SS);
+                    if (SSResponseJson['Tissues'].length > 0) {
+                        plot_heatmap(SSResponseJson.Genes, SSResponseJson.Tissues, SSResponseJson.SSPvalues);
+                        buildTable(SSResponseJson.Genes, SSResponseJson.Tissues, SSResponseJson.SSPvalues);
+                        buildNTable(SSResponseJson.Genes, SSResponseJson.Tissues, SSResponseJson.Num_SNPs_Used_for_SS);
                     }
-                    if (SSResponse['Secondary_dataset_titles'].length === 0) {
+                    if (SSResponseJson['Secondary_dataset_titles'].length === 0) {
                         d3.select('.secondary_datasets_message').append("p").attr("class", "text-warning").text(`No secondary datasets uploaded`);
                     }
-                    if (SSResponse['Secondary_dataset_titles'].length > 0) {
-                        list_secondary_SSPvalues(SSResponse.Secondary_dataset_titles, SSResponse.SSPvalues_secondary, SSResponse.Num_SNPs_Used_for_SS_secondary);
+                    if (SSResponseJson['Secondary_dataset_titles'].length > 0) {
+                        list_secondary_SSPvalues(SSResponseJson.Secondary_dataset_titles, SSResponseJson.SSPvalues_secondary, SSResponseJson.Num_SNPs_Used_for_SS_secondary);
                     }
-                    buildSSguidanceTable(SSResponse.Genes, SSResponse.Tissues, SSResponse.SSPvalues, SSResponse.SSPvalues_secondary);
-                    if (coloc2Response['ProbeID'].length === 0) {
+                    buildSSguidanceTable(SSResponseJson.Genes, SSResponseJson.Tissues, SSResponseJson.SSPvalues, SSResponseJson.SSPvalues_secondary);
+                    if (coloc2ResponseJson['ProbeID'].length === 0) {
                         d3.select("#coloc2-message").append("p").attr("class", "text-warning").text(`Insufficient data for COLOC2 calculations`);
                     }
-                    if (coloc2Response['ProbeID'].length > 0) {
-                        buildColoc2Table(coloc2Response);
+                    if (coloc2ResponseJson['ProbeID'].length > 0) {
+                        buildColoc2Table(coloc2ResponseJson);
                     }
                     plot_gwas(data, genesdata);
                     d3.select('#plot_message').text("");
