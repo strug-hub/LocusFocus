@@ -1900,6 +1900,8 @@ def index():
                 ,'SSPvalues_secondary': SSPvaluesSecondary
                 ,'Num_SNPs_Used_for_SS_secondary': numSNPsSSPSecondary
                 ,'Computation_method_secondary': compUsedSecondary
+                ,'First_stages': first_stages
+                ,'First_stage_Pvalues': first_stage_p
             }
             SSPvalues_file = f'session_data/SSPvalues-{my_session_id}.json'
             SSPvalues_filepath = os.path.join(MYDIR, 'static', SSPvalues_file)
