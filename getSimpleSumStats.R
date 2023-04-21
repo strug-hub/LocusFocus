@@ -37,7 +37,7 @@ p <- add_argument(p, "--set_based_p", default = NULL, help = paste0(
   "Entering a value will override the default threshold."
 ))
 p <- add_argument(p, "--outfilename", default = "SSPvalues.txt", help = "Output filename")
-p <- add_argument(p, "--first_stage_only", action = "store_true", help = "Whether to only perform and record first-stage set-based tests on secondary datasets.")
+p <- add_argument(p, "--first_stage_only", flag = TRUE, help = "Whether to only perform and record first-stage set-based tests on secondary datasets.")
 argv <- parse_args(p)
 P_values_filename <- argv$P_values_filename
 ld_matrix_filename <- argv$ld_matrix_filename
@@ -226,9 +226,9 @@ if (first_stage_only) {
 for (i in 1:num_genes) {
   tempmat <- cbind(P_gwas, P_eqtl[i, ])
   ld_mat_i <- ldmat
-  set_based_test_result <- NA
-  set_based_test_passed <- NA
-  set_based_test_p <- NA
+  set_based_test_result <- "na"
+  set_based_test_passed <- "na"
+  set_based_test_p <- "na"
 
   # Remove NA rows
   NArows = which(is.na(tempmat[, 1]) | is.na(tempmat[, 2]))
@@ -247,7 +247,8 @@ for (i in 1:num_genes) {
   if (snp_count < 1) {
     Pss <- c(Pss, -1) # no eQTL data
     comp_used <- c(comp_used, "na")
-    first_stages <- c(first_stages, NA)
+    first_stages <- c(first_stages, "na")
+    first_stage_p <- c(first_stage_p, set_based_test_p)
     next
   }
 
