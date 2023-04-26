@@ -219,7 +219,7 @@ comp_used <- NULL
 first_stages <- NULL
 first_stage_p <- NULL
 
-if (first_stage_only) {
+if (isTRUE(first_stage_only)) {
   print("Performing first stage tests only (set_based_test)")
 }
 
@@ -255,9 +255,9 @@ for (i in 1:num_genes) {
   # do pretest (set_based_test)
   t <- try({
     set_based_test_result <- set_based_test(P_eqtl_i, ld_mat_i, num_genes) # [1] is TRUE/FALSE, [2] is p value
-    set_based_test_passed <- set_based_test_result[1]
-    set_based_test_p <- set_based_test_result[2]
-    if (set_based_test_passed && !first_stage_only) {
+    set_based_test_passed <- set_based_test_result[[1]]
+    set_based_test_p <- set_based_test_result[[2]]
+    if (isTRUE(set_based_test_passed) && isFALSE(first_stage_only)) {
       # if(TRUE) {
       P = simple_sum_p(P_gwas = P_gwas_i, P_eqtl = P_eqtl_i, ld.mat = ld_mat_i, cut = 0, m = snp_count, meth = "davies")
       if (P == 0 | P < 0) {
@@ -284,6 +284,10 @@ for (i in 1:num_genes) {
     first_stage_p <- c(first_stage_p, set_based_test_p)
   } # could not compute a SS p-value (SNPs not dense enough? can also get this if the LD matrix if not positive definite)
 }
+
+# print(Pss)
+# print(first_stages)
+# print(first_stage_p)
 
 sessionid <- gsub(".txt", "", gsub("Pvalues-", "", P_values_filename))
 result <- data.frame(Pss = Pss, n = n, comp_used = comp_used, first_stages = first_stages, first_stage_p = first_stage_p)
