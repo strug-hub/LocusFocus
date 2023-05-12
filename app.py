@@ -1996,6 +1996,11 @@ def index():
     return render_template("index.html")
 
 
+@app.route('/setbasedtest', methods=['GET', 'POST'])
+def setbasedtest():
+    return render_template("set_based_test.html")
+
+
 @app.route('/downloaddata/<my_session_id>')
 def downloaddata(my_session_id):
     #print('Compressing data for downloading')
