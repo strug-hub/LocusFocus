@@ -19,6 +19,7 @@ function addLink(thelink, thetext) {
 addLink("/previous_session", "Session ID");
 addLink("https://locusfocus.readthedocs.io", "Documentation");
 addLink("/session_id/0d074aff-76f4-42ab-87ef-5e2fa34b04e8", "Example Output");
+addLink("/setbasedtest", "First Stage Test Only")
 addLink("mailto:mackenzie.frew@sickkids.ca?subject=LocusFocus", "Contact Us");
 addLink("https://mailchi.mp/752ab1c4d516/locusfocus", "Subscribe");
 
