@@ -196,6 +196,7 @@ def isSorted(l):
     # returns True if l is sorted, False otherwise
     return all(l[i] <= l[i+1] for i in range(len(l)-1))
 
+
 def Xto23(l):
     newl = []
     validchroms = [str(i) for i in list(np.arange(1,24))]
@@ -211,6 +212,7 @@ def Xto23(l):
         else:
             raise InvalidUsage('Chromosome unrecognized', status_code=410)
     return newl
+
 
 def verifycol(formname, defaultname, filecolnames, error_message_):
     """
@@ -289,7 +291,6 @@ def fetchSNV(chrom, bp, ref, build):
                 variantid = v
                 break
     return variantid
-
 
 
 def standardizeSNPs(variantlist, regiontxt, build):
@@ -430,8 +431,6 @@ def standardizeSNPs(variantlist, regiontxt, build):
     return stdvariantlist
 
 
-
-
 def cleanSNPs(variantlist, regiontext, build):
     """
     Parameters
@@ -456,7 +455,6 @@ def cleanSNPs(variantlist, regiontext, build):
     final_varlist = [ e if (e.startswith('rs') and std_varlist[i] != '.') else std_varlist[i] for i, e in enumerate(variantlist) ]
 
     return final_varlist
-
 
 
 def torsid(variantlist, regiontext, build):
@@ -629,10 +627,6 @@ def subsetLocus(build, summaryStats, regiontext, chromcol, poscol, pcol):
     if regiontext == "": regiontext = default_region
 #    print('Parsing region text')
     chrom, startbp, endbp = parseRegionText(regiontext, build)
-#    print(chrom,startbp,endbp)
-#    print('Eliminating missing rows')
-    #summaryStats.dropna(subset=[chromcol,poscol,pcol],inplace=True)
-#    print('Subsetting GWAS data to entered region')
     summaryStats = summaryStats.loc[ [str(x) != '.' for x in list(summaryStats[chromcol])] ].copy()
     bool1 = [x == chrom for x in Xto23(list(summaryStats[chromcol]))]
     bool2 = [x>=startbp and x<=endbp for x in list(summaryStats[poscol])]
@@ -662,6 +656,23 @@ def getLeadSNPindex(leadsnpname, summaryStats, snpcol, pcol):
         raise InvalidUsage('Lead SNP not found', status_code=410)
     lead_snp_position_index = snp_list.index(lead_snp)
     return lead_snp_position_index
+
+
+def handle_file_upload(request):
+    """
+    Check 'files[]' and download the files if they exist.
+    """
+    # pulled from index route
+    if 'files[]' in request.files:
+        filenames = request.files.getlist('files[]')
+        for file in filenames:
+            filename = secure_filename(file.filename)
+            filepath = os.path.join(MYDIR, app.config['UPLOAD_FOLDER'], filename)
+            file.save(filepath)
+            if not os.path.isfile(filepath):
+                request_entity_too_large(413)
+        return classify_files(filenames)
+    return None
 
 ####################################
 # LD Calculation from 1KG using PLINK (on-the-fly)
@@ -897,11 +908,7 @@ def get_gtex(version, tissue, gene_id):
         ensg_name = list(collapsed_genes_df['ENSG_name'])[i]
     else:
         raise InvalidUsage(f'Gene name {gene_id} not found', status_code=410)
-    #t1=datetime.now()
     results = list(collection.find({'gene_id': ensg_name}))
-    #t2=datetime.now()
-    #print(f'Time to retrieve gene collection: {t2-t1}')
-    #t1=datetime.now()
     response = []
     try:
         response = results[0]['eqtl_variants']
@@ -910,37 +917,16 @@ def get_gtex(version, tissue, gene_id):
     results_df = pd.DataFrame(response)
     chrom = int(list(results_df['variant_id'])[0].split('_')[0].replace('X','23'))
     positions = [ int(x.split('_')[1]) for x in list(results_df['variant_id']) ]
-    #t2=datetime.now()
-    #print(f'Reformatting time: {t2-t1}')
-    #t1=datetime.now()
     variants_query = db.variant_table.find(
         { '$and': [
             { 'chr': chrom },
             { 'variant_pos': { '$gte': min(positions), '$lte': max(positions) } }
         ]}
     )
-    #t2=datetime.now()
-    #print(f'Time for variant table query: {t2-t1}')
-    #t1=datetime.now()
-    t1=datetime.now()
     variants_list = list(variants_query)
-    t2=datetime.now()
-    #print(f'Time for variant query conversion to list: {t2-t1}')
-    t1=datetime.now()
     variants_df = pd.DataFrame(variants_list)
-    t2=datetime.now()
-    #print(f'Time to convert the variant list to dataframe: {t2-t1}')
-    #print(variants_df.shape)
-    #t2=datetime.now()
-    #print(f'Reformatting time: {t2-t1}')
-    #t1=datetime.now()
     variants_df = variants_df.drop(['_id'], axis=1)
-    #t2=datetime.now()
-    #print(f'_id dropping time: {t2-t1}')
-    #t1=datetime.now()
     x = pd.merge(results_df, variants_df, on='variant_id')
-    #t2=datetime.now()
-    #print(f'Merging time: {t2-t1}')
     if version.upper() == "V7":
         x.rename(columns={'rs_id_dbSNP147_GRCh37p13': 'rs_id'}, inplace=True)
     elif version.upper() == "V8":
@@ -1282,466 +1268,459 @@ def index():
     #######################################################
     if request.method == 'POST':
         t1_total = datetime.now()
-        if request.files.get('files[]'):
-            t1 = datetime.now () # timer to get total upload time
-            gwas_filepath, ldmat_filepath, html_filepath = "", "", ""
-            if 'files[]' in request.files:
-                filenames = request.files.getlist('files[]')
-                for file in filenames:
-                    filename = secure_filename(file.filename)
-                    filepath = os.path.join(MYDIR, app.config['UPLOAD_FOLDER'], filename)
-                    file.save(filepath)
-                    if not os.path.isfile(filepath):
-                        request_entity_too_large(413)
-                gwas_filepath, ldmat_filepath, html_filepath = classify_files(filenames)
-            upload_time = datetime.now() - t1
+        t1 = datetime.now () # timer to get total upload time
+        _filepaths = handle_file_upload(request)
+        if _filepaths is None:
+            return render_template("invalid_input.html")
+        gwas_filepath, ldmat_filepath, html_filepath = _filepaths
+        upload_time = datetime.now() - t1
 
-            #######################################################
-            # Checking form input parameters
-            #######################################################
-            my_session_id = uuid.uuid4()
-            coordinate = request.form['coordinate']
-            gtex_version = "V7"
-            collapsed_genes_df = collapsed_genes_df_hg19
-            if coordinate.lower() == "hg38":
-                gtex_version = "V8"
-                collapsed_genes_df = collapsed_genes_df_hg38
+        #######################################################
+        # Checking form input parameters
+        #######################################################
+        my_session_id = uuid.uuid4()
+        coordinate = request.form['coordinate']
+        gtex_version = "V7"
+        collapsed_genes_df = collapsed_genes_df_hg19
+        if coordinate.lower() == "hg38":
+            gtex_version = "V8"
+            collapsed_genes_df = collapsed_genes_df_hg38
 
-            #print(f'Session ID: {my_session_id}')
-            #print(f'Coordinate: {coordinate}')
-            #print(f'GTEx version: {gtex_version}')
-            #print('Loading file')
-            t1 = datetime.now() # timing started for GWAS loading/subsetting/cleaning
+        #print(f'Session ID: {my_session_id}')
+        #print(f'Coordinate: {coordinate}')
+        #print(f'GTEx version: {gtex_version}')
+        #print('Loading file')
+        t1 = datetime.now() # timing started for GWAS loading/subsetting/cleaning
+        try:
+            gwas_data = pd.read_csv(gwas_filepath, sep="\t", encoding='utf-8')
+        except:
+            #print('File not proper. Attempt fixing')
+            gwas_data = fix_gwasfile(gwas_filepath)
+
+        inferVariant = request.form.get('markerCheckbox')
+        chromcol, poscol, refcol, altcol = ('','','','')
+        snpcol = ''
+        columnnames = []
+        if inferVariant:
+            #print('User would like variant locations inferred')
+            snpcol = verifycol(formname = request.form['snp-col'], defaultname = default_snpname, filecolnames = gwas_data.columns, error_message_='Variant ID column not found')
+            columnnames = [ snpcol ]
+        else:
+            chromcol = verifycol(formname = request.form['chrom-col'], defaultname = default_chromname, filecolnames = gwas_data.columns, error_message_=f"Chromosome column ({request.form['chrom-col']}) not found")
+            poscol = verifycol(formname = request.form['pos-col'], defaultname = default_posname, filecolnames = gwas_data.columns, error_message_=f"Basepair position column ({request.form['pos-col']}) not found")
+            refcol = verifycol(formname = request.form['ref-col'], defaultname = default_refname, filecolnames = gwas_data.columns, error_message_=f"Reference allele column ({request.form['ref-col']}) not found")
+            altcol = verifycol(formname = request.form['alt-col'], defaultname = default_altname, filecolnames = gwas_data.columns, error_message_=f"Alternate allele column ({request.form['alt-col']}) not found")
+            snpcol = request.form['snp-col'] # optional input in this case
+            if snpcol != '':
+                snpcol = verifycol(formname = snpcol, defaultname = default_snpname, filecolnames = gwas_data.columns, error_message_='Variant ID column not found')
+                columnnames = [ chromcol, poscol, snpcol, refcol, altcol ]
+            else:
+                columnnames = [ chromcol, poscol, refcol, altcol ]
+                #print('No SNP ID column provided')
+            # Check whether data types are ok:
+            if not all(isinstance(x, int) for x in Xto23(list(gwas_data[chromcol]))):
+                raise InvalidUsage(f'Chromosome column ({chromcol}) contains unrecognizable values', status_code=410)
+            if not all(isinstance(x, int) for x in list(gwas_data[poscol])):
+                raise InvalidUsage(f'Position column ({poscol}) has non-integer entries', status_code=410)
+        pcol = verifycol(formname = request.form['pval-col'], defaultname = default_pname, filecolnames = gwas_data.columns, error_message_='P-value column not found')
+        columnnames.append(pcol)
+        if not all(isinstance(x, float) for x in list(gwas_data[pcol])):
+            raise InvalidUsage(f'P-value column ({pcol}) has non-numeric entries', status_code=410)
+        runcoloc2 = request.form.get('coloc2check')
+        if runcoloc2:
+            #print('User would like COLOC2 results')
+            betacol = verifycol(formname = request.form['beta-col'], defaultname = default_betaname, filecolnames = gwas_data.columns, error_message_='Beta column not found')
+            stderrcol = verifycol(formname = request.form['stderr-col'], defaultname = default_betaname, filecolnames = gwas_data.columns, error_message_='Stderr column not found')
+            numsamplescol = verifycol(formname = request.form['numsamples-col'], defaultname = default_nname, filecolnames = gwas_data.columns, error_message_='Number of samples column not found')
+            mafcol = verifycol(formname = request.form['maf-col'], defaultname = default_mafname, filecolnames = gwas_data.columns, error_message_='MAF column not found')
+            columnnames.extend([ betacol, stderrcol, numsamplescol, mafcol ])
+            studytype = request.form['studytype']
+            studytypedf = pd.DataFrame({'type': np.repeat(studytype,gwas_data.shape[0]).tolist()})
+            if 'type' not in gwas_data.columns:
+                gwas_data = pd.concat([gwas_data, studytypedf], axis=1)
+            columnnames.append('type')
+            if studytype == 'cc':
+                coloc2gwascolnames.append('Ncases')
+                numcases = request.form['numcases']
+                if not str(numcases).isdigit(): raise InvalidUsage('Number of cases entered must be an integer', status_code=410)
+                numcasesdf = pd.DataFrame({'Ncases': np.repeat(int(numcases), gwas_data.shape[0]).tolist()})
+                if 'Ncases' not in gwas_data.columns:
+                    gwas_data = pd.concat([gwas_data, numcasesdf], axis=1)
+                columnnames.append('Ncases')
+            if not all(isinstance(x, float) for x in list(gwas_data[betacol])):
+                raise InvalidUsage(f'Beta column ({betacol}) has non-numeric entries')
+            if not all(isinstance(x, float) for x in list(gwas_data[stderrcol])):
+                raise InvalidUsage(f'Standard error column ({stderrcol}) has non-numeric entries')
+            if not all(isinstance(x, int) for x in list(gwas_data[numsamplescol])):
+                raise InvalidUsage(f'Number of samples column ({numsamplescol}) has non-integer entries')
+            if not all(isinstance(x, float) for x in list(gwas_data[mafcol])):
+                raise InvalidUsage(f'MAF column ({mafcol}) has non-numeric entries')
+
+        # Further check column names provided:
+        if len(set(columnnames)) != len(columnnames):
+            raise InvalidUsage(f'Duplicate column names provided: {columnnames}')
+        gwas_data = gwas_data[ columnnames ]
+        if snpcol == '':
+            gwas_data = addVariantID(gwas_data, chromcol, poscol, refcol, altcol, coordinate)
+            snpcol = default_snpname
+
+        # LD:
+        pops = request.form['LD-populations']
+        if len(pops) == 0: pops = 'EUR'
+        #print('Populations:', pops)
+
+        # GTEx tissues and genes:
+        gtex_tissues = request.form.getlist('GTEx-tissues')
+        #print('GTEx tissues:',gtex_tissues)
+        gtex_genes = request.form.getlist('region-genes')
+        if len(gtex_tissues) > 0 and len(gtex_genes) == 0:
+            raise InvalidUsage('Please select one or more genes to complement your GTEx tissue(s) selection', status_code=410)
+        elif len(gtex_genes) > 0 and len(gtex_tissues) == 0:
+            raise InvalidUsage('Please select one or more tissues to complement your GTEx gene(s) selection', status_code=410)
+        if len(gtex_genes)>0:
+            gene = gtex_genes[0]
+        elif coordinate == 'hg19':
+            gene = 'ENSG00000174502.14'
+        elif coordinate == 'hg38':
+            gene = 'ENSG00000174502.18'
+
+        # Set-based P override:
+        setbasedP = request.form['setbasedP']
+        if setbasedP=='':
+            setbasedP = 'default'
+        else:
             try:
-                gwas_data = pd.read_csv(gwas_filepath, sep="\t", encoding='utf-8')
+                setbasedP = float(setbasedP)
+                if setbasedP < 0 or setbasedP > 1:
+                    raise InvalidUsage('Set-based p-value threshold given is not between 0 and 1')
             except:
-                #print('File not proper. Attempt fixing')
-                gwas_data = fix_gwasfile(gwas_filepath)
+                raise InvalidUsage('Invalid value provided for the set-based p-value threshold. Value must be numeric between 0 and 1.')
 
-            inferVariant = request.form.get('markerCheckbox')
-            chromcol, poscol, refcol, altcol = ('','','','')
-            snpcol = ''
-            columnnames = []
-            if inferVariant:
-                #print('User would like variant locations inferred')
-                snpcol = verifycol(formname = request.form['snp-col'], defaultname = default_snpname, filecolnames = gwas_data.columns, error_message_='Variant ID column not found')
-                columnnames = [ snpcol ]
-            else:
-                chromcol = verifycol(formname = request.form['chrom-col'], defaultname = default_chromname, filecolnames = gwas_data.columns, error_message_=f"Chromosome column ({request.form['chrom-col']}) not found")
-                poscol = verifycol(formname = request.form['pos-col'], defaultname = default_posname, filecolnames = gwas_data.columns, error_message_=f"Basepair position column ({request.form['pos-col']}) not found")
-                refcol = verifycol(formname = request.form['ref-col'], defaultname = default_refname, filecolnames = gwas_data.columns, error_message_=f"Reference allele column ({request.form['ref-col']}) not found")
-                altcol = verifycol(formname = request.form['alt-col'], defaultname = default_altname, filecolnames = gwas_data.columns, error_message_=f"Alternate allele column ({request.form['alt-col']}) not found")
-                snpcol = request.form['snp-col'] # optional input in this case
-                if snpcol != '':
-                    snpcol = verifycol(formname = snpcol, defaultname = default_snpname, filecolnames = gwas_data.columns, error_message_='Variant ID column not found')
-                    columnnames = [ chromcol, poscol, snpcol, refcol, altcol ]
-                else:
-                    columnnames = [ chromcol, poscol, refcol, altcol ]
-                    #print('No SNP ID column provided')
-                # Check whether data types are ok:
-                if not all(isinstance(x, int) for x in Xto23(list(gwas_data[chromcol]))):
-                    raise InvalidUsage(f'Chromosome column ({chromcol}) contains unrecognizable values', status_code=410)
-                if not all(isinstance(x, int) for x in list(gwas_data[poscol])):
-                    raise InvalidUsage(f'Position column ({poscol}) has non-integer entries', status_code=410)
-            pcol = verifycol(formname = request.form['pval-col'], defaultname = default_pname, filecolnames = gwas_data.columns, error_message_='P-value column not found')
-            columnnames.append(pcol)
-            if not all(isinstance(x, float) for x in list(gwas_data[pcol])):
-                raise InvalidUsage(f'P-value column ({pcol}) has non-numeric entries', status_code=410)
-            runcoloc2 = request.form.get('coloc2check')
-            if runcoloc2:
-                #print('User would like COLOC2 results')
-                betacol = verifycol(formname = request.form['beta-col'], defaultname = default_betaname, filecolnames = gwas_data.columns, error_message_='Beta column not found')
-                stderrcol = verifycol(formname = request.form['stderr-col'], defaultname = default_betaname, filecolnames = gwas_data.columns, error_message_='Stderr column not found')
-                numsamplescol = verifycol(formname = request.form['numsamples-col'], defaultname = default_nname, filecolnames = gwas_data.columns, error_message_='Number of samples column not found')
-                mafcol = verifycol(formname = request.form['maf-col'], defaultname = default_mafname, filecolnames = gwas_data.columns, error_message_='MAF column not found')
-                columnnames.extend([ betacol, stderrcol, numsamplescol, mafcol ])
-                studytype = request.form['studytype']
-                studytypedf = pd.DataFrame({'type': np.repeat(studytype,gwas_data.shape[0]).tolist()})
-                if 'type' not in gwas_data.columns:
-                    gwas_data = pd.concat([gwas_data, studytypedf], axis=1)
-                columnnames.append('type')
-                if studytype == 'cc':
-                    coloc2gwascolnames.append('Ncases')
-                    numcases = request.form['numcases']
-                    if not str(numcases).isdigit(): raise InvalidUsage('Number of cases entered must be an integer', status_code=410)
-                    numcasesdf = pd.DataFrame({'Ncases': np.repeat(int(numcases), gwas_data.shape[0]).tolist()})
-                    if 'Ncases' not in gwas_data.columns:
-                        gwas_data = pd.concat([gwas_data, numcasesdf], axis=1)
-                    columnnames.append('Ncases')
-                if not all(isinstance(x, float) for x in list(gwas_data[betacol])):
-                    raise InvalidUsage(f'Beta column ({betacol}) has non-numeric entries')
-                if not all(isinstance(x, float) for x in list(gwas_data[stderrcol])):
-                    raise InvalidUsage(f'Standard error column ({stderrcol}) has non-numeric entries')
-                if not all(isinstance(x, int) for x in list(gwas_data[numsamplescol])):
-                    raise InvalidUsage(f'Number of samples column ({numsamplescol}) has non-integer entries')
-                if not all(isinstance(x, float) for x in list(gwas_data[mafcol])):
-                    raise InvalidUsage(f'MAF column ({mafcol}) has non-numeric entries')
+        # Set-based results only checkbox
+        setBasedOnly = False
+        if 'setBasedOnly' in request.form:
+            setBasedOnly = True
 
-            # Further check column names provided:
-            if len(set(columnnames)) != len(columnnames):
-                raise InvalidUsage(f'Duplicate column names provided: {columnnames}')
-            gwas_data = gwas_data[ columnnames ]
-            if snpcol == '':
-                gwas_data = addVariantID(gwas_data, chromcol, poscol, refcol, altcol, coordinate)
-                snpcol = default_snpname
+        # Ensure custom LD matrix and GWAS files are sorted for accurate matching:
+        if ldmat_filepath != '' and poscol != '' and not isSorted(list(gwas_data[poscol])):
+            raise InvalidUsage('GWAS data input is not sorted and may not match with the LD matrix', status_code=410)
 
-            # LD:
-            pops = request.form['LD-populations']
-            if len(pops) == 0: pops = 'EUR'
-            #print('Populations:', pops)
+        regionstr = request.form['locus']
+        if regionstr == "": regionstr = default_region
+        leadsnpname = request.form['leadsnp']
 
-            # GTEx tissues and genes:
-            gtex_tissues = request.form.getlist('GTEx-tissues')
-            #print('GTEx tissues:',gtex_tissues)
-            gtex_genes = request.form.getlist('region-genes')
-            if len(gtex_tissues) > 0 and len(gtex_genes) == 0:
-                raise InvalidUsage('Please select one or more genes to complement your GTEx tissue(s) selection', status_code=410)
-            elif len(gtex_genes) > 0 and len(gtex_tissues) == 0:
-                raise InvalidUsage('Please select one or more tissues to complement your GTEx gene(s) selection', status_code=410)
-            if len(gtex_genes)>0:
-                gene = gtex_genes[0]
-            elif coordinate == 'hg19':
-                gene = 'ENSG00000174502.14'
-            elif coordinate == 'hg38':
-                gene = 'ENSG00000174502.18'
+        #######################################################
+        # Standardizing variant ID's to chrom_pos_ref_alt_build format
+        #######################################################
+        if inferVariant:
+            # standardize variant id's:
+            variant_list = standardizeSNPs(list(gwas_data[snpcol]), regionstr, coordinate)
+            if all(x=='.' for x in variant_list):
+                raise InvalidUsage(f'None of the variants provided could be mapped to {regionstr}!', status_code=410)
+            # get the chrom, pos, ref, alt info from the standardized variant_list
+            vardf = decomposeVariant(variant_list)
+            gwas_data = pd.concat([vardf, gwas_data], axis=1)
+            chromcol = default_chromname
+            poscol = default_posname
+            refcol = default_refname
+            altcol = default_altname
+            gwas_data = gwas_data.loc[ [str(x) != '.' for x in list(gwas_data[chromcol])] ].copy()
+            gwas_data.reset_index(drop=True, inplace=True)
 
-            # Set-based P override:
-            setbasedP = request.form['setbasedP']
-            if setbasedP=='':
-                setbasedP = 'default'
-            else:
+        #######################################################
+        # Subsetting GWAS file
+        #######################################################
+        gwas_data, gwas_indices_kept = subsetLocus(coordinate, gwas_data, regionstr, chromcol, poscol, pcol)
+        lead_snp_position_index = getLeadSNPindex(leadsnpname, gwas_data, snpcol, pcol)
+        lead_snp_position = gwas_data.iloc[lead_snp_position_index,:][poscol]
+        positions = list(gwas_data[poscol])
+        snp_list = list(gwas_data[snpcol])
+        snp_list = [asnp.split(';')[0] for asnp in snp_list] # cleaning up the SNP names a bit
+        lead_snp = snp_list[ lead_snp_position_index ]
+        pvals = list(gwas_data[pcol])
+        chrom, startbp, endbp = parseRegionText(regionstr, coordinate)
+
+        gwas_load_time = datetime.now() - t1
+
+        std_snp_list = []
+        thechr = gwas_data[chromcol].tolist()
+        thepos = gwas_data[poscol].tolist()
+        theref = gwas_data[refcol].tolist()
+        thealt = gwas_data[altcol].tolist()
+        buildstr = 'b37'
+        if coordinate == 'hg38':
+            buildstr = 'b38'
+        for i in np.arange(gwas_data.shape[0]):
+            std_snp = str(thechr[i]).replace('23','X') + "_" + str(thepos[i]) + "_" + str(theref[i]) + "_" + str(thealt[i]) + "_" + buildstr
+            std_snp_list.append(std_snp)
+
+        # Check that a good portion of these SNPs can be found
+        thresh = 0.8
+        snp_warning = False
+        numGTExMatches = verifyStdSNPs(std_snp_list, regionstr, coordinate)
+        if numGTExMatches / len(std_snp_list) < thresh:
+            snp_warning = True
+
+        ####################################################################################################
+        # Get LD:
+        if ldmat_filepath == '':
+            t1 = datetime.now() # timing started for pairwise LD
+            #print('Calculating pairwise LD using PLINK')
+            #ld_df = queryLD(lead_snp, snp_list, pops, ld_type)
+            ld_df, new_lead_snp_position = plink_ld_pairwise(coordinate, lead_snp_position, pops, chrom, positions, pvals, os.path.join(MYDIR, "static", "session_data", f"ld-{my_session_id}"))
+            if new_lead_snp_position != lead_snp_position:
+                lead_snp_position_index = list(gwas_data[poscol]).index(new_lead_snp_position)
+                lead_snp = snp_list[ lead_snp_position_index ]
+                lead_snp_position = new_lead_snp_position
+            r2 = list(ld_df['R2'])
+            ld_pairwise_time = datetime.now() - t1
+        else:
+            #print('---------------------------------')
+            #print('Loading user-supplied LD matrix')
+            #print('---------------------------------')
+            t1 = datetime.now() # timer started for loading user-defined LD matrix
+            ld_mat = pd.read_csv(ldmat_filepath, sep="\t", encoding='utf-8', header=None)
+            if not (len(ld_mat.shape) == 2 and ld_mat.shape[0] == ld_mat.shape[1] and ld_mat.shape[0] == gwas_data.shape[0]):
+                raise InvalidUsage(f"GWAS and LD matrix input have different dimensions:\nGWAS Length: {gwas_data.shape[0]}\nLD matrix shape: {ld_mat.shape}", status_code=410)
+
+            ld_mat = ld_mat.loc[ gwas_indices_kept, gwas_indices_kept ]
+            r2 = list(ld_mat.iloc[:, lead_snp_position_index])
+            ld_mat = np.matrix(ld_mat)
+            user_ld_load_time = datetime.now() - t1
+
+        # save metadata immediately, useful for debugging
+        metadata = {}
+        metadata.update({
+            "datetime": datetime.now().isoformat(),
+            "gwas_filepath": gwas_filepath or "",
+            "ldmat_filepath": ldmat_filepath or "",
+            "html_filepath": html_filepath or "",
+            "session_id": str(my_session_id)
+        })
+
+        metadatafilepath = os.path.join(MYDIR, 'static', f'session_data/metadata-{my_session_id}.json')
+        with open(metadatafilepath, 'w') as metadatafile:
+            json.dump(metadata, metadatafile)
+
+        data = {}
+        data['snps'] = snp_list
+        data['inferVariant'] = inferVariant
+        data['pvalues'] = list(gwas_data[pcol])
+        data['lead_snp'] = lead_snp
+        data['ld_values'] = r2
+        data['positions'] = positions
+        data['chrom'] = chrom
+        data['startbp'] = startbp
+        data['endbp'] = endbp
+        data['ld_populations'] = pops
+        data['gtex_tissues'] = gtex_tissues
+        data['gene'] = genenames(gene, coordinate)[0]
+        data['gtex_genes'] = [ genenames(agene, coordinate)[0] for agene in gtex_genes ]
+        data['coordinate'] = coordinate
+        data['gtex_version'] = gtex_version
+        data['set_based_p'] = setbasedP
+        SSlocustext = request.form['SSlocus'] # SSlocus defined below
+        data['std_snp_list'] = std_snp_list
+        data['runcoloc2'] = runcoloc2
+        data['snp_warning'] = snp_warning
+        data['thresh'] = thresh
+        data['numGTExMatches'] = numGTExMatches
+
+        #######################################################
+        # Loading any secondary datasets uploaded
+        #######################################################
+        t1 = datetime.now()
+        secondary_datasets = {}
+        table_titles = []
+        if html_filepath != '':
+            #print('Loading secondary datasets provided')
+            with open(html_filepath, encoding='utf-8', errors='replace') as f:
+                html = f.read()
+                if (not html.startswith('<h3>')) and (not html.startswith('<html>')) and (not html.startswith('<table>') and (not html.startswith('<!DOCTYPE html>'))):
+                    raise InvalidUsage('Secondary dataset(s) provided are not formatted correctly. Please use the merge_and_convert_to_html.py script for formatting.', status_code=410)
+            soup = bs(html, 'lxml')
+            table_titles = soup.find_all('h3')
+            table_titles = [x.text for x in table_titles]
+            tables = soup.find_all('table')
+            hp = htmltableparser.HTMLTableParser()
+            for i in np.arange(len(tables)):
                 try:
-                    setbasedP = float(setbasedP)
-                    if setbasedP < 0 or setbasedP > 1:
-                        raise InvalidUsage('Set-based p-value threshold given is not between 0 and 1')
+                    table = hp.parse_html_table(tables[i])
+                    secondary_datasets[table_titles[i]] = table.fillna(-1).to_dict(orient='records')
                 except:
-                    raise InvalidUsage('Invalid value provided for the set-based p-value threshold. Value must be numeric between 0 and 1.')
+                    secondary_datasets[table_titles[i]] = []
+        data['secondary_dataset_titles'] = table_titles
+        if runcoloc2:
+            data['secondary_dataset_colnames'] = ['CHR', 'POS', 'SNPID', 'PVAL', BETA, SE, 'N', ALT, REF, MAF, ProbeID]
+        else:
+            data['secondary_dataset_colnames'] = [CHROM, BP, SNP, P]
+        data.update(secondary_datasets)
+        sec_data_load_time = datetime.now() - t1
 
-            # Set-based results only checkbox
-            setBasedOnly = False
-            if 'setBasedOnly' in request.form:
-                setBasedOnly = True
-
-            # Ensure custom LD matrix and GWAS files are sorted for accurate matching:
-            if ldmat_filepath != '' and poscol != '' and not isSorted(list(gwas_data[poscol])):
-                raise InvalidUsage('GWAS data input is not sorted and may not match with the LD matrix', status_code=410)
-
-            regionstr = request.form['locus']
-            if regionstr == "": regionstr = default_region
-            leadsnpname = request.form['leadsnp']
-
-            #######################################################
-            # Standardizing variant ID's to chrom_pos_ref_alt_build format
-            #######################################################
-            if inferVariant:
-                # standardize variant id's:
-                variant_list = standardizeSNPs(list(gwas_data[snpcol]), regionstr, coordinate)
-                if all(x=='.' for x in variant_list):
-                    raise InvalidUsage(f'None of the variants provided could be mapped to {regionstr}!', status_code=410)
-                # get the chrom, pos, ref, alt info from the standardized variant_list
-                vardf = decomposeVariant(variant_list)
-                gwas_data = pd.concat([vardf, gwas_data], axis=1)
-                chromcol = default_chromname
-                poscol = default_posname
-                refcol = default_refname
-                altcol = default_altname
-                gwas_data = gwas_data.loc[ [str(x) != '.' for x in list(gwas_data[chromcol])] ].copy()
-                gwas_data.reset_index(drop=True, inplace=True)
-
-            #######################################################
-            # Subsetting GWAS file
-            #######################################################
-            gwas_data, gwas_indices_kept = subsetLocus(coordinate, gwas_data, regionstr, chromcol, poscol, pcol)
-            lead_snp_position_index = getLeadSNPindex(leadsnpname, gwas_data, snpcol, pcol)
-            lead_snp_position = gwas_data.iloc[lead_snp_position_index,:][poscol]
-            positions = list(gwas_data[poscol])
-            snp_list = list(gwas_data[snpcol])
-            snp_list = [asnp.split(';')[0] for asnp in snp_list] # cleaning up the SNP names a bit
-            lead_snp = snp_list[ lead_snp_position_index ]
-            pvals = list(gwas_data[pcol])
-            chrom, startbp, endbp = parseRegionText(regionstr, coordinate)
-
-            gwas_load_time = datetime.now() - t1
-
-            std_snp_list = []
-            thechr = gwas_data[chromcol].tolist()
-            thepos = gwas_data[poscol].tolist()
-            theref = gwas_data[refcol].tolist()
-            thealt = gwas_data[altcol].tolist()
-            buildstr = 'b37'
-            if coordinate == 'hg38':
-                buildstr = 'b38'
-            for i in np.arange(gwas_data.shape[0]):
-                std_snp = str(thechr[i]).replace('23','X') + "_" + str(thepos[i]) + "_" + str(theref[i]) + "_" + str(thealt[i]) + "_" + buildstr
-                std_snp_list.append(std_snp)
-
-            # Check that a good portion of these SNPs can be found
-            thresh = 0.8
-            snp_warning = False
-            numGTExMatches = verifyStdSNPs(std_snp_list, regionstr, coordinate)
-            if numGTExMatches / len(std_snp_list) < thresh:
-                snp_warning = True
-
-            ####################################################################################################
-            # Get LD:
-            if ldmat_filepath == '':
-                t1 = datetime.now() # timing started for pairwise LD
-                #print('Calculating pairwise LD using PLINK')
-                #ld_df = queryLD(lead_snp, snp_list, pops, ld_type)
-                ld_df, new_lead_snp_position = plink_ld_pairwise(coordinate, lead_snp_position, pops, chrom, positions, pvals, os.path.join(MYDIR, "static", "session_data", f"ld-{my_session_id}"))
-                if new_lead_snp_position != lead_snp_position:
-                    lead_snp_position_index = list(gwas_data[poscol]).index(new_lead_snp_position)
-                    lead_snp = snp_list[ lead_snp_position_index ]
-                    lead_snp_position = new_lead_snp_position
-                r2 = list(ld_df['R2'])
-                ld_pairwise_time = datetime.now() - t1
-            else:
-                #print('---------------------------------')
-                #print('Loading user-supplied LD matrix')
-                #print('---------------------------------')
-                t1 = datetime.now() # timer started for loading user-defined LD matrix
-                ld_mat = pd.read_csv(ldmat_filepath, sep="\t", encoding='utf-8', header=None)
-                if not (len(ld_mat.shape) == 2 and ld_mat.shape[0] == ld_mat.shape[1] and ld_mat.shape[0] == gwas_data.shape[0]):
-                    raise InvalidUsage(f"GWAS and LD matrix input have different dimensions:\nGWAS Length: {gwas_data.shape[0]}\nLD matrix shape: {ld_mat.shape}", status_code=410)
-
-                ld_mat = ld_mat.loc[ gwas_indices_kept, gwas_indices_kept ]
-                r2 = list(ld_mat.iloc[:, lead_snp_position_index])
-                ld_mat = np.matrix(ld_mat)
-                user_ld_load_time = datetime.now() - t1
-
-            # save metadata immediately, useful for debugging
-            metadata = {}
-            metadata.update({
-                "datetime": datetime.now().isoformat(),
-                "gwas_filepath": gwas_filepath or "",
-                "ldmat_filepath": ldmat_filepath or "",
-                "html_filepath": html_filepath or "",
-                "session_id": str(my_session_id)
-            })
-
-            metadatafilepath = os.path.join(MYDIR, 'static', f'session_data/metadata-{my_session_id}.json')
-            with open(metadatafilepath, 'w') as metadatafile:
-                json.dump(metadata, metadatafile)
-
-            data = {}
-            data['snps'] = snp_list
-            data['inferVariant'] = inferVariant
-            data['pvalues'] = list(gwas_data[pcol])
-            data['lead_snp'] = lead_snp
-            data['ld_values'] = r2
-            data['positions'] = positions
-            data['chrom'] = chrom
-            data['startbp'] = startbp
-            data['endbp'] = endbp
-            data['ld_populations'] = pops
-            data['gtex_tissues'] = gtex_tissues
-            data['gene'] = genenames(gene, coordinate)[0]
-            data['gtex_genes'] = [ genenames(agene, coordinate)[0] for agene in gtex_genes ]
-            data['coordinate'] = coordinate
-            data['gtex_version'] = gtex_version
-            data['set_based_p'] = setbasedP
-            SSlocustext = request.form['SSlocus'] # SSlocus defined below
-            data['std_snp_list'] = std_snp_list
-            data['runcoloc2'] = runcoloc2
-            data['snp_warning'] = snp_warning
-            data['thresh'] = thresh
-            data['numGTExMatches'] = numGTExMatches
-
-            #######################################################
-            # Loading any secondary datasets uploaded
-            #######################################################
-            t1 = datetime.now()
-            secondary_datasets = {}
-            table_titles = []
-            if html_filepath != '':
-                #print('Loading secondary datasets provided')
-                with open(html_filepath, encoding='utf-8', errors='replace') as f:
-                    html = f.read()
-                    if (not html.startswith('<h3>')) and (not html.startswith('<html>')) and (not html.startswith('<table>') and (not html.startswith('<!DOCTYPE html>'))):
-                        raise InvalidUsage('Secondary dataset(s) provided are not formatted correctly. Please use the merge_and_convert_to_html.py script for formatting.', status_code=410)
-                soup = bs(html, 'lxml')
-                table_titles = soup.find_all('h3')
-                table_titles = [x.text for x in table_titles]
-                tables = soup.find_all('table')
-                hp = htmltableparser.HTMLTableParser()
-                for i in np.arange(len(tables)):
-                    try:
-                        table = hp.parse_html_table(tables[i])
-                        secondary_datasets[table_titles[i]] = table.fillna(-1).to_dict(orient='records')
-                    except:
-                        secondary_datasets[table_titles[i]] = []
-            data['secondary_dataset_titles'] = table_titles
-            if runcoloc2:
-                data['secondary_dataset_colnames'] = ['CHR', 'POS', 'SNPID', 'PVAL', BETA, SE, 'N', ALT, REF, MAF, ProbeID]
-            else:
-                data['secondary_dataset_colnames'] = [CHROM, BP, SNP, P]
-            data.update(secondary_datasets)
-            sec_data_load_time = datetime.now() - t1
-
-            ####################################################################################################
-            t1 = datetime.now() # set timer for extracting GTEx data for selected gene:
-            # Get GTEx data for the tissues and SNPs selected:
-            gtex_data = {}
-            if len(gtex_tissues)>0:
+        ####################################################################################################
+        t1 = datetime.now() # set timer for extracting GTEx data for selected gene:
+        # Get GTEx data for the tissues and SNPs selected:
+        gtex_data = {}
+        if len(gtex_tissues)>0:
 #                #print('Gathering GTEx data')
-                for tissue in tqdm(gtex_tissues):
-                    eqtl_df = get_gtex_data(gtex_version, tissue, gene, snp_list, raiseErrors=True) # for the full region (not just the SS region)
-                    if len(eqtl_df) > 0:
-                        eqtl_df.fillna(-1, inplace=True)
-                    gtex_data[tissue] = eqtl_df.to_dict(orient='records')
-            data.update(gtex_data)
-            gtex_one_gene_time = datetime.now() - t1
+            for tissue in tqdm(gtex_tissues):
+                eqtl_df = get_gtex_data(gtex_version, tissue, gene, snp_list, raiseErrors=True) # for the full region (not just the SS region)
+                if len(eqtl_df) > 0:
+                    eqtl_df.fillna(-1, inplace=True)
+                gtex_data[tissue] = eqtl_df.to_dict(orient='records')
+        data.update(gtex_data)
+        gtex_one_gene_time = datetime.now() - t1
 
-            ####################################################################################################
-            # Checking that there is at least one secondary dataset for colocalization
-            ####################################################################################################
-            if len(gtex_tissues)==0 and html_filepath == '':
-                raise InvalidUsage('Please provide at least one secondary dataset or select at least one GTEx tissue for colocalization analysis')
+        ####################################################################################################
+        # Checking that there is at least one secondary dataset for colocalization
+        ####################################################################################################
+        if len(gtex_tissues)==0 and html_filepath == '':
+            raise InvalidUsage('Please provide at least one secondary dataset or select at least one GTEx tissue for colocalization analysis')
 
-            ####################################################################################################
-            t1 = datetime.now() # timer for determining the gene list
-            # Obtain any genes to be plotted in the region:
-            #print('Summarizing genes to be plotted in this region')
-            genes_to_draw = collapsed_genes_df.loc[ (collapsed_genes_df['chrom'] == ('chr' + str(chrom).replace('23','X'))) &
-                                                    ( ((collapsed_genes_df['txStart'] >= startbp) & (collapsed_genes_df['txStart'] <= endbp)) |
-                                                      ((collapsed_genes_df['txEnd'] >= startbp  ) & (collapsed_genes_df['txEnd'] <= endbp  )) |
-                                                      ((collapsed_genes_df['txStart'] <= startbp) & (collapsed_genes_df['txEnd'] >= endbp  )) )]
-            genes_data = []
-            for i in np.arange(genes_to_draw.shape[0]):
-                genes_data.append({
-                    'name': list(genes_to_draw['name'])[i]
-                    ,'txStart': list(genes_to_draw['txStart'])[i]
-                    ,'txEnd': list(genes_to_draw['txEnd'])[i]
-                    ,'exonStarts': [int(bp) for bp in list(genes_to_draw['exonStarts'])[i].split(',')]
-                    ,'exonEnds': [int(bp) for bp in list(genes_to_draw['exonEnds'])[i].split(',')]
-                })
-            gene_list_time = datetime.now() - t1
-
-            ####################################################################################################
-            # 1. Determine the region to calculate the Simple Sum (SS):
-            if SSlocustext != '':
-                SSchrom, SS_start, SS_end = parseRegionText(SSlocustext, coordinate)
-            else:
-                #SS_start = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0] - one_sided_SS_window_size
-                #SS_end = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0] + one_sided_SS_window_size
-                SS_start = int(lead_snp_position - one_sided_SS_window_size)
-                SS_end = int(lead_snp_position + one_sided_SS_window_size)
-                SSlocustext = str(chrom) + ":" + str(SS_start) + "-" + str(SS_end)
-            data['SS_region'] = [SS_start, SS_end]
-
-            # # Getting Simple Sum P-values
-            # 2. Subset the region (step 1 was determining the region to do the SS calculation on - see above SS_start and SS_end variables):
-            t1 = datetime.now() # timer for subsetting SS region
-            #print('SS_start: ' + str(SS_start))
-            #print('SS_end:' + str(SS_end))
-            chromList = [('chr' + str(chrom).replace('23','X')), str(chrom).replace('23','X')]
-            if 'X' in chromList:
-                chromList.extend(['chr23','23'])
-            gwas_chrom_col = pd.Series([str(x) for x in list(gwas_data[chromcol])])
-            SS_chrom_bool = [str(x).replace('23','X') for x in gwas_chrom_col.isin(chromList) if x == True]
-            SS_indices = SS_chrom_bool & (gwas_data[poscol] >= SS_start) & (gwas_data[poscol] <= SS_end)
-            SS_gwas_data = gwas_data.loc[ SS_indices ]
-            if runcoloc2:
-                coloc2_gwasdf = SS_gwas_data.rename(columns={
-                    chromcol: 'CHR'
-                    ,poscol: 'POS'
-                    ,snpcol: 'SNPID'
-                    ,pcol: 'PVAL'
-                    ,refcol: REF
-                    ,altcol: ALT
-                    ,betacol: BETA
-                    ,stderrcol: SE
-                    ,mafcol: MAF
-                    ,numsamplescol: 'N'
-                })
-                coloc2_gwasdf = coloc2_gwasdf.reindex(columns=coloc2gwascolnames)
-                # print(coloc2_gwasdf)
-            #print(gwas_data.shape)
-            #print(SS_gwas_data.shape)
-            #print(SS_gwas_data)
-            if SS_gwas_data.shape[0] == 0:
-                raise InvalidUsage('No data points found for entered Simple Sum region', status_code=410)
-            PvaluesMat = [list(SS_gwas_data[pcol])]
-            SS_snp_list = list(SS_gwas_data[snpcol])
-            SS_snp_list = cleanSNPs(SS_snp_list, regionstr, coordinate)
-
-            # optimizing best match variant if given a mix of rsids and non-rsid variants
-            # varids = SS_snp_list
-            # if inferVariant:
-            #     rsidx = [i for i,e in enumerate(SS_snp_list) if e.startswith('rs')]
-            #     varids = standardizeSNPs(SS_snp_list, SSlocustext, coordinate)
-            #     SS_rsids = torsid(SS_std_snp_list, SSlocustext, coordinate)
-            if SSlocustext == '':
-                SSlocustext = str(chrom) + ":" + str(SS_start) + "-" + str(SS_end)
-            #SS_std_snp_list = standardizeSNPs(SS_snp_list, SSlocustext, coordinate)
-            #SS_rsids = torsid(SS_std_snp_list, SSlocustext, coordinate)
-            SS_positions = list(SS_gwas_data[poscol])
-            if len(SS_positions) != len(set(SS_positions)):
-                dups = set([x for x in SS_positions if SS_positions.count(x) > 1])
-                raise InvalidUsage('Duplicate chromosome basepair positions detected at: ' + str(dups))
-
-            SS_std_snp_list = [e for i,e in enumerate(std_snp_list) if SS_indices[i]]
-
-            # Extra file written:
-            gwas_df = pd.DataFrame({
-                'Position': SS_positions,
-                'SNP': SS_snp_list,
-                'variant_id': SS_std_snp_list,
-                'P': list(SS_gwas_data[pcol])
+        ####################################################################################################
+        t1 = datetime.now() # timer for determining the gene list
+        # Obtain any genes to be plotted in the region:
+        #print('Summarizing genes to be plotted in this region')
+        genes_to_draw = collapsed_genes_df.loc[ (collapsed_genes_df['chrom'] == ('chr' + str(chrom).replace('23','X'))) &
+                                                ( ((collapsed_genes_df['txStart'] >= startbp) & (collapsed_genes_df['txStart'] <= endbp)) |
+                                                    ((collapsed_genes_df['txEnd'] >= startbp  ) & (collapsed_genes_df['txEnd'] <= endbp  )) |
+                                                    ((collapsed_genes_df['txStart'] <= startbp) & (collapsed_genes_df['txEnd'] >= endbp  )) )]
+        genes_data = []
+        for i in np.arange(genes_to_draw.shape[0]):
+            genes_data.append({
+                'name': list(genes_to_draw['name'])[i]
+                ,'txStart': list(genes_to_draw['txStart'])[i]
+                ,'txEnd': list(genes_to_draw['txEnd'])[i]
+                ,'exonStarts': [int(bp) for bp in list(genes_to_draw['exonStarts'])[i].split(',')]
+                ,'exonEnds': [int(bp) for bp in list(genes_to_draw['exonEnds'])[i].split(',')]
             })
-            gwas_df.to_csv(os.path.join(MYDIR, 'static', f'session_data/gwas_df-{my_session_id}.txt'), index=False, encoding='utf-8', sep="\t")
-            SS_region_subsetting_time = datetime.now() - t1
-            data['num_SS_snps'] = gwas_df.shape[0]
+        gene_list_time = datetime.now() - t1
 
-            ####################################################################################################
-            # 3. Determine the genes to query
-            #query_genes = list(genes_to_draw['name'])
-            query_genes = gtex_genes
-            coloc2eqtl_df = pd.DataFrame({})
-            # 4. Query and extract the eQTL p-values for all tissues & genes from GTEx
-            t1 = datetime.now() # timer set to check how long data extraction from Mongo takes
-            if len(gtex_tissues)>0:
-                #print('Obtaining eQTL p-values for selected tissues and surrounding genes')
-                for tissue in gtex_tissues:
-                    for agene in query_genes:
-                        gtex_eqtl_df = get_gtex_data(gtex_version, tissue, agene, SS_std_snp_list)
+        ####################################################################################################
+        # 1. Determine the region to calculate the Simple Sum (SS):
+        if SSlocustext != '':
+            SSchrom, SS_start, SS_end = parseRegionText(SSlocustext, coordinate)
+        else:
+            #SS_start = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0] - one_sided_SS_window_size
+            #SS_end = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0] + one_sided_SS_window_size
+            SS_start = int(lead_snp_position - one_sided_SS_window_size)
+            SS_end = int(lead_snp_position + one_sided_SS_window_size)
+            SSlocustext = str(chrom) + ":" + str(SS_start) + "-" + str(SS_end)
+        data['SS_region'] = [SS_start, SS_end]
+
+        # # Getting Simple Sum P-values
+        # 2. Subset the region (step 1 was determining the region to do the SS calculation on - see above SS_start and SS_end variables):
+        t1 = datetime.now() # timer for subsetting SS region
+        #print('SS_start: ' + str(SS_start))
+        #print('SS_end:' + str(SS_end))
+        chromList = [('chr' + str(chrom).replace('23','X')), str(chrom).replace('23','X')]
+        if 'X' in chromList:
+            chromList.extend(['chr23','23'])
+        gwas_chrom_col = pd.Series([str(x) for x in list(gwas_data[chromcol])])
+        SS_chrom_bool = [str(x).replace('23','X') for x in gwas_chrom_col.isin(chromList) if x == True]
+        SS_indices = SS_chrom_bool & (gwas_data[poscol] >= SS_start) & (gwas_data[poscol] <= SS_end)
+        SS_gwas_data = gwas_data.loc[ SS_indices ]
+        if runcoloc2:
+            coloc2_gwasdf = SS_gwas_data.rename(columns={
+                chromcol: 'CHR'
+                ,poscol: 'POS'
+                ,snpcol: 'SNPID'
+                ,pcol: 'PVAL'
+                ,refcol: REF
+                ,altcol: ALT
+                ,betacol: BETA
+                ,stderrcol: SE
+                ,mafcol: MAF
+                ,numsamplescol: 'N'
+            })
+            coloc2_gwasdf = coloc2_gwasdf.reindex(columns=coloc2gwascolnames)
+            # print(coloc2_gwasdf)
+        #print(gwas_data.shape)
+        #print(SS_gwas_data.shape)
+        #print(SS_gwas_data)
+        if SS_gwas_data.shape[0] == 0:
+            raise InvalidUsage('No data points found for entered Simple Sum region', status_code=410)
+        PvaluesMat = [list(SS_gwas_data[pcol])]
+        SS_snp_list = list(SS_gwas_data[snpcol])
+        SS_snp_list = cleanSNPs(SS_snp_list, regionstr, coordinate)
+
+        # optimizing best match variant if given a mix of rsids and non-rsid variants
+        # varids = SS_snp_list
+        # if inferVariant:
+        #     rsidx = [i for i,e in enumerate(SS_snp_list) if e.startswith('rs')]
+        #     varids = standardizeSNPs(SS_snp_list, SSlocustext, coordinate)
+        #     SS_rsids = torsid(SS_std_snp_list, SSlocustext, coordinate)
+        if SSlocustext == '':
+            SSlocustext = str(chrom) + ":" + str(SS_start) + "-" + str(SS_end)
+        #SS_std_snp_list = standardizeSNPs(SS_snp_list, SSlocustext, coordinate)
+        #SS_rsids = torsid(SS_std_snp_list, SSlocustext, coordinate)
+        SS_positions = list(SS_gwas_data[poscol])
+        if len(SS_positions) != len(set(SS_positions)):
+            dups = set([x for x in SS_positions if SS_positions.count(x) > 1])
+            raise InvalidUsage('Duplicate chromosome basepair positions detected at: ' + str(dups))
+
+        SS_std_snp_list = [e for i,e in enumerate(std_snp_list) if SS_indices[i]]
+
+        # Extra file written:
+        gwas_df = pd.DataFrame({
+            'Position': SS_positions,
+            'SNP': SS_snp_list,
+            'variant_id': SS_std_snp_list,
+            'P': list(SS_gwas_data[pcol])
+        })
+        gwas_df.to_csv(os.path.join(MYDIR, 'static', f'session_data/gwas_df-{my_session_id}.txt'), index=False, encoding='utf-8', sep="\t")
+        SS_region_subsetting_time = datetime.now() - t1
+        data['num_SS_snps'] = gwas_df.shape[0]
+
+        ####################################################################################################
+        # 3. Determine the genes to query
+        #query_genes = list(genes_to_draw['name'])
+        query_genes = gtex_genes
+        coloc2eqtl_df = pd.DataFrame({})
+        # 4. Query and extract the eQTL p-values for all tissues & genes from GTEx
+        t1 = datetime.now() # timer set to check how long data extraction from Mongo takes
+        if len(gtex_tissues)>0:
+            #print('Obtaining eQTL p-values for selected tissues and surrounding genes')
+            for tissue in gtex_tissues:
+                for agene in query_genes:
+                    gtex_eqtl_df = get_gtex_data(gtex_version, tissue, agene, SS_std_snp_list)
 #                        print('len(gtex_eqtl_df) '+ str(len(gtex_eqtl_df)))
 #                        print('gtex_eqtl_df.shape ' + str(gtex_eqtl_df.shape))
 #                        print('len(SS_snp_list) ' + str(len(SS_snp_list)))
-                        #print(SS_std_snp_list)
-                        #print(gtex_eqtl_df.dropna())
-                        if len(gtex_eqtl_df) > 0:
-                            #gtex_eqtl_df.fillna(-1, inplace=True)
-                            pvalues = list(gtex_eqtl_df['pval'])
-                            if runcoloc2:
-                                tempdf = gtex_eqtl_df.rename(columns={
-                                    'rs_id': 'SNPID'
-                                    ,'pval': 'PVAL'
-                                    ,'beta': BETA
-                                    ,'se': SE
-                                    ,'sample_maf': MAF
-                                    ,'chr': 'CHR'
-                                    ,'variant_pos': 'POS'
-                                    ,'ref': REF
-                                    ,'alt': ALT
-                                })
-                                tempdf.dropna(inplace=True)
-                                if len(tempdf.index) != 0:
-                                    numsamples = round(tempdf['ma_count'].tolist()[0] / tempdf[MAF].tolist()[0])
-                                    numsampleslist = np.repeat(numsamples, tempdf.shape[0]).tolist()
-                                    tempdf = pd.concat([tempdf,pd.Series(numsampleslist,name='N')],axis=1)
-                                    probeid = str(tissue) + ':' + str(agene)
-                                    probeidlist = np.repeat(probeid, tempdf.shape[0]).tolist()
-                                    tempdf = pd.concat([tempdf, pd.Series(probeidlist,name='ProbeID')],axis=1)
-                                    tempdf = tempdf.reindex(columns = coloc2eqtlcolnames)
-                                    coloc2eqtl_df = pd.concat([coloc2eqtl_df, tempdf], axis=0)
-                        else:
-                            pvalues = np.repeat(np.nan, len(SS_snp_list))
-                        PvaluesMat.append(pvalues)
+                    #print(SS_std_snp_list)
+                    #print(gtex_eqtl_df.dropna())
+                    if len(gtex_eqtl_df) > 0:
+                        #gtex_eqtl_df.fillna(-1, inplace=True)
+                        pvalues = list(gtex_eqtl_df['pval'])
+                        if runcoloc2:
+                            tempdf = gtex_eqtl_df.rename(columns={
+                                'rs_id': 'SNPID'
+                                ,'pval': 'PVAL'
+                                ,'beta': BETA
+                                ,'se': SE
+                                ,'sample_maf': MAF
+                                ,'chr': 'CHR'
+                                ,'variant_pos': 'POS'
+                                ,'ref': REF
+                                ,'alt': ALT
+                            })
+                            tempdf.dropna(inplace=True)
+                            if len(tempdf.index) != 0:
+                                numsamples = round(tempdf['ma_count'].tolist()[0] / tempdf[MAF].tolist()[0])
+                                numsampleslist = np.repeat(numsamples, tempdf.shape[0]).tolist()
+                                tempdf = pd.concat([tempdf,pd.Series(numsampleslist,name='N')],axis=1)
+                                probeid = str(tissue) + ':' + str(agene)
+                                probeidlist = np.repeat(probeid, tempdf.shape[0]).tolist()
+                                tempdf = pd.concat([tempdf, pd.Series(probeidlist,name='ProbeID')],axis=1)
+                                tempdf = tempdf.reindex(columns = coloc2eqtlcolnames)
+                                coloc2eqtl_df = pd.concat([coloc2eqtl_df, tempdf], axis=0)
+                    else:
+                        pvalues = np.repeat(np.nan, len(SS_snp_list))
+                    PvaluesMat.append(pvalues)
 #                        print(f'tissue: {tissue}, gene: {gene}, len(pvalues): {len(pvalues)}')
 #                        print(f'len(SS_positions): {len(SS_positions)}, len(SS_snp_list): {len(SS_snp_list)}')
 
-                        # Extra files written:
+                    # Extra files written:
 #                        eqtl_df = pd.DataFrame({
 #                            'Position': SS_positions,
 #                            'SNP': SS_snp_list,
@@ -1750,249 +1729,248 @@ def index():
 #                        eqtl_df.to_csv(os.path.join(MYDIR, 'static', f'session_data/eqtl_df-{tissue}-{agene}-{my_session_id}.txt'), index=False, encoding='utf-8', sep="\t")
 #                        print(f'Time to extract eQTLs for {tissue} and {agene}:' + str(datetime.now()-t1))
 
-            gtex_all_queries_time = datetime.now() - t1
+        gtex_all_queries_time = datetime.now() - t1
 
             ####################################################################################################
             # 4.2 Extract user's secondary datasets' p-values
             ####################################################################################################
-            if len(secondary_datasets)>0:
-                if runcoloc2:
-                    #print('Saving uploaded secondary datasets for coloc2 run')
-                    for dataset_title, secondary_dataset in secondary_datasets.items():
-                        secondary_dataset = pd.DataFrame(secondary_dataset)
-                        if secondary_dataset.shape[0] == 0:
-                            #print(f'No data for table {table_titles[i]}')
-                            pvalues = np.repeat(np.nan, len(SS_snp_list))
-                            PvaluesMat.append(pvalues)
-                            continue
-                        try:
-                            if not set(coloc2eqtlcolnames).issubset(secondary_dataset):
-                                raise InvalidUsage(f'You have chosen to run COLOC2. COLOC2 assumes eQTL data as secondary dataset, and you must have all of the following column names: {coloc2eqtlcolnames}')
-                            secondary_dataset['SNPID'] = cleanSNPs(secondary_dataset['SNPID'].tolist(),regionstr,coordinate)
-                            #secondary_dataset.set_index('SNPID', inplace=True)
-                            idx = pd.Index(list(secondary_dataset['SNPID']))
-                            secondary_dataset = secondary_dataset.loc[~idx.duplicated()].reset_index().drop(columns=['index'])
-                            # merge to keep only SNPs already present in the GWAS/primary dataset (SS subset):
-                            secondary_data_std_snplist = standardizeSNPs(secondary_dataset['SNPID'].tolist(), regionstr, coordinate)
-                            secondary_dataset = pd.concat([secondary_dataset, pd.DataFrame(secondary_data_std_snplist, columns=['SNPID.tmp'])], axis=1)
-                            snp_df = pd.DataFrame(SS_std_snp_list, columns=['SNPID.tmp'])
-                            secondary_data = snp_df.reset_index().merge(secondary_dataset, on='SNPID.tmp', how='left', sort=False).sort_values('index')
-                            pvalues = list(secondary_data['PVAL'])
-                            PvaluesMat.append(pvalues)
-                            coloc2eqtl_df = pd.concat([coloc2eqtl_df, secondary_data.reindex(columns = coloc2eqtlcolnames)], axis=0)
-                        except InvalidUsage as e:
-                            e.message = f"[secondary dataset '{dataset_title}'] {e.message}"
-                            raise e
-                else:
-#                    print('Obtaining p-values for uploaded secondary dataset(s)')
-                    for dataset_title, secondary_dataset in secondary_datasets.items():
-                        secondary_dataset = pd.DataFrame(secondary_dataset)
-                        if secondary_dataset.shape[0] == 0:
-                            #print(f'No data for table {table_titles[i]}')
-                            pvalues = np.repeat(np.nan, len(SS_snp_list))
-                            PvaluesMat.append(pvalues)
-                            continue
-                        # remove duplicate SNPs
-                        try:
-                            secondary_dataset[SNP] = cleanSNPs(secondary_dataset[SNP].tolist(),regionstr,coordinate)
-                            idx = pd.Index(list(secondary_dataset[SNP]))
-                            secondary_dataset = secondary_dataset.loc[~idx.duplicated()].reset_index().drop(columns=['index'])
-                            # merge to keep only SNPs already present in the GWAS/primary dataset (SS subset):
-                            secondary_data_std_snplist = standardizeSNPs(secondary_dataset[SNP].tolist(), regionstr, coordinate)
-                            std_snplist_df =  pd.DataFrame(secondary_data_std_snplist, columns=[SNP+'.tmp'])
-                            secondary_dataset = pd.concat([secondary_dataset,std_snplist_df], axis=1)
-                            snp_df = pd.DataFrame(SS_std_snp_list, columns=[SNP+'.tmp'])
-                            secondary_data = snp_df.reset_index().merge(secondary_dataset, on=SNP+'.tmp', how='left', sort=False).sort_values('index')
-                            pvalues = list(secondary_data[P])
-                            PvaluesMat.append(pvalues)
-                        except InvalidUsage as e:
-                            e.message = f"[secondary dataset '{dataset_title}'] {e.message}"
-                            raise e
-
-            ####################################################################################################
-            # 5. Get the LD matrix via PLINK subprocess call or use user-provided LD matrix:
-            t1 = datetime.now() # timer for calculating the LD matrix
-            plink_outfilename = f'session_data/ld-{my_session_id}'
-            plink_outfilepath = os.path.join(MYDIR, 'static', plink_outfilename)
-            if ldmat_filepath != '':
-                #print('Extracting user-provided LD matrix')
-                ld_mat_snps = [f'chr{chrom}:{SS_pos}' for SS_pos in SS_positions]
-                ld_mat_positions = [int(snp.split(":")[1]) for snp in ld_mat_snps]
-                ld_mat = ld_mat[SS_indices ][:,SS_indices]
-            else:
-                #print('Extracting LD matrix')
-                ld_mat_snps, ld_mat = plink_ldmat(coordinate, pops, chrom, SS_positions, plink_outfilepath)
-                ld_mat_positions = [int(snp.split(":")[1]) for snp in ld_mat_snps]
-            np.fill_diagonal(ld_mat, np.diag(ld_mat) + ld_mat_diag_constant)
-            ldmat_time = datetime.now() - t1
-
-            ####################################################################################################
-            # 6. Shrink the P-values matrix to include only the SNPs available in the LD matrix:
-            PvaluesMat = np.matrix(PvaluesMat)
-            Pmat_indices = [i for i, e in enumerate(SS_positions) if e in ld_mat_positions]
-            PvaluesMat = PvaluesMat[:, Pmat_indices]
-            # 7. Write the p-values and LD matrix into session_data
-            Pvalues_file = f'session_data/Pvalues-{my_session_id}.txt'
-            ldmatrix_file = f'session_data/ldmat-{my_session_id}.txt'
-            Pvalues_filepath = os.path.join(MYDIR, 'static', Pvalues_file)
-            ldmatrix_filepath = os.path.join(MYDIR, 'static', ldmatrix_file)
-            writeMat(PvaluesMat, Pvalues_filepath)
-            writeMat(ld_mat, ldmatrix_filepath)
-            #### Extra files written for LD matrix:
-            writeList(ld_mat_snps, os.path.join(MYDIR,'static', f'session_data/ldmat_snps-{my_session_id}.txt'))
-            writeList(ld_mat_positions, os.path.join(MYDIR,'static', f'session_data/ldmat_positions-{my_session_id}.txt'))
-            ldmat_subsetting_time = datetime.now() - t1
-            ####
-
-            ####################################################################################################
-            #print('Calculating Simple Sum stats')
-            t1 = datetime.now() # timer for Simple Sum calculation time
-            Rscript_code_path = os.path.join(MYDIR, 'getSimpleSumStats.R')
-            # Rscript_path = subprocess.run(args=["which","Rscript"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
-            SSresult_path = os.path.join(MYDIR, 'static', f'session_data/SSPvalues-{my_session_id}.txt')
-            Rscript_args = [
-                'Rscript',
-                Rscript_code_path,
-                Pvalues_filepath,
-                ldmatrix_filepath,
-                '--set_based_p', str(setbasedP),
-                '--outfilename', SSresult_path
-                ]
-            if (setBasedOnly):
-                Rscript_args.append("--first_stage_only")
-
-            RscriptRun = subprocess.run(args=Rscript_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
-            if RscriptRun.returncode != 0:
-                raise InvalidUsage(RscriptRun.stdout, status_code=410)
-            SSdf = pd.read_csv(SSresult_path, sep='\t', encoding='utf-8')
-
-            SSPvalues = SSdf['Pss'].tolist()
-            num_SNP_used_for_SS = SSdf['n'].tolist()
-            comp_used = SSdf['comp_used'].tolist()
-            first_stages = SSdf['first_stages'].tolist()
-            first_stage_p = SSdf['first_stage_p'].tolist()
-
-            for i in np.arange(len(SSPvalues)):
-                if SSPvalues[i] > 0:
-                    SSPvalues[i] = np.format_float_scientific((-np.log10(SSPvalues[i])), precision=2)
-            SSPvaluesMatGTEx = np.empty(0)
-            num_SNP_used_for_SSMat = np.empty(0)
-            comp_usedMat = np.empty(0)
-            SSPvaluesSecondary = []
-            numSNPsSSPSecondary = []
-            compUsedSecondary = []
-            if len(gtex_tissues)>0:
-                SSPvaluesMatGTEx = np.array(SSPvalues[0:(len(gtex_tissues) * len(query_genes))]).reshape(len(gtex_tissues), len(query_genes))
-                num_SNP_used_for_SSMat = np.array(num_SNP_used_for_SS[0:(len(gtex_tissues) * len(query_genes))]).reshape(len(gtex_tissues), len(query_genes))
-                comp_usedMat = np.array(comp_used[0:(len(gtex_tissues) * len(query_genes))]).reshape(len(gtex_tissues), len(query_genes))
-            if len(SSPvalues) > len(gtex_tissues) * len(query_genes):
-                SSPvaluesSecondary = SSPvalues[(len(gtex_tissues) * len(query_genes)) : (len(SSPvalues))]
-                numSNPsSSPSecondary = num_SNP_used_for_SS[(len(gtex_tissues) * len(query_genes)) : (len(SSPvalues))]
-                compUsedSecondary = comp_used[(len(gtex_tissues) * len(query_genes)) : (len(SSPvalues))]
-            SSPvalues_dict = {
-                'Genes': query_genes
-                ,'Tissues': gtex_tissues
-                ,'Secondary_dataset_titles': table_titles
-                ,'SSPvalues': SSPvaluesMatGTEx.tolist() # GTEx pvalues
-                #,'Num_SNPs_Used_for_SS': [int(x) for x in num_SNP_used_for_SS]
-                ,'Num_SNPs_Used_for_SS': num_SNP_used_for_SSMat.tolist()
-                ,'Computation_method': comp_usedMat.tolist()
-                ,'SSPvalues_secondary': SSPvaluesSecondary
-                ,'Num_SNPs_Used_for_SS_secondary': numSNPsSSPSecondary
-                ,'Computation_method_secondary': compUsedSecondary
-                ,'First_stages': first_stages
-                ,'First_stage_Pvalues': first_stage_p
-            }
-            SSPvalues_file = f'session_data/SSPvalues-{my_session_id}.json'
-            SSPvalues_filepath = os.path.join(MYDIR, 'static', SSPvalues_file)
-            json.dump(SSPvalues_dict, open(SSPvalues_filepath, 'w'))
-            SS_time = datetime.now() - t1
-
-            ####################################################################################################
-            coloc2_time = 0
+        if len(secondary_datasets)>0:
             if runcoloc2:
-                t1 = datetime.now() # timer for COLOC2 run
-                #print('Calculating COLOC2 stats')
-                coloc2gwasfilepath = os.path.join(MYDIR, 'static', f'session_data/coloc2gwas_df-{my_session_id}.txt')
-                coloc2_gwasdf.dropna().to_csv(coloc2gwasfilepath, index=False, encoding='utf-8', sep="\t")
-                coloc2eqtlfilepath = os.path.join(MYDIR, 'static', f'session_data/coloc2eqtl_df-{my_session_id}.txt')
-                if coloc2_gwasdf.shape[0] == 0 or coloc2eqtl_df.shape[0] == 0:
-                    raise InvalidUsage(f'Empty datasets for coloc2. Cannot proceed. GWAS numRows: {coloc2_gwasdf.shape[0]}; eQTL numRows: {coloc2eqtl_df.shape[0]}. May be due to inability to match with GTEx variants. Please check position, REF/ALT allele correctness, and or SNP names.')
-                coloc2eqtl_df.dropna().to_csv(coloc2eqtlfilepath, index=False, encoding='utf-8', sep="\t")
-                Rscript_code_path = os.path.join(MYDIR, 'coloc2', 'run_coloc2.R')
-                coloc2result_path = os.path.join(MYDIR, 'static', f'session_data/coloc2result_df-{my_session_id}.txt')
-                coloc2RscriptRun = subprocess.run(args=['Rscript', Rscript_code_path, coloc2gwasfilepath, coloc2eqtlfilepath, '--outfilename', coloc2result_path], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
-                if coloc2RscriptRun.returncode != 0:
-                    raise InvalidUsage(coloc2RscriptRun.stdout, status_code=410)
-                coloc2df = pd.read_csv(coloc2result_path, sep='\t', encoding='utf-8').fillna(-1)
-                # save as json:
-                coloc2_dict = {
-                    'ProbeID': coloc2df['ProbeID'].tolist()
-                    ,'PPH4abf': coloc2df['PPH4abf'].tolist()
-                }
-                coloc2_time = datetime.now() - t1
+                #print('Saving uploaded secondary datasets for coloc2 run')
+                for dataset_title, secondary_dataset in secondary_datasets.items():
+                    secondary_dataset = pd.DataFrame(secondary_dataset)
+                    if secondary_dataset.shape[0] == 0:
+                        #print(f'No data for table {table_titles[i]}')
+                        pvalues = np.repeat(np.nan, len(SS_snp_list))
+                        PvaluesMat.append(pvalues)
+                        continue
+                    try:
+                        if not set(coloc2eqtlcolnames).issubset(secondary_dataset):
+                            raise InvalidUsage(f'You have chosen to run COLOC2. COLOC2 assumes eQTL data as secondary dataset, and you must have all of the following column names: {coloc2eqtlcolnames}')
+                        secondary_dataset['SNPID'] = cleanSNPs(secondary_dataset['SNPID'].tolist(),regionstr,coordinate)
+                        #secondary_dataset.set_index('SNPID', inplace=True)
+                        idx = pd.Index(list(secondary_dataset['SNPID']))
+                        secondary_dataset = secondary_dataset.loc[~idx.duplicated()].reset_index().drop(columns=['index'])
+                        # merge to keep only SNPs already present in the GWAS/primary dataset (SS subset):
+                        secondary_data_std_snplist = standardizeSNPs(secondary_dataset['SNPID'].tolist(), regionstr, coordinate)
+                        secondary_dataset = pd.concat([secondary_dataset, pd.DataFrame(secondary_data_std_snplist, columns=['SNPID.tmp'])], axis=1)
+                        snp_df = pd.DataFrame(SS_std_snp_list, columns=['SNPID.tmp'])
+                        secondary_data = snp_df.reset_index().merge(secondary_dataset, on='SNPID.tmp', how='left', sort=False).sort_values('index')
+                        pvalues = list(secondary_data['PVAL'])
+                        PvaluesMat.append(pvalues)
+                        coloc2eqtl_df = pd.concat([coloc2eqtl_df, secondary_data.reindex(columns = coloc2eqtlcolnames)], axis=0)
+                    except InvalidUsage as e:
+                        e.message = f"[secondary dataset '{dataset_title}'] {e.message}"
+                        raise e
             else:
-                coloc2_dict = {
-                    'ProbeID': []
-                    ,'PPH4abf': []
-                }
-            coloc2_file = f'session_data/coloc2result-{my_session_id}.json'
-            coloc2_filepath = os.path.join(MYDIR, 'static', coloc2_file)
-            json.dump(coloc2_dict, open(coloc2_filepath,'w'))
+#                    print('Obtaining p-values for uploaded secondary dataset(s)')
+                for dataset_title, secondary_dataset in secondary_datasets.items():
+                    secondary_dataset = pd.DataFrame(secondary_dataset)
+                    if secondary_dataset.shape[0] == 0:
+                        #print(f'No data for table {table_titles[i]}')
+                        pvalues = np.repeat(np.nan, len(SS_snp_list))
+                        PvaluesMat.append(pvalues)
+                        continue
+                    # remove duplicate SNPs
+                    try:
+                        secondary_dataset[SNP] = cleanSNPs(secondary_dataset[SNP].tolist(),regionstr,coordinate)
+                        idx = pd.Index(list(secondary_dataset[SNP]))
+                        secondary_dataset = secondary_dataset.loc[~idx.duplicated()].reset_index().drop(columns=['index'])
+                        # merge to keep only SNPs already present in the GWAS/primary dataset (SS subset):
+                        secondary_data_std_snplist = standardizeSNPs(secondary_dataset[SNP].tolist(), regionstr, coordinate)
+                        std_snplist_df =  pd.DataFrame(secondary_data_std_snplist, columns=[SNP+'.tmp'])
+                        secondary_dataset = pd.concat([secondary_dataset,std_snplist_df], axis=1)
+                        snp_df = pd.DataFrame(SS_std_snp_list, columns=[SNP+'.tmp'])
+                        secondary_data = snp_df.reset_index().merge(secondary_dataset, on=SNP+'.tmp', how='left', sort=False).sort_values('index')
+                        pvalues = list(secondary_data[P])
+                        PvaluesMat.append(pvalues)
+                    except InvalidUsage as e:
+                        e.message = f"[secondary dataset '{dataset_title}'] {e.message}"
+                        raise e
 
-            t2_total = datetime.now() - t1_total
+        ####################################################################################################
+        # 5. Get the LD matrix via PLINK subprocess call or use user-provided LD matrix:
+        t1 = datetime.now() # timer for calculating the LD matrix
+        plink_outfilename = f'session_data/ld-{my_session_id}'
+        plink_outfilepath = os.path.join(MYDIR, 'static', plink_outfilename)
+        if ldmat_filepath != '':
+            #print('Extracting user-provided LD matrix')
+            ld_mat_snps = [f'chr{chrom}:{SS_pos}' for SS_pos in SS_positions]
+            ld_mat_positions = [int(snp.split(":")[1]) for snp in ld_mat_snps]
+            ld_mat = ld_mat[SS_indices ][:,SS_indices]
+        else:
+            #print('Extracting LD matrix')
+            ld_mat_snps, ld_mat = plink_ldmat(coordinate, pops, chrom, SS_positions, plink_outfilepath)
+            ld_mat_positions = [int(snp.split(":")[1]) for snp in ld_mat_snps]
+        np.fill_diagonal(ld_mat, np.diag(ld_mat) + ld_mat_diag_constant)
+        ldmat_time = datetime.now() - t1
 
-            ####################################################################################################
-            # Indicate that the request was a success
-            data['success'] = True
-            #print('Loading a success')
+        ####################################################################################################
+        # 6. Shrink the P-values matrix to include only the SNPs available in the LD matrix:
+        PvaluesMat = np.matrix(PvaluesMat)
+        Pmat_indices = [i for i, e in enumerate(SS_positions) if e in ld_mat_positions]
+        PvaluesMat = PvaluesMat[:, Pmat_indices]
+        # 7. Write the p-values and LD matrix into session_data
+        Pvalues_file = f'session_data/Pvalues-{my_session_id}.txt'
+        ldmatrix_file = f'session_data/ldmat-{my_session_id}.txt'
+        Pvalues_filepath = os.path.join(MYDIR, 'static', Pvalues_file)
+        ldmatrix_filepath = os.path.join(MYDIR, 'static', ldmatrix_file)
+        writeMat(PvaluesMat, Pvalues_filepath)
+        writeMat(ld_mat, ldmatrix_filepath)
+        #### Extra files written for LD matrix:
+        writeList(ld_mat_snps, os.path.join(MYDIR,'static', f'session_data/ldmat_snps-{my_session_id}.txt'))
+        writeList(ld_mat_positions, os.path.join(MYDIR,'static', f'session_data/ldmat_positions-{my_session_id}.txt'))
+        ldmat_subsetting_time = datetime.now() - t1
+        ####
 
-            # Save data in JSON format for plotting
-            sessionfile = f'session_data/form_data-{my_session_id}.json'
-            sessionfilepath = os.path.join(MYDIR, 'static', sessionfile)
-            json.dump(data, open(sessionfilepath, 'w'))
-            genes_sessionfile = f'session_data/genes_data-{my_session_id}.json'
-            genes_sessionfilepath = os.path.join(MYDIR, 'static', genes_sessionfile)
-            json.dump(genes_data, open(genes_sessionfilepath, 'w'))
+        ####################################################################################################
+        #print('Calculating Simple Sum stats')
+        t1 = datetime.now() # timer for Simple Sum calculation time
+        Rscript_code_path = os.path.join(MYDIR, 'getSimpleSumStats.R')
+        # Rscript_path = subprocess.run(args=["which","Rscript"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
+        SSresult_path = os.path.join(MYDIR, 'static', f'session_data/SSPvalues-{my_session_id}.txt')
+        Rscript_args = [
+            'Rscript',
+            Rscript_code_path,
+            Pvalues_filepath,
+            ldmatrix_filepath,
+            '--set_based_p', str(setbasedP),
+            '--outfilename', SSresult_path
+            ]
+        if (setBasedOnly):
+            Rscript_args.append("--first_stage_only")
 
-            ####################################################################################################
+        RscriptRun = subprocess.run(args=Rscript_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
+        if RscriptRun.returncode != 0:
+            raise InvalidUsage(RscriptRun.stdout, status_code=410)
+        SSdf = pd.read_csv(SSresult_path, sep='\t', encoding='utf-8')
+
+        SSPvalues = SSdf['Pss'].tolist()
+        num_SNP_used_for_SS = SSdf['n'].tolist()
+        comp_used = SSdf['comp_used'].tolist()
+        first_stages = SSdf['first_stages'].tolist()
+        first_stage_p = SSdf['first_stage_p'].tolist()
+
+        for i in np.arange(len(SSPvalues)):
+            if SSPvalues[i] > 0:
+                SSPvalues[i] = np.format_float_scientific((-np.log10(SSPvalues[i])), precision=2)
+        SSPvaluesMatGTEx = np.empty(0)
+        num_SNP_used_for_SSMat = np.empty(0)
+        comp_usedMat = np.empty(0)
+        SSPvaluesSecondary = []
+        numSNPsSSPSecondary = []
+        compUsedSecondary = []
+        if len(gtex_tissues)>0:
+            SSPvaluesMatGTEx = np.array(SSPvalues[0:(len(gtex_tissues) * len(query_genes))]).reshape(len(gtex_tissues), len(query_genes))
+            num_SNP_used_for_SSMat = np.array(num_SNP_used_for_SS[0:(len(gtex_tissues) * len(query_genes))]).reshape(len(gtex_tissues), len(query_genes))
+            comp_usedMat = np.array(comp_used[0:(len(gtex_tissues) * len(query_genes))]).reshape(len(gtex_tissues), len(query_genes))
+        if len(SSPvalues) > len(gtex_tissues) * len(query_genes):
+            SSPvaluesSecondary = SSPvalues[(len(gtex_tissues) * len(query_genes)) : (len(SSPvalues))]
+            numSNPsSSPSecondary = num_SNP_used_for_SS[(len(gtex_tissues) * len(query_genes)) : (len(SSPvalues))]
+            compUsedSecondary = comp_used[(len(gtex_tissues) * len(query_genes)) : (len(SSPvalues))]
+        SSPvalues_dict = {
+            'Genes': query_genes
+            ,'Tissues': gtex_tissues
+            ,'Secondary_dataset_titles': table_titles
+            ,'SSPvalues': SSPvaluesMatGTEx.tolist() # GTEx pvalues
+            #,'Num_SNPs_Used_for_SS': [int(x) for x in num_SNP_used_for_SS]
+            ,'Num_SNPs_Used_for_SS': num_SNP_used_for_SSMat.tolist()
+            ,'Computation_method': comp_usedMat.tolist()
+            ,'SSPvalues_secondary': SSPvaluesSecondary
+            ,'Num_SNPs_Used_for_SS_secondary': numSNPsSSPSecondary
+            ,'Computation_method_secondary': compUsedSecondary
+            ,'First_stages': first_stages
+            ,'First_stage_Pvalues': first_stage_p
+        }
+        SSPvalues_file = f'session_data/SSPvalues-{my_session_id}.json'
+        SSPvalues_filepath = os.path.join(MYDIR, 'static', SSPvalues_file)
+        json.dump(SSPvalues_dict, open(SSPvalues_filepath, 'w'))
+        SS_time = datetime.now() - t1
+
+        ####################################################################################################
+        coloc2_time = 0
+        if runcoloc2:
+            t1 = datetime.now() # timer for COLOC2 run
+            #print('Calculating COLOC2 stats')
+            coloc2gwasfilepath = os.path.join(MYDIR, 'static', f'session_data/coloc2gwas_df-{my_session_id}.txt')
+            coloc2_gwasdf.dropna().to_csv(coloc2gwasfilepath, index=False, encoding='utf-8', sep="\t")
+            coloc2eqtlfilepath = os.path.join(MYDIR, 'static', f'session_data/coloc2eqtl_df-{my_session_id}.txt')
+            if coloc2_gwasdf.shape[0] == 0 or coloc2eqtl_df.shape[0] == 0:
+                raise InvalidUsage(f'Empty datasets for coloc2. Cannot proceed. GWAS numRows: {coloc2_gwasdf.shape[0]}; eQTL numRows: {coloc2eqtl_df.shape[0]}. May be due to inability to match with GTEx variants. Please check position, REF/ALT allele correctness, and or SNP names.')
+            coloc2eqtl_df.dropna().to_csv(coloc2eqtlfilepath, index=False, encoding='utf-8', sep="\t")
+            Rscript_code_path = os.path.join(MYDIR, 'coloc2', 'run_coloc2.R')
+            coloc2result_path = os.path.join(MYDIR, 'static', f'session_data/coloc2result_df-{my_session_id}.txt')
+            coloc2RscriptRun = subprocess.run(args=['Rscript', Rscript_code_path, coloc2gwasfilepath, coloc2eqtlfilepath, '--outfilename', coloc2result_path], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
+            if coloc2RscriptRun.returncode != 0:
+                raise InvalidUsage(coloc2RscriptRun.stdout, status_code=410)
+            coloc2df = pd.read_csv(coloc2result_path, sep='\t', encoding='utf-8').fillna(-1)
+            # save as json:
+            coloc2_dict = {
+                'ProbeID': coloc2df['ProbeID'].tolist()
+                ,'PPH4abf': coloc2df['PPH4abf'].tolist()
+            }
+            coloc2_time = datetime.now() - t1
+        else:
+            coloc2_dict = {
+                'ProbeID': []
+                ,'PPH4abf': []
+            }
+        coloc2_file = f'session_data/coloc2result-{my_session_id}.json'
+        coloc2_filepath = os.path.join(MYDIR, 'static', coloc2_file)
+        json.dump(coloc2_dict, open(coloc2_filepath,'w'))
+
+        t2_total = datetime.now() - t1_total
+
+        ####################################################################################################
+        # Indicate that the request was a success
+        data['success'] = True
+        #print('Loading a success')
+
+        # Save data in JSON format for plotting
+        sessionfile = f'session_data/form_data-{my_session_id}.json'
+        sessionfilepath = os.path.join(MYDIR, 'static', sessionfile)
+        json.dump(data, open(sessionfilepath, 'w'))
+        genes_sessionfile = f'session_data/genes_data-{my_session_id}.json'
+        genes_sessionfilepath = os.path.join(MYDIR, 'static', genes_sessionfile)
+        json.dump(genes_data, open(genes_sessionfilepath, 'w'))
+
+        ####################################################################################################
 
 
 
-            timing_file = f'session_data/times-{my_session_id}.txt'
-            timing_file_path = os.path.join(MYDIR, 'static', timing_file)
-            with open(timing_file_path, 'w') as f:
-                f.write('-----------------------------------------------------------\n')
-                f.write(' Times Report\n')
-                f.write('-----------------------------------------------------------\n')
-                f.write(f'File size: {file_size/1000:.0f} KB\n')
-                f.write(f'Upload time: {upload_time}\n')
-                if not np.isnan(ldmat_upload_time):
-                    f.write(f'LD matrix file size: {ldmat_file_size/1000} KB\n')
-                    f.write(f'LD matrix upload time: {ldmat_upload_time}\n')
-                    f.write(f'LD matrix loading and subsetting time: {user_ld_load_time}\n')
-                f.write(f'GWAS load time: {gwas_load_time}\n')
-                f.write(f'Pairwise LD calculation time: {ld_pairwise_time}\n')
-                f.write(f'Extracting GTEx eQTLs for user-specified gene: {gtex_one_gene_time}\n')
-                f.write(f'Finding all genes to draw and query time: {gene_list_time}\n')
-                f.write(f'Number of genes found in the region: {genes_to_draw.shape[0]}\n')
-                f.write(f'Time to subset Simple Sum region: {SS_region_subsetting_time}\n')
-                f.write(f'Time to extract all eQTL data from {len(gtex_tissues)} tissues and {len(query_genes)} genes: {gtex_all_queries_time}\n')
-                f.write(f'Time for calculating the LD matrix: {ldmat_time}\n')
-                f.write(f'Time for subsetting the LD matrix: {ldmat_subsetting_time}\n')
-                num_nmiss_tissues = -1 # because first row are the GWAS pvalues
-                for i in np.arange(len(PvaluesMat.tolist())):
-                    if not np.isnan(PvaluesMat.tolist()[i][0]):
-                        num_nmiss_tissues += 1
-                f.write(f'Time for calculating the Simple Sum P-values: {SS_time}\n')
-                f.write(f'For {num_nmiss_tissues} pairwise calculations out of {PvaluesMat.shape[0]-1}\n')
-                if num_nmiss_tissues != 0: f.write(f'Time per Mongo query: {gtex_all_queries_time/num_nmiss_tissues}\n')
-                if num_nmiss_tissues != 0: f.write(f'Time per SS calculation: {SS_time/num_nmiss_tissues}\n')
-                if coloc2_time != 0: f.write(f'Time for COLOC2 run: {coloc2_time}\n')
-                f.write(f'Total time: {t2_total}\n')
+        timing_file = f'session_data/times-{my_session_id}.txt'
+        timing_file_path = os.path.join(MYDIR, 'static', timing_file)
+        with open(timing_file_path, 'w') as f:
+            f.write('-----------------------------------------------------------\n')
+            f.write(' Times Report\n')
+            f.write('-----------------------------------------------------------\n')
+            f.write(f'File size: {file_size/1000:.0f} KB\n')
+            f.write(f'Upload time: {upload_time}\n')
+            if not np.isnan(ldmat_upload_time):
+                f.write(f'LD matrix file size: {ldmat_file_size/1000} KB\n')
+                f.write(f'LD matrix upload time: {ldmat_upload_time}\n')
+                f.write(f'LD matrix loading and subsetting time: {user_ld_load_time}\n')
+            f.write(f'GWAS load time: {gwas_load_time}\n')
+            f.write(f'Pairwise LD calculation time: {ld_pairwise_time}\n')
+            f.write(f'Extracting GTEx eQTLs for user-specified gene: {gtex_one_gene_time}\n')
+            f.write(f'Finding all genes to draw and query time: {gene_list_time}\n')
+            f.write(f'Number of genes found in the region: {genes_to_draw.shape[0]}\n')
+            f.write(f'Time to subset Simple Sum region: {SS_region_subsetting_time}\n')
+            f.write(f'Time to extract all eQTL data from {len(gtex_tissues)} tissues and {len(query_genes)} genes: {gtex_all_queries_time}\n')
+            f.write(f'Time for calculating the LD matrix: {ldmat_time}\n')
+            f.write(f'Time for subsetting the LD matrix: {ldmat_subsetting_time}\n')
+            num_nmiss_tissues = -1 # because first row are the GWAS pvalues
+            for i in np.arange(len(PvaluesMat.tolist())):
+                if not np.isnan(PvaluesMat.tolist()[i][0]):
+                    num_nmiss_tissues += 1
+            f.write(f'Time for calculating the Simple Sum P-values: {SS_time}\n')
+            f.write(f'For {num_nmiss_tissues} pairwise calculations out of {PvaluesMat.shape[0]-1}\n')
+            if num_nmiss_tissues != 0: f.write(f'Time per Mongo query: {gtex_all_queries_time/num_nmiss_tissues}\n')
+            if num_nmiss_tissues != 0: f.write(f'Time per SS calculation: {SS_time/num_nmiss_tissues}\n')
+            if coloc2_time != 0: f.write(f'Time for COLOC2 run: {coloc2_time}\n')
+            f.write(f'Total time: {t2_total}\n')
 
-            return render_template("plot.html", sessionfile = sessionfile, genesfile = genes_sessionfile, SSPvalues_file = SSPvalues_file, coloc2_file = coloc2_file, sessionid = my_session_id)
-        return render_template("invalid_input.html")
+        return render_template("plot.html", sessionfile = sessionfile, genesfile = genes_sessionfile, SSPvalues_file = SSPvalues_file, coloc2_file = coloc2_file, sessionid = my_session_id)
     return render_template("index.html")
 
 
