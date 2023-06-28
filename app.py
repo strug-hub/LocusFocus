@@ -1284,6 +1284,7 @@ def index():
         t1_total = datetime.now()
         if request.files.get('files[]'):
             t1 = datetime.now () # timer to get total upload time
+            gwas_filepath, ldmat_filepath, html_filepath = "", "", ""
             if 'files[]' in request.files:
                 filenames = request.files.getlist('files[]')
                 for file in filenames:
@@ -1511,6 +1512,19 @@ def index():
                 if not ((ld_mat.shape[0] == ld_mat.shape[1]) and (ld_mat.shape[0] == gwas_data.shape[0])):
                     raise InvalidUsage('GWAS and LD matrix input have different dimensions', status_code=410)
                 user_ld_load_time = datetime.now() - t1
+
+            # save metadata immediately, useful for debugging
+            metadata = {
+                "datetime": datetime.now(),
+                "gwas_filepath": gwas_filepath or "",
+                "ldmat_filepath": ldmat_filepath or "",
+                "html_filepath": html_filepath or "",
+                "session_id": my_session_id
+            }
+
+            metadatafile = f'session_data/metadata-{my_session_id}.json'
+            metadatafilepath = os.path.join(MYDIR, 'static', metadatafile)
+            json.dump(metadata, open(metadatafilepath, 'w'))
 
             data = {}
             data['snps'] = snp_list
