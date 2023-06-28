@@ -1676,7 +1676,7 @@ def index():
         coloc2eqtl_df = pd.DataFrame({})
         # 4. Query and extract the eQTL p-values for all tissues & genes from GTEx
         t1 = datetime.now() # timer set to check how long data extraction from Mongo takes
-        if len(gtex_tissues)>0:
+        if len(gtex_tissues) > 0:
             #print('Obtaining eQTL p-values for selected tissues and surrounding genes')
             for tissue in gtex_tissues:
                 for agene in query_genes:
@@ -2006,6 +2006,12 @@ def setbasedtest():
         raise InvalidUsage(f"Incomplete file upload; LD: {os.path.basename(ldmat_filepath)}, HTML: {os.path.basename(html_filepath)}", status_code=410)
 
     my_session_id = uuid.uuid4()
+    coordinate = request.form['coordinate']
+    gtex_version = "V7"
+    collapsed_genes_df = collapsed_genes_df_hg19
+    if coordinate.lower() == "hg38":
+        gtex_version = "V8"
+        collapsed_genes_df = collapsed_genes_df_hg38
 
     # Set-based P override:
     setbasedP = request.form['setbasedP']
@@ -2019,16 +2025,11 @@ def setbasedtest():
         except:
             raise InvalidUsage('Invalid value provided for the set-based p-value threshold. Value must be numeric between 0 and 1.')
 
-    std_snp_list = []
-
     data = {}
 
     #######################################################
     # Loading datasets uploaded
     #######################################################
-
-    # NOTE: For now, the .html format should only contain 1 table. I'm not sure how to handle multiple datasets yet
-    # TODO: Allow for multiple tables
 
     t1 = datetime.now()
     secondary_datasets = {}
@@ -2042,7 +2043,7 @@ def setbasedtest():
     table_titles = [x.text for x in table_titles]
     tables = soup.find_all('table')
     hp = htmltableparser.HTMLTableParser()
-    for i in np.arange(len(tables)):
+    for i in range(len(tables)):
         try:
             table = hp.parse_html_table(tables[i])
             secondary_datasets[table_titles[i]] = table.fillna(-1).to_dict(orient='records')
@@ -2051,141 +2052,68 @@ def setbasedtest():
     data['secondary_dataset_titles'] = table_titles
     data['secondary_dataset_colnames'] = [CHROM, BP, SNP, P]
     data.update(secondary_datasets)
-    sec_data_load_time = datetime.now() - t1
 
     # Get LD:
     t1 = datetime.now() # timer started for loading user-defined LD matrix
     ld_mat = pd.read_csv(ldmat_filepath, sep="\t", encoding='utf-8', header=None)
     ld_mat = np.matrix(ld_mat)
-    if not ((ld_mat.shape[0] == ld_mat.shape[1]) and (ld_mat.shape[0] == gwas_data.shape[0])):
-        raise InvalidUsage('GWAS and LD matrix input have different dimensions', status_code=410)
+    first_dataset = iter(secondary_datasets.values()).__next__()
+    if not ((ld_mat.shape[0] == ld_mat.shape[1]) and (ld_mat.shape[0] == first_dataset.shape[0])):
+        raise InvalidUsage('LD matrix input and first HTML dataset have different dimensions', status_code=410)
     user_ld_load_time = datetime.now() - t1
 
-    data['coordinate'] = coordinate
-    data['gtex_version'] = gtex_version
     data['set_based_p'] = setbasedP
-    data['std_snp_list'] = std_snp_list
 
-    ####################################################################################################
-    t1 = datetime.now() # timer for determining the gene list
-    # Obtain any genes to be plotted in the region:
-    #print('Summarizing genes to be plotted in this region')
-    genes_data = []
-    for i in np.arange(genes_to_draw.shape[0]):
-        genes_data.append({
-            'name': list(genes_to_draw['name'])[i]
-            ,'txStart': list(genes_to_draw['txStart'])[i]
-            ,'txEnd': list(genes_to_draw['txEnd'])[i]
-            ,'exonStarts': [int(bp) for bp in list(genes_to_draw['exonStarts'])[i].split(',')]
-            ,'exonEnds': [int(bp) for bp in list(genes_to_draw['exonEnds'])[i].split(',')]
-        })
-    gene_list_time = datetime.now() - t1
+    # determine intersection of SNPs in "secondary" datasets
+    # first dataset with same length as LD matrix is used as 'model' dataset
+    expected_dataset_len = ld_mat.shape[0]
+    length_errors = []
+    # de-duplicate, set index to SNP
+    for key, dataset in secondary_datasets.items():
+        dataset = pd.DataFrame(dataset)
+        dataset = dataset.dropna()  # remove null rows
+        dataset = dataset[dataset[CHROM] != "."]
+        dataset = dataset.drop_duplicates(subset=SNP)  # remove duplicate SNPs
+        dataset = dataset.set_index(pd.MultiIndex.from_arrays([dataset.index, dataset[SNP]], names=["int_index", "snp_index"]))
+        secondary_datasets[key] = dataset
+        dataset.index.
 
-    ####################################################################################################
-    # 1. Determine the region to calculate the Simple Sum (SS):
-    if SSlocustext != '':
-        SSchrom, SS_start, SS_end = parseRegionText(SSlocustext, coordinate)
-    else:
-        #SS_start = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0] - one_sided_SS_window_size
-        #SS_end = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0] + one_sided_SS_window_size
-        SS_start = int(lead_snp_position - one_sided_SS_window_size)
-        SS_end = int(lead_snp_position + one_sided_SS_window_size)
-        SSlocustext = str(chrom) + ":" + str(SS_start) + "-" + str(SS_end)
-    data['SS_region'] = [SS_start, SS_end]
+    # determine intersection of all datasets by SNP index
+    # we assume that the first_dataset is correct corresponding to the LD matrix
+    first_dataset = iter(secondary_datasets.values()).__next__()
+    intersection_idx = first_dataset.index.get_level_values("snp_index")  # only contains SNPs
 
-    # # Getting Simple Sum P-values
-    # 2. Subset the region (step 1 was determining the region to do the SS calculation on - see above SS_start and SS_end variables):
-    t1 = datetime.now() # timer for subsetting SS region
-    #print('SS_start: ' + str(SS_start))
-    #print('SS_end:' + str(SS_end))
-    chromList = [('chr' + str(chrom).replace('23','X')), str(chrom).replace('23','X')]
-    if 'X' in chromList:
-        chromList.extend(['chr23','23'])
-    gwas_chrom_col = pd.Series([str(x) for x in list(gwas_data[chromcol])])
-    SS_chrom_bool = [str(x).replace('23','X') for x in gwas_chrom_col.isin(chromList) if x == True]
-    SS_indices = SS_chrom_bool & (gwas_data[poscol] >= SS_start) & (gwas_data[poscol] <= SS_end)
-    SS_gwas_data = gwas_data.loc[ SS_indices ]
-    if SS_gwas_data.shape[0] == 0:
-        raise InvalidUsage('No data points found for entered Simple Sum region', status_code=410)
-    PvaluesMat = [list(SS_gwas_data[pcol])]
-    SS_snp_list = list(SS_gwas_data[snpcol])
-    SS_snp_list = cleanSNPs(SS_snp_list, regionstr, coordinate)
+    # get intersection of SNP values only, ignore formatting
+    for dataset in secondary_datasets.values():
+        intersection_idx = intersection_idx.intersection(dataset.index.get_level_values("snp_index"))
 
-    # optimizing best match variant if given a mix of rsids and non-rsid variants
-    # varids = SS_snp_list
-    # if inferVariant:
-    #     rsidx = [i for i,e in enumerate(SS_snp_list) if e.startswith('rs')]
-    #     varids = standardizeSNPs(SS_snp_list, SSlocustext, coordinate)
-    #     SS_rsids = torsid(SS_std_snp_list, SSlocustext, coordinate)
-    if SSlocustext == '':
-        SSlocustext = str(chrom) + ":" + str(SS_start) + "-" + str(SS_end)
-    #SS_std_snp_list = standardizeSNPs(SS_snp_list, SSlocustext, coordinate)
-    #SS_rsids = torsid(SS_std_snp_list, SSlocustext, coordinate)
-    SS_positions = list(SS_gwas_data[poscol])
-    if len(SS_positions) != len(set(SS_positions)):
-        dups = set([x for x in SS_positions if SS_positions.count(x) > 1])
-        raise InvalidUsage('Duplicate chromosome basepair positions detected at: ' + str(dups))
+    # subset LD matrix according to intersection_idx
+    # use intersection to figure out int index vals that are kept
+    indices_kept = first_dataset.index.get_level_values("int_index")[
+        first_dataset.index.get_level_values("snp_index").isin(intersection_idx.values)
+    ]
 
-    SS_std_snp_list = [e for i,e in enumerate(std_snp_list) if SS_indices[i]]
+    ld_mat = ld_mat[indices_kept][:, indices_kept]
 
-    # Extra file written:
-    gwas_df = pd.DataFrame({
-        'Position': SS_positions,
-        'SNP': SS_snp_list,
-        'variant_id': SS_std_snp_list,
-        'P': list(SS_gwas_data[pcol])
-    })
-    gwas_df.to_csv(os.path.join(MYDIR, 'static', f'session_data/gwas_df-{my_session_id}.txt'), index=False, encoding='utf-8', sep="\t")
-    SS_region_subsetting_time = datetime.now() - t1
-    data['num_SS_snps'] = gwas_df.shape[0]
+    for key, dataset in secondary_datasets.items():
+        secondary_datasets[key] = dataset.loc[dataset.index.get_level_values("snp_index").isin(intersection_idx.values)]
 
-    ####################################################################################################
-    # 3. Determine the genes to query
-    #query_genes = list(genes_to_draw['name'])
-    query_genes = gtex_genes
-    coloc2eqtl_df = pd.DataFrame({})
+    # determine region based on chrom and min/max BPs within first dataset
+    chroms = first_dataset[CHROM].unique()
+    if chroms.shape[0] != 1:
+        InvalidUsage(f"More than 1 chromosome specified in first dataset: {chroms}")
 
-    ####################################################################################################
-    # 4.2 Extract user's secondary datasets' p-values
-    ####################################################################################################
-    if len(secondary_datasets)>0:
-# print('Obtaining p-values for uploaded secondary dataset(s)')
-        for i in np.arange(len(secondary_datasets)):
-            secondary_dataset = pd.DataFrame(secondary_datasets[list(secondary_datasets.keys())[i]])
-            if secondary_dataset.shape[0] == 0:
-                #print(f'No data for table {table_titles[i]}')
-                pvalues = np.repeat(np.nan, len(SS_snp_list))
-                PvaluesMat.append(pvalues)
-                continue
-            # remove duplicate SNPs
-            secondary_dataset[SNP] = cleanSNPs(secondary_dataset[SNP].tolist(),regionstr,coordinate)
-            idx = pd.Index(list(secondary_dataset[SNP]))
-            secondary_dataset = secondary_dataset.loc[~idx.duplicated()].reset_index().drop(columns=['index'])
-            # merge to keep only SNPs already present in the GWAS/primary dataset (SS subset):
-            secondary_data_std_snplist = standardizeSNPs(secondary_dataset[SNP].tolist(), regionstr, coordinate)
-            std_snplist_df =  pd.DataFrame(secondary_data_std_snplist, columns=[SNP+'.tmp'])
-            secondary_dataset = pd.concat([secondary_dataset,std_snplist_df], axis=1)
-            snp_df = pd.DataFrame(SS_std_snp_list, columns=[SNP+'.tmp'])
-            secondary_data = snp_df.reset_index().merge(secondary_dataset, on=SNP+'.tmp', how='left', sort=False).sort_values('index')
-            pvalues = list(secondary_data[P])
-            PvaluesMat.append(pvalues)
+    chrom = chroms[0]
+    # infer region from smallest and largest base pairs
+    # TODO: we might not even need these
+    start, end = first_dataset[BP].min(), first_dataset[BP].max()
+    regionstr = f"{chrom}:{start}-{end}"
 
-    ####################################################################################################
-    # 5. Get the LD matrix via PLINK subprocess call or use user-provided LD matrix:
-    t1 = datetime.now() # timer for calculating the LD matrix
-    plink_outfilename = f'session_data/ld-{my_session_id}'
-    plink_outfilepath = os.path.join(MYDIR, 'static', plink_outfilename)
-    ld_mat_snps = [f'chr{chrom}:{SS_pos}' for SS_pos in SS_positions]
-    ld_mat_positions = [int(snp.split(":")[1]) for snp in ld_mat_snps]
-    ld_mat = ld_mat[SS_indices ][:,SS_indices]
+    PvaluesMat = [dataset[P] for dataset in secondary_datasets.values()]
+
     np.fill_diagonal(ld_mat, np.diag(ld_mat) + ld_mat_diag_constant)
-    ldmat_time = datetime.now() - t1
 
-    ####################################################################################################
-    # 6. Shrink the P-values matrix to include only the SNPs available in the LD matrix:
     PvaluesMat = np.matrix(PvaluesMat)
-    Pmat_indices = [i for i, e in enumerate(SS_positions) if e in ld_mat_positions]
-    PvaluesMat = PvaluesMat[:, Pmat_indices]
     # 7. Write the p-values and LD matrix into session_data
     Pvalues_file = f'session_data/Pvalues-{my_session_id}.txt'
     ldmatrix_file = f'session_data/ldmat-{my_session_id}.txt'
@@ -2193,9 +2121,6 @@ def setbasedtest():
     ldmatrix_filepath = os.path.join(MYDIR, 'static', ldmatrix_file)
     writeMat(PvaluesMat, Pvalues_filepath)
     writeMat(ld_mat, ldmatrix_filepath)
-    #### Extra files written for LD matrix:
-    writeList(ld_mat_snps, os.path.join(MYDIR,'static', f'session_data/ldmat_snps-{my_session_id}.txt'))
-    writeList(ld_mat_positions, os.path.join(MYDIR,'static', f'session_data/ldmat_positions-{my_session_id}.txt'))
     ldmat_subsetting_time = datetime.now() - t1
 
     t1 = datetime.now() # timer for Simple Sum calculation time
