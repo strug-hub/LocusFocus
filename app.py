@@ -1976,6 +1976,8 @@ def setbasedtest():
     if request.method == 'GET':
         return render_template("set_based_test.html")
 
+    t1 = datetime.now()
+
     if 'files[]' not in request.files or request.files.getlist('files[]') == []:
         return render_template("invalid_input.html") # TODO
     files = request.files.getlist('files[]')
@@ -2006,12 +2008,6 @@ def setbasedtest():
         raise InvalidUsage(f"Incomplete file upload; LD: {os.path.basename(ldmat_filepath)}, HTML: {os.path.basename(html_filepath)}", status_code=410)
 
     my_session_id = uuid.uuid4()
-    coordinate = request.form['coordinate']
-    gtex_version = "V7"
-    collapsed_genes_df = collapsed_genes_df_hg19
-    if coordinate.lower() == "hg38":
-        gtex_version = "V8"
-        collapsed_genes_df = collapsed_genes_df_hg38
 
     # Set-based P override:
     setbasedP = request.form['setbasedP']
@@ -2031,7 +2027,6 @@ def setbasedtest():
     # Loading datasets uploaded
     #######################################################
 
-    t1 = datetime.now()
     secondary_datasets = {}
     table_titles = []
     with open(html_filepath, encoding='utf-8', errors='replace') as f:
@@ -2054,20 +2049,16 @@ def setbasedtest():
     data.update(secondary_datasets)
 
     # Get LD:
-    t1 = datetime.now() # timer started for loading user-defined LD matrix
     ld_mat = pd.read_csv(ldmat_filepath, sep="\t", encoding='utf-8', header=None)
     ld_mat = np.matrix(ld_mat)
     first_dataset = iter(secondary_datasets.values()).__next__()
     if not ((ld_mat.shape[0] == ld_mat.shape[1]) and (ld_mat.shape[0] == first_dataset.shape[0])):
         raise InvalidUsage('LD matrix input and first HTML dataset have different dimensions', status_code=410)
-    user_ld_load_time = datetime.now() - t1
 
     data['set_based_p'] = setbasedP
 
     # determine intersection of SNPs in "secondary" datasets
     # first dataset with same length as LD matrix is used as 'model' dataset
-    expected_dataset_len = ld_mat.shape[0]
-    length_errors = []
     # de-duplicate, set index to SNP
     for key, dataset in secondary_datasets.items():
         dataset = pd.DataFrame(dataset)
@@ -2121,12 +2112,10 @@ def setbasedtest():
     ldmatrix_filepath = os.path.join(MYDIR, 'static', ldmatrix_file)
     writeMat(PvaluesMat, Pvalues_filepath)
     writeMat(ld_mat, ldmatrix_filepath)
-    ldmat_subsetting_time = datetime.now() - t1
 
-    t1 = datetime.now() # timer for Simple Sum calculation time
     Rscript_code_path = os.path.join(MYDIR, 'getSimpleSumStats.R')
     # Rscript_path = subprocess.run(args=["which","Rscript"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
-    SSresult_path = os.path.join(MYDIR, 'static', f'session_data/SSPvalues-{my_session_id}.txt')
+    SSresult_path = os.path.join(MYDIR, 'static', f'session_data/SSPvalues_setbasedtest-{my_session_id}.txt')
     Rscript_args = [
         'Rscript',
         Rscript_code_path,
@@ -2142,49 +2131,19 @@ def setbasedtest():
         raise InvalidUsage(RscriptRun.stdout, status_code=410)
     SSdf = pd.read_csv(SSresult_path, sep='\t', encoding='utf-8')
 
-    SSPvalues = SSdf['Pss'].tolist()
-    num_SNP_used_for_SS = SSdf['n'].tolist()
-    comp_used = SSdf['comp_used'].tolist()
     first_stages = SSdf['first_stages'].tolist()
     first_stage_p = SSdf['first_stage_p'].tolist()
 
-    # TODO: ONCE WE'RE HERE, WE'RE GOOD!!!!!!
-
-    for i in np.arange(len(SSPvalues)):
-        if SSPvalues[i] > 0:
-            SSPvalues[i] = np.format_float_scientific((-np.log10(SSPvalues[i])), precision=2)
-    SSPvaluesMatGTEx = np.empty(0)
-    num_SNP_used_for_SSMat = np.empty(0)
-    comp_usedMat = np.empty(0)
-    SSPvaluesSecondary = []
-    numSNPsSSPSecondary = []
-    compUsedSecondary = []
-    if len(gtex_tissues)>0:
-        SSPvaluesMatGTEx = np.array(SSPvalues[0:(len(gtex_tissues) * len(query_genes))]).reshape(len(gtex_tissues), len(query_genes))
-        num_SNP_used_for_SSMat = np.array(num_SNP_used_for_SS[0:(len(gtex_tissues) * len(query_genes))]).reshape(len(gtex_tissues), len(query_genes))
-        comp_usedMat = np.array(comp_used[0:(len(gtex_tissues) * len(query_genes))]).reshape(len(gtex_tissues), len(query_genes))
-    if len(SSPvalues) > len(gtex_tissues) * len(query_genes):
-        SSPvaluesSecondary = SSPvalues[(len(gtex_tissues) * len(query_genes)) : (len(SSPvalues))]
-        numSNPsSSPSecondary = num_SNP_used_for_SS[(len(gtex_tissues) * len(query_genes)) : (len(SSPvalues))]
-        compUsedSecondary = comp_used[(len(gtex_tissues) * len(query_genes)) : (len(SSPvalues))]
-    SSPvalues_dict = {
-        'Genes': query_genes
-        ,'Tissues': gtex_tissues
-        ,'Secondary_dataset_titles': table_titles
-        ,'SSPvalues': SSPvaluesMatGTEx.tolist() # GTEx pvalues
-        #,'Num_SNPs_Used_for_SS': [int(x) for x in num_SNP_used_for_SS]
-        ,'Num_SNPs_Used_for_SS': num_SNP_used_for_SSMat.tolist()
-        ,'Computation_method': comp_usedMat.tolist()
-        ,'SSPvalues_secondary': SSPvaluesSecondary
-        ,'Num_SNPs_Used_for_SS_secondary': numSNPsSSPSecondary
-        ,'Computation_method_secondary': compUsedSecondary
+    # Set Based Test
+    SBTresults = {
+        'Secondary_dataset_titles': table_titles
         ,'First_stages': first_stages
         ,'First_stage_Pvalues': first_stage_p
     }
-    SSPvalues_file = f'session_data/SSPvalues-{my_session_id}.json'
-    SSPvalues_filepath = os.path.join(MYDIR, 'static', SSPvalues_file)
-    json.dump(SSPvalues_dict, open(SSPvalues_filepath, 'w'))
-    SS_time = datetime.now() - t1
+    SBTvalues_file = f'session_data/SBTvalues_setbasedtest-{my_session_id}.json'
+    SBTvalues_filepath = os.path.join(MYDIR, 'static', SBTvalues_file)
+    json.dump(SBTresults, open(SBTvalues_filepath, 'w'))
+    t2_total = datetime.now() - t1
 
     ####################################################################################################
     # Indicate that the request was a success
@@ -2192,51 +2151,22 @@ def setbasedtest():
     #print('Loading a success')
 
     # Save data in JSON format for plotting
-    sessionfile = f'session_data/form_data-{my_session_id}.json'
+    sessionfile = f'session_data/form_data_setbasedtest-{my_session_id}.json'
     sessionfilepath = os.path.join(MYDIR, 'static', sessionfile)
     json.dump(data, open(sessionfilepath, 'w'))
-    genes_sessionfile = f'session_data/genes_data-{my_session_id}.json'
-    genes_sessionfilepath = os.path.join(MYDIR, 'static', genes_sessionfile)
-    json.dump(genes_data, open(genes_sessionfilepath, 'w'))
 
     ####################################################################################################
 
-
-
-    timing_file = f'session_data/times-{my_session_id}.txt'
+    timing_file = f'session_data/times_setbasedtest-{my_session_id}.txt'
     timing_file_path = os.path.join(MYDIR, 'static', timing_file)
     with open(timing_file_path, 'w') as f:
         f.write('-----------------------------------------------------------\n')
         f.write(' Times Report\n')
         f.write('-----------------------------------------------------------\n')
-        f.write(f'File size: {file_size/1000:.0f} KB\n')
-        f.write(f'Upload time: {upload_time}\n')
-        if not np.isnan(ldmat_upload_time):
-            f.write(f'LD matrix file size: {ldmat_file_size/1000} KB\n')
-            f.write(f'LD matrix upload time: {ldmat_upload_time}\n')
-            f.write(f'LD matrix loading and subsetting time: {user_ld_load_time}\n')
-        f.write(f'GWAS load time: {gwas_load_time}\n')
-        f.write(f'Pairwise LD calculation time: {ld_pairwise_time}\n')
-        f.write(f'Extracting GTEx eQTLs for user-specified gene: {gtex_one_gene_time}\n')
-        f.write(f'Finding all genes to draw and query time: {gene_list_time}\n')
-        f.write(f'Number of genes found in the region: {genes_to_draw.shape[0]}\n')
-        f.write(f'Time to subset Simple Sum region: {SS_region_subsetting_time}\n')
-        f.write(f'Time to extract all eQTL data from {len(gtex_tissues)} tissues and {len(query_genes)} genes: {gtex_all_queries_time}\n')
-        f.write(f'Time for calculating the LD matrix: {ldmat_time}\n')
-        f.write(f'Time for subsetting the LD matrix: {ldmat_subsetting_time}\n')
-        num_nmiss_tissues = -1 # because first row are the GWAS pvalues
-        for i in np.arange(len(PvaluesMat.tolist())):
-            if not np.isnan(PvaluesMat.tolist()[i][0]):
-                num_nmiss_tissues += 1
-        f.write(f'Time for calculating the Simple Sum P-values: {SS_time}\n')
-        f.write(f'For {num_nmiss_tissues} pairwise calculations out of {PvaluesMat.shape[0]-1}\n')
-        if num_nmiss_tissues != 0: f.write(f'Time per Mongo query: {gtex_all_queries_time/num_nmiss_tissues}\n')
-        if num_nmiss_tissues != 0: f.write(f'Time per SS calculation: {SS_time/num_nmiss_tissues}\n')
-        if coloc2_time != 0: f.write(f'Time for COLOC2 run: {coloc2_time}\n')
         f.write(f'Total time: {t2_total}\n')
 
 
-    return render_template("set_based_test_result.html")
+    return render_template("set_based_test_result.html", sessionid=my_session_id, )
 
 
 @app.route('/downloaddata/<my_session_id>')
