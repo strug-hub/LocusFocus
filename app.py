@@ -2067,7 +2067,6 @@ def setbasedtest():
         dataset = dataset.drop_duplicates(subset=SNP)  # remove duplicate SNPs
         dataset = dataset.set_index(pd.MultiIndex.from_arrays([dataset.index, dataset[SNP]], names=["int_index", "snp_index"]))
         secondary_datasets[key] = dataset
-        dataset.index.
 
     # determine intersection of all datasets by SNP index
     # we assume that the first_dataset is correct corresponding to the LD matrix
