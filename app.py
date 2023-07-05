@@ -1514,17 +1514,18 @@ def index():
                 user_ld_load_time = datetime.now() - t1
 
             # save metadata immediately, useful for debugging
-            metadata = {
+            metadata = {}
+            metadata.update({
                 "datetime": datetime.now(),
                 "gwas_filepath": gwas_filepath or "",
                 "ldmat_filepath": ldmat_filepath or "",
                 "html_filepath": html_filepath or "",
                 "session_id": my_session_id
-            }
+            })
 
-            metadatafile = f'session_data/metadata-{my_session_id}.json'
-            metadatafilepath = os.path.join(MYDIR, 'static', metadatafile)
-            json.dump(metadata, open(metadatafilepath, 'w'))
+            metadatafilepath = os.path.join(MYDIR, 'static', f'session_data/metadata-{my_session_id}.json')
+            with open(metadatafilepath, 'w') as metadatafile:
+                json.dump(metadata, metadatafile)
 
             data = {}
             data['snps'] = snp_list
