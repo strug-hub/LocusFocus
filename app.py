@@ -2052,7 +2052,7 @@ def setbasedtest():
     ld_mat = pd.read_csv(ldmat_filepath, sep="\t", encoding='utf-8', header=None)
     ld_mat = np.matrix(ld_mat)
     first_dataset = iter(secondary_datasets.values()).__next__()
-    if not ((ld_mat.shape[0] == ld_mat.shape[1]) and (ld_mat.shape[0] == first_dataset.shape[0])):
+    if not ((ld_mat.shape[0] == ld_mat.shape[1]) and (ld_mat.shape[0] == len(first_dataset))):
         raise InvalidUsage('LD matrix input and first HTML dataset have different dimensions', status_code=410)
 
     data['set_based_p'] = setbasedP
@@ -2146,6 +2146,7 @@ def setbasedtest():
 
     ####################################################################################################
     # Indicate that the request was a success
+    data.update(SBTresults)
     data['success'] = True
     #print('Loading a success')
 
@@ -2165,7 +2166,7 @@ def setbasedtest():
         f.write(f'Total time: {t2_total}\n')
 
 
-    return render_template("set_based_test_result.html", sessionid=my_session_id, )
+    return jsonify(data)
 
 
 @app.route('/downloaddata/<my_session_id>')
