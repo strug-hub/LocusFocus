@@ -1983,29 +1983,33 @@ def setbasedtest():
     files = request.files.getlist('files[]')
     # classify_files, modified
     ldmat_filepath = ''
-    html_filepath = ''
+    summary_stats_filepath = ''
     extensions = []
     for file in files:
         filename = secure_filename(file.filename)
         filepath = os.path.join(MYDIR, app.config['UPLOAD_FOLDER'], filename)
         # classify_files, modified
         extension = filename.split('.')[-1]
-        # check that only 1 ld, html each is uploaded
+        # Users can upload up to 1 LD, and must upload 1 summary stats file (.txt, .tsv, .csv, .html)
+        if len(extensions) >= 2:
+            raise InvalidUsage(f"Too many files uploaded. Expecting maximum of 2 files", status_code=410)
         if extension not in extensions:
-            if extension in ['ld', 'html']:
+            if (extension == 'ld') or (extension in ['html', 'tsv', 'csv', 'txt'] and summary_stats_filepath == ''):
                 extensions.append(extension)
             else:
                 raise InvalidUsage(f"Unexpected file extension: {filename}", status_code=410)
         else:
             raise InvalidUsage('Please upload 2 different file types as described', status_code=410)
+
         if extension == 'ld':
             ldmat_filepath = os.path.join(MYDIR, app.config['UPLOAD_FOLDER'], filename)
-        elif extension == 'html':
-            html_filepath = os.path.join(MYDIR, app.config['UPLOAD_FOLDER'], filename)
+        elif extension in ['html', 'tsv', 'csv', 'txt']:
+            summary_stats_filepath = os.path.join(MYDIR, app.config['UPLOAD_FOLDER'], filename)
         # Save after we know it's a file we want
+
         file.save(filepath)
-    if '' in [ldmat_filepath, html_filepath]:
-        raise InvalidUsage(f"Incomplete file upload; LD: {os.path.basename(ldmat_filepath)}, HTML: {os.path.basename(html_filepath)}", status_code=410)
+    if summary_stats_filepath == '':
+        raise InvalidUsage(f"Missing summary stats file. Please upload one of (.txt, .tsv, .csv, .html)", status_code=410)
 
     my_session_id = uuid.uuid4()
 
