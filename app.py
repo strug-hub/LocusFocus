@@ -1003,7 +1003,7 @@ def get_gtex_data_pvalues(eqtl_data, snp_list):
     return list(gtex_data['pval'])
 
 
-def fix_gwasfile(infile):
+def fix_gwasfile(infile, sep="\t"):
     outfile = infile.replace('.txt','_mod.txt')
     with open(infile) as f:
         with open(outfile, 'w') as fout:
@@ -1012,7 +1012,7 @@ def fix_gwasfile(infile):
                 if line[0:2] != "##":
                     fout.write(line.replace('\t\t\n','\t\n'))
     try:
-        gwas_data = pd.read_csv(outfile, sep="\t", encoding='utf-8')
+        gwas_data = pd.read_csv(outfile, sep=sep, encoding='utf-8')
         return gwas_data
     except:
         raise InvalidUsage('Failed to load primary dataset. Please check formatting is adequate.', status_code=410)
@@ -1984,18 +1984,19 @@ def setbasedtest():
     # classify_files, modified
     ldmat_filepath = ''
     summary_stats_filepath = ''
-    extensions = []
+    summary_stats_extension = ''
+    uploaded_extensions = []
     for file in files:
         filename = secure_filename(file.filename)
         filepath = os.path.join(MYDIR, app.config['UPLOAD_FOLDER'], filename)
         # classify_files, modified
         extension = filename.split('.')[-1]
         # Users can upload up to 1 LD, and must upload 1 summary stats file (.txt, .tsv, .csv, .html)
-        if len(extensions) >= 2:
+        if len(uploaded_extensions) >= 2:
             raise InvalidUsage(f"Too many files uploaded. Expecting maximum of 2 files", status_code=410)
-        if extension not in extensions:
+        if extension not in uploaded_extensions:
             if (extension == 'ld') or (extension in ['html', 'tsv', 'csv', 'txt'] and summary_stats_filepath == ''):
-                extensions.append(extension)
+                uploaded_extensions.append(extension)
             else:
                 raise InvalidUsage(f"Unexpected file extension: {filename}", status_code=410)
         else:
@@ -2005,6 +2006,7 @@ def setbasedtest():
             ldmat_filepath = os.path.join(MYDIR, app.config['UPLOAD_FOLDER'], filename)
         elif extension in ['html', 'tsv', 'csv', 'txt']:
             summary_stats_filepath = os.path.join(MYDIR, app.config['UPLOAD_FOLDER'], filename)
+            summary_stats_extension = extension
         # Save after we know it's a file we want
 
         file.save(filepath)
@@ -2031,31 +2033,41 @@ def setbasedtest():
     # Loading datasets uploaded
     #######################################################
 
-    secondary_datasets = {}
+    # If non-html is provided, this will contain only 1 dataset with default title
+    # 'summary_stats_<session_id>'
+    summary_datasets = {}
     table_titles = []
-    with open(html_filepath, encoding='utf-8', errors='replace') as f:
-        html = f.read()
-        if (not html.startswith('<h3>')) and (not html.startswith('<html>')) and (not html.startswith('<table>') and (not html.startswith('<!DOCTYPE html>'))):
-            raise InvalidUsage('Secondary dataset(s) provided are not formatted correctly. Please use the merge_and_convert_to_html.py script for formatting.', status_code=410)
-    soup = bs(html, 'lxml')
-    table_titles = soup.find_all('h3')
-    table_titles = [x.text for x in table_titles]
-    tables = soup.find_all('table')
-    hp = htmltableparser.HTMLTableParser()
-    for i in range(len(tables)):
+    if summary_stats_extension == 'html':
+        with open(summary_stats_filepath, encoding='utf-8', errors='replace') as f:
+            html = f.read()
+            if (not html.startswith('<h3>')) and (not html.startswith('<html>')) and (not html.startswith('<table>') and (not html.startswith('<!DOCTYPE html>'))):
+                raise InvalidUsage('Secondary dataset(s) provided are not formatted correctly. Please use the merge_and_convert_to_html.py script for formatting.', status_code=410)
+        soup = bs(html, 'lxml')
+        table_titles = soup.find_all('h3')
+        table_titles = [x.text for x in table_titles]
+        tables = soup.find_all('table')
+        hp = htmltableparser.HTMLTableParser()
+        for i in range(len(tables)):
+            try:
+                table = hp.parse_html_table(tables[i])
+                summary_datasets[table_titles[i]] = table.fillna(-1).to_dict(orient='records')
+            except:
+                summary_datasets[table_titles[i]] = []
+        data['secondary_dataset_titles'] = table_titles
+        data['secondary_dataset_colnames'] = [CHROM, BP, SNP, P]
+        data.update(summary_datasets)
+    elif summary_stats_extension in ['csv', 'tsv', 'txt']:
+        sep = "\t" if summary_stats_extension != 'csv' else ","
         try:
-            table = hp.parse_html_table(tables[i])
-            secondary_datasets[table_titles[i]] = table.fillna(-1).to_dict(orient='records')
+            gwas_data = pd.read_csv(summary_stats_filepath, sep=sep, encoding='utf-8')
         except:
-            secondary_datasets[table_titles[i]] = []
-    data['secondary_dataset_titles'] = table_titles
-    data['secondary_dataset_colnames'] = [CHROM, BP, SNP, P]
-    data.update(secondary_datasets)
+            gwas_data = fix_gwasfile(summary_stats_filepath, sep=sep)
 
+        # TODO: Get relevant columns (CHROM, BP, SNP, P)
     # Get LD:
     ld_mat = pd.read_csv(ldmat_filepath, sep="\t", encoding='utf-8', header=None)
     ld_mat = np.matrix(ld_mat)
-    first_dataset = iter(secondary_datasets.values()).__next__()
+    first_dataset = iter(summary_datasets.values()).__next__()
     if not ((ld_mat.shape[0] == ld_mat.shape[1]) and (ld_mat.shape[0] == len(first_dataset))):
         raise InvalidUsage('LD matrix input and first HTML dataset have different dimensions', status_code=410)
 
@@ -2064,21 +2076,21 @@ def setbasedtest():
     # determine intersection of SNPs in "secondary" datasets
     # first dataset with same length as LD matrix is used as 'model' dataset
     # de-duplicate, set index to SNP
-    for key, dataset in secondary_datasets.items():
+    for key, dataset in summary_datasets.items():
         dataset = pd.DataFrame(dataset)
         dataset = dataset.dropna()  # remove null rows
         dataset = dataset[dataset[CHROM] != "."]
         dataset = dataset.drop_duplicates(subset=SNP)  # remove duplicate SNPs
         dataset = dataset.set_index(pd.MultiIndex.from_arrays([dataset.index, dataset[SNP]], names=["int_index", "snp_index"]))
-        secondary_datasets[key] = dataset
+        summary_datasets[key] = dataset
 
     # determine intersection of all datasets by SNP index
     # we assume that the first_dataset is correct corresponding to the LD matrix
-    first_dataset = iter(secondary_datasets.values()).__next__()
+    first_dataset = iter(summary_datasets.values()).__next__()
     intersection_idx = first_dataset.index.get_level_values("snp_index")  # only contains SNPs
 
     # get intersection of SNP values only, ignore formatting
-    for dataset in secondary_datasets.values():
+    for dataset in summary_datasets.values():
         intersection_idx = intersection_idx.intersection(dataset.index.get_level_values("snp_index"))
 
     # subset LD matrix according to intersection_idx
@@ -2089,8 +2101,8 @@ def setbasedtest():
 
     ld_mat = ld_mat[indices_kept][:, indices_kept]
 
-    for key, dataset in secondary_datasets.items():
-        secondary_datasets[key] = dataset.loc[dataset.index.get_level_values("snp_index").isin(intersection_idx.values)]
+    for key, dataset in summary_datasets.items():
+        summary_datasets[key] = dataset.loc[dataset.index.get_level_values("snp_index").isin(intersection_idx.values)]
 
     # determine region based on chrom and min/max BPs within first dataset
     chroms = first_dataset[CHROM].unique()
@@ -2103,7 +2115,7 @@ def setbasedtest():
     start, end = first_dataset[BP].min(), first_dataset[BP].max()
     regionstr = f"{chrom}:{start}-{end}"
 
-    PvaluesMat = [dataset[P] for dataset in secondary_datasets.values()]
+    PvaluesMat = [dataset[P] for dataset in summary_datasets.values()]
 
     np.fill_diagonal(ld_mat, np.diag(ld_mat) + ld_mat_diag_constant)
 
