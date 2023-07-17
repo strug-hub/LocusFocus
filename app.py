@@ -1003,19 +1003,22 @@ def get_gtex_data_pvalues(eqtl_data, snp_list):
     return list(gtex_data['pval'])
 
 
-def fix_gwasfile(infile, sep="\t"):
-    outfile = infile.replace('.txt','_mod.txt')
-    with open(infile) as f:
-        with open(outfile, 'w') as fout:
-            filestr = f.readlines()
-            for line in filestr:
-                if line[0:2] != "##":
-                    fout.write(line.replace('\t\t\n','\t\n'))
+def read_gwasfile(infile, sep="\t"):
     try:
-        gwas_data = pd.read_csv(outfile, sep=sep, encoding='utf-8')
-        return gwas_data
+        gwas_data = pd.read_csv(infile, sep=sep, encoding='utf-8')
     except:
-        raise InvalidUsage('Failed to load primary dataset. Please check formatting is adequate.', status_code=410)
+        outfile = infile.replace('.txt','_mod.txt')
+        with open(infile) as f:
+            with open(outfile, 'w') as fout:
+                filestr = f.readlines()
+                for line in filestr:
+                    if line[0:2] != "##":
+                        fout.write(line.replace('\t\t\n','\t\n'))
+        try:
+            gwas_data = pd.read_csv(outfile, sep=sep, encoding='utf-8')
+            return gwas_data
+        except:
+            raise InvalidUsage('Failed to load primary dataset. Please check formatting is adequate.', status_code=410)
 
 #####################################
 # API Routes
@@ -1288,11 +1291,7 @@ def index():
             collapsed_genes_df = collapsed_genes_df_hg38
 
         t1 = datetime.now() # timing started for GWAS loading/subsetting/cleaning
-        try:
-            gwas_data = pd.read_csv(gwas_filepath, sep="\t", encoding='utf-8')
-        except:
-            #print('File not proper. Attempt fixing')
-            gwas_data = fix_gwasfile(gwas_filepath)
+        gwas_data = read_gwasfile(gwas_filepath)
 
         inferVariant = request.form.get('markerCheckbox')
         chromcol, poscol, refcol, altcol = ('','','','')
@@ -1995,7 +1994,7 @@ def setbasedtest():
         if len(uploaded_extensions) >= 2:
             raise InvalidUsage(f"Too many files uploaded. Expecting maximum of 2 files", status_code=410)
         if extension not in uploaded_extensions:
-            if (extension == 'ld') or (extension in ['html', 'tsv', 'csv', 'txt'] and summary_stats_filepath == ''):
+            if (extension == 'ld') or (extension in ['html', 'tsv', 'txt'] and summary_stats_filepath == ''):
                 uploaded_extensions.append(extension)
             else:
                 raise InvalidUsage(f"Unexpected file extension: {filename}", status_code=410)
@@ -2004,14 +2003,14 @@ def setbasedtest():
 
         if extension == 'ld':
             ldmat_filepath = os.path.join(MYDIR, app.config['UPLOAD_FOLDER'], filename)
-        elif extension in ['html', 'tsv', 'csv', 'txt']:
+        elif extension in ['html', 'tsv', 'txt']:
             summary_stats_filepath = os.path.join(MYDIR, app.config['UPLOAD_FOLDER'], filename)
             summary_stats_extension = extension
         # Save after we know it's a file we want
 
         file.save(filepath)
     if summary_stats_filepath == '':
-        raise InvalidUsage(f"Missing summary stats file. Please upload one of (.txt, .tsv, .csv, .html)", status_code=410)
+        raise InvalidUsage(f"Missing summary stats file. Please upload one of (.txt, .tsv, .html)", status_code=410)
 
     my_session_id = uuid.uuid4()
 
@@ -2053,15 +2052,11 @@ def setbasedtest():
                 summary_datasets[table_titles[i]] = table.fillna(-1).to_dict(orient='records')
             except:
                 summary_datasets[table_titles[i]] = []
-        data['secondary_dataset_titles'] = table_titles
-        data['secondary_dataset_colnames'] = [CHROM, BP, SNP, P]
+        data['dataset_titles'] = table_titles
+        data['dataset_colnames'] = [CHROM, BP, SNP, P]
         data.update(summary_datasets)
-    elif summary_stats_extension in ['csv', 'tsv', 'txt']:
-        sep = "\t" if summary_stats_extension != 'csv' else ","
-        try:
-            gwas_data = pd.read_csv(summary_stats_filepath, sep=sep, encoding='utf-8')
-        except:
-            gwas_data = fix_gwasfile(summary_stats_filepath, sep=sep)
+    elif summary_stats_extension in ['tsv', 'txt']:
+        gwas_data = read_gwasfile(summary_stats_filepath, sep='\t')
 
         # TODO: Get relevant columns (CHROM, BP, SNP, P)
     # Get LD:
