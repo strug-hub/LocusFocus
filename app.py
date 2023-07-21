@@ -1410,9 +1410,6 @@ def index():
             elif coordinate == 'hg38':
                 gene = 'ENSG00000174502.18'
 
-
-
-
             # Set-based P override:
             setbasedP = request.form['setbasedP']
             if setbasedP=='':
@@ -1516,7 +1513,7 @@ def index():
             # save metadata immediately, useful for debugging
             metadata = {}
             metadata.update({
-                "datetime": datetime.now(),
+                "datetime": datetime.now().isoformat(),
                 "gwas_filepath": gwas_filepath or "",
                 "ldmat_filepath": ldmat_filepath or "",
                 "html_filepath": html_filepath or "",
