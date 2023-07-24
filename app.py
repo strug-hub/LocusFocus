@@ -1392,11 +1392,6 @@ def index():
             except:
                 raise InvalidUsage('Invalid value provided for the set-based p-value threshold. Value must be numeric between 0 and 1.')
 
-        # Set-based results only checkbox
-        setBasedOnly = False
-        if 'setBasedOnly' in request.form:
-            setBasedOnly = True
-
         # Ensure custom LD matrix and GWAS files are sorted for accurate matching:
         if ldmat_filepath != '' and poscol != '' and not isSorted(list(gwas_data[poscol])):
             raise InvalidUsage('GWAS data input is not sorted and may not match with the LD matrix', status_code=410)
@@ -1833,8 +1828,6 @@ def index():
             '--set_based_p', str(setbasedP),
             '--outfilename', SSresult_path
             ]
-        if (setBasedOnly):
-            Rscript_args.append("--first_stage_only")
 
         RscriptRun = subprocess.run(args=Rscript_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
         if RscriptRun.returncode != 0:
@@ -2037,6 +2030,7 @@ def setbasedtest():
     summary_datasets = {}
     table_titles = []
     if summary_stats_extension == 'html':
+        # One or more datasets, presumably all related or in the same region
         with open(summary_stats_filepath, encoding='utf-8', errors='replace') as f:
             html = f.read()
             if (not html.startswith('<h3>')) and (not html.startswith('<html>')) and (not html.startswith('<table>') and (not html.startswith('<!DOCTYPE html>'))):
@@ -2056,6 +2050,7 @@ def setbasedtest():
         data['dataset_colnames'] = [CHROM, BP, SNP, P]
         data.update(summary_datasets)
     elif summary_stats_extension in ['tsv', 'txt']:
+        # One dataset, easy
         gwas_data = read_gwasfile(summary_stats_filepath, sep='\t')
 
         # TODO: Get relevant columns (CHROM, BP, SNP, P)
