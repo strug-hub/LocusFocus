@@ -1517,7 +1517,7 @@ def index():
                 "gwas_filepath": gwas_filepath or "",
                 "ldmat_filepath": ldmat_filepath or "",
                 "html_filepath": html_filepath or "",
-                "session_id": my_session_id
+                "session_id": str(my_session_id)
             })
 
             metadatafilepath = os.path.join(MYDIR, 'static', f'session_data/metadata-{my_session_id}.json')
