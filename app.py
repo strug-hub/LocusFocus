@@ -1503,11 +1503,12 @@ def index():
                 #print('---------------------------------')
                 t1 = datetime.now() # timer started for loading user-defined LD matrix
                 ld_mat = pd.read_csv(ldmat_filepath, sep="\t", encoding='utf-8', header=None)
+                if not (len(ld_mat.shape) == 2 and ld_mat.shape[0] == ld_mat.shape[1] and ld_mat.shape[0] == gwas_data.shape[0]):
+                    raise InvalidUsage(f"GWAS and LD matrix input have different dimensions:\nGWAS Length: {gwas_data.shape[0]}\nLD matrix shape: {ld_mat.shape}", status_code=410)
+
                 ld_mat = ld_mat.loc[ gwas_indices_kept, gwas_indices_kept ]
                 r2 = list(ld_mat.iloc[:, lead_snp_position_index])
                 ld_mat = np.matrix(ld_mat)
-                if not ((ld_mat.shape[0] == ld_mat.shape[1]) and (ld_mat.shape[0] == gwas_data.shape[0])):
-                    raise InvalidUsage('GWAS and LD matrix input have different dimensions', status_code=410)
                 user_ld_load_time = datetime.now() - t1
 
             # save metadata immediately, useful for debugging
