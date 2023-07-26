@@ -1762,48 +1762,54 @@ def index():
             if len(secondary_datasets)>0:
                 if runcoloc2:
                     #print('Saving uploaded secondary datasets for coloc2 run')
-                    for i in np.arange(len(secondary_datasets)):
-                        secondary_dataset = pd.DataFrame(secondary_datasets[list(secondary_datasets.keys())[i]])
+                    for dataset_title, secondary_dataset in secondary_datasets.items():
                         if secondary_dataset.shape[0] == 0:
                             #print(f'No data for table {table_titles[i]}')
                             pvalues = np.repeat(np.nan, len(SS_snp_list))
                             PvaluesMat.append(pvalues)
                             continue
-                        if not set(coloc2eqtlcolnames).issubset(secondary_dataset):
-                            raise InvalidUsage(f'You have chosen to run COLOC2. COLOC2 assumes eQTL data as secondary dataset, and you must have all of the following column names: {coloc2eqtlcolnames}')
-                        secondary_dataset['SNPID'] = cleanSNPs(secondary_dataset['SNPID'].tolist(),regionstr,coordinate)
-                        #secondary_dataset.set_index('SNPID', inplace=True)
-                        idx = pd.Index(list(secondary_dataset['SNPID']))
-                        secondary_dataset = secondary_dataset.loc[~idx.duplicated()].reset_index().drop(columns=['index'])
-                        # merge to keep only SNPs already present in the GWAS/primary dataset (SS subset):
-                        secondary_data_std_snplist = standardizeSNPs(secondary_dataset['SNPID'].tolist(), regionstr, coordinate)
-                        secondary_dataset = pd.concat([secondary_dataset, pd.DataFrame(secondary_data_std_snplist, columns=['SNPID.tmp'])], axis=1)
-                        snp_df = pd.DataFrame(SS_std_snp_list, columns=['SNPID.tmp'])
-                        secondary_data = snp_df.reset_index().merge(secondary_dataset, on='SNPID.tmp', how='left', sort=False).sort_values('index')
-                        pvalues = list(secondary_data['PVAL'])
-                        PvaluesMat.append(pvalues)
-                        coloc2eqtl_df = pd.concat([coloc2eqtl_df, secondary_data.reindex(columns = coloc2eqtlcolnames)], axis=0)
+                        try:
+                            if not set(coloc2eqtlcolnames).issubset(secondary_dataset):
+                                raise InvalidUsage(f'You have chosen to run COLOC2. COLOC2 assumes eQTL data as secondary dataset, and you must have all of the following column names: {coloc2eqtlcolnames}')
+                            secondary_dataset['SNPID'] = cleanSNPs(secondary_dataset['SNPID'].tolist(),regionstr,coordinate)
+                            #secondary_dataset.set_index('SNPID', inplace=True)
+                            idx = pd.Index(list(secondary_dataset['SNPID']))
+                            secondary_dataset = secondary_dataset.loc[~idx.duplicated()].reset_index().drop(columns=['index'])
+                            # merge to keep only SNPs already present in the GWAS/primary dataset (SS subset):
+                            secondary_data_std_snplist = standardizeSNPs(secondary_dataset['SNPID'].tolist(), regionstr, coordinate)
+                            secondary_dataset = pd.concat([secondary_dataset, pd.DataFrame(secondary_data_std_snplist, columns=['SNPID.tmp'])], axis=1)
+                            snp_df = pd.DataFrame(SS_std_snp_list, columns=['SNPID.tmp'])
+                            secondary_data = snp_df.reset_index().merge(secondary_dataset, on='SNPID.tmp', how='left', sort=False).sort_values('index')
+                            pvalues = list(secondary_data['PVAL'])
+                            PvaluesMat.append(pvalues)
+                            coloc2eqtl_df = pd.concat([coloc2eqtl_df, secondary_data.reindex(columns = coloc2eqtlcolnames)], axis=0)
+                        except InvalidUsage as e:
+                            e.message = f"[secondary dataset '{dataset_title}'] {e.message}"
+                            raise e
                 else:
 #                    print('Obtaining p-values for uploaded secondary dataset(s)')
-                    for i in np.arange(len(secondary_datasets)):
-                        secondary_dataset = pd.DataFrame(secondary_datasets[list(secondary_datasets.keys())[i]])
+                    for dataset_title, secondary_dataset in secondary_datasets.items():
                         if secondary_dataset.shape[0] == 0:
                             #print(f'No data for table {table_titles[i]}')
                             pvalues = np.repeat(np.nan, len(SS_snp_list))
                             PvaluesMat.append(pvalues)
                             continue
                         # remove duplicate SNPs
-                        secondary_dataset[SNP] = cleanSNPs(secondary_dataset[SNP].tolist(),regionstr,coordinate)
-                        idx = pd.Index(list(secondary_dataset[SNP]))
-                        secondary_dataset = secondary_dataset.loc[~idx.duplicated()].reset_index().drop(columns=['index'])
-                        # merge to keep only SNPs already present in the GWAS/primary dataset (SS subset):
-                        secondary_data_std_snplist = standardizeSNPs(secondary_dataset[SNP].tolist(), regionstr, coordinate)
-                        std_snplist_df =  pd.DataFrame(secondary_data_std_snplist, columns=[SNP+'.tmp'])
-                        secondary_dataset = pd.concat([secondary_dataset,std_snplist_df], axis=1)
-                        snp_df = pd.DataFrame(SS_std_snp_list, columns=[SNP+'.tmp'])
-                        secondary_data = snp_df.reset_index().merge(secondary_dataset, on=SNP+'.tmp', how='left', sort=False).sort_values('index')
-                        pvalues = list(secondary_data[P])
-                        PvaluesMat.append(pvalues)
+                        try:
+                            secondary_dataset[SNP] = cleanSNPs(secondary_dataset[SNP].tolist(),regionstr,coordinate)
+                            idx = pd.Index(list(secondary_dataset[SNP]))
+                            secondary_dataset = secondary_dataset.loc[~idx.duplicated()].reset_index().drop(columns=['index'])
+                            # merge to keep only SNPs already present in the GWAS/primary dataset (SS subset):
+                            secondary_data_std_snplist = standardizeSNPs(secondary_dataset[SNP].tolist(), regionstr, coordinate)
+                            std_snplist_df =  pd.DataFrame(secondary_data_std_snplist, columns=[SNP+'.tmp'])
+                            secondary_dataset = pd.concat([secondary_dataset,std_snplist_df], axis=1)
+                            snp_df = pd.DataFrame(SS_std_snp_list, columns=[SNP+'.tmp'])
+                            secondary_data = snp_df.reset_index().merge(secondary_dataset, on=SNP+'.tmp', how='left', sort=False).sort_values('index')
+                            pvalues = list(secondary_data[P])
+                            PvaluesMat.append(pvalues)
+                        except InvalidUsage as e:
+                            e.message = f"[secondary dataset '{dataset_title}'] {e.message}"
+                            raise e
 
             ####################################################################################################
             # 5. Get the LD matrix via PLINK subprocess call or use user-provided LD matrix:
