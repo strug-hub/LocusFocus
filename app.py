@@ -1006,6 +1006,7 @@ def get_gtex_data_pvalues(eqtl_data, snp_list):
 def read_gwasfile(infile, sep="\t"):
     try:
         gwas_data = pd.read_csv(infile, sep=sep, encoding='utf-8')
+        return gwas_data
     except:
         outfile = infile.replace('.txt','_mod.txt')
         with open(infile) as f:
