@@ -1763,6 +1763,7 @@ def index():
                 if runcoloc2:
                     #print('Saving uploaded secondary datasets for coloc2 run')
                     for dataset_title, secondary_dataset in secondary_datasets.items():
+                        secondary_dataset = pd.DataFrame(secondary_dataset)
                         if secondary_dataset.shape[0] == 0:
                             #print(f'No data for table {table_titles[i]}')
                             pvalues = np.repeat(np.nan, len(SS_snp_list))
@@ -1789,6 +1790,7 @@ def index():
                 else:
 #                    print('Obtaining p-values for uploaded secondary dataset(s)')
                     for dataset_title, secondary_dataset in secondary_datasets.items():
+                        secondary_dataset = pd.DataFrame(secondary_dataset)
                         if secondary_dataset.shape[0] == 0:
                             #print(f'No data for table {table_titles[i]}')
                             pvalues = np.repeat(np.nan, len(SS_snp_list))
