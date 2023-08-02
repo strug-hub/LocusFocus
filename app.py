@@ -13,6 +13,8 @@ import pysam
 import mysecrets
 import glob
 import tarfile
+from typing import Dict
+from enum import Enum
 
 from flask import Flask, request, redirect, url_for, jsonify, render_template, flash, send_file, Markup
 from werkzeug.utils import secure_filename
@@ -38,17 +40,38 @@ APP_STATIC = os.path.join(MYDIR, 'static')
 # Default settings
 ##################
 
-default_region = "1:205500000-206000000"
-default_chromname = "#CHROM"
-default_posname = "POS"
-default_snpname = "ID"
-default_refname = "REF"
-default_altname = "ALT"
-default_pname = "P"
-default_betaname = "BETA"
-default_stderrname = "SE"
-default_nname = "N"
-default_mafname = "MAF"
+class FormID(Enum):
+    """
+    Constants for referencing the HTML "id" values of various form elements in LocusFocus
+    (region of interest, GWAS columns, etc.)
+    """
+
+    LOCUS = "locus"
+    CHROM_COL = "chrom-col"
+    POS_COL = "pos-col"
+    SNP_COL = "snp-col"
+    REF_COL = "ref-col"
+    ALT_COL = "alt-col"
+    P_COL = "pval-col"
+    BETA_COL = "beta-col"
+    STDERR_COL = "stderr-col"
+    NUMSAMPLES_COL = "numsamples-col"
+    MAF_COL = "maf-col"
+
+# Maps form input ID -> expected default value
+DEFAULT_FORM_VALUE_DICT: Dict[FormID, str] = {
+    FormID.LOCUS: "1:205500000-206000000",
+    FormID.CHROM_COL: "#CHROM",
+    FormID.POS_COL: "POS",
+    FormID.SNP_COL: "ID",
+    FormID.REF_COL: "REF",
+    FormID.ALT_COL: "ALT",
+    FormID.P_COL: "P",
+    FormID.BETA_COL: "BETA",
+    FormID.STDERR_COL: "SE",
+    FormID.NUMSAMPLES_COL: "N",
+    FormID.MAF_COL: "MAF"
+}
 
 # Default column names for secondary datasets:
 CHROM = 'CHROM'
@@ -59,6 +82,20 @@ P = 'P'
 coloc2colnames = ['CHR','POS','SNPID','A2','A1','BETA','SE','PVAL','MAF', 'N']
 coloc2eqtlcolnames = coloc2colnames + ['ProbeID']
 coloc2gwascolnames = coloc2colnames + ['type']
+
+# Maps form input ID -> human-readable name
+COLUMN_NAMES: Dict[FormID, str] = {
+    FormID.CHROM_COL: "Chromosome",
+    FormID.POS_COL: "Basepair position",
+    FormID.REF_COL: "Reference allele",
+    FormID.ALT_COL: "Alternate allele",
+    FormID.SNP_COL: "Variant ID",
+    FormID.P_COL: "P-value",
+    FormID.BETA_COL: "Beta",
+    FormID.STDERR_COL: "Stderr",
+    FormID.NUMSAMPLES_COL: "Number of samples",
+    FormID.MAF_COL: "MAF"
+}
 
 ################
 ################
@@ -85,7 +122,7 @@ client = MongoClient(conn)
 db = client.GTEx_V7 # For now
 
 available_gtex_versions = ["V7", "V8"]
-valid_populations = ["EUR", "AFR","EAS", "SAS", "AMR", "ASN", "NFE"]
+valid_populations = ["EUR", "AFR", "EAS", "SAS", "AMR", "ASN", "NFE"]
 
 ####################################
 # Helper functions
@@ -227,6 +264,16 @@ def verifycol(formname, defaultname, filecolnames, error_message_):
     if theformname not in filecolnames:
         raise InvalidUsage(error_message_, status_code=410)
     return theformname
+
+def verify_gwas_col(form_col_id: FormID, request, gwas_data_columns):
+    """
+    Wrapper for common column validation for GWAS/COLOC2 form inputs.
+    """
+    return verifycol(
+        formname=request.form[form_col_id],
+        defaultname=DEFAULT_FORM_VALUE_DICT[form_col_id],
+        filecolnames=gwas_data_columns,
+        error_message_=f"{COLUMN_NAMES[form_col_id]} column ({request.form[form_col_id]}) not found in GWAS file")
 
 
 def buildSNPlist(df, chromcol, poscol, refcol, altcol, build):
@@ -552,10 +599,10 @@ def decomposeVariant(variant_list):
     reflist = [x.split('_')[2] if len(x.split('_'))==5 else x for x in variant_list]
     altlist = [x.split('_')[3] if len(x.split('_'))==5 else x for x in variant_list]
     df = pd.DataFrame({
-        default_chromname: chromlist
-        ,default_posname: poslist
-        ,default_refname: reflist
-        ,default_altname: altlist
+        DEFAULT_FORM_VALUE_DICT[FormID.CHROM_COL]: chromlist
+        ,DEFAULT_FORM_VALUE_DICT[FormID.POS_COL]: poslist
+        ,DEFAULT_FORM_VALUE_DICT[FormID.REF_COL]: reflist
+        ,DEFAULT_FORM_VALUE_DICT[FormID.ALT_COL]: altlist
         })
     return df
 
@@ -595,7 +642,7 @@ def addVariantID(gwas_data, chromcol, poscol, refcol, altcol, build = "hg19"):
         ref = reflist[i]
         alt = altlist[i]
         varlist.append('_'.join([str(chrom),str(pos),ref,alt,buildstr]))
-    gwas_data[default_snpname] = varlist
+    gwas_data[DEFAULT_FORM_VALUE_DICT[FormID.SNP_COL]] = varlist
     return gwas_data
 
 
@@ -625,7 +672,7 @@ def verifyStdSNPs(stdsnplist, regiontxt, build):
 
 def subsetLocus(build, summaryStats, regiontext, chromcol, poscol, pcol):
     # regiontext format example: "1:205500000-206000000"
-    if regiontext == "": regiontext = default_region
+    if regiontext == "": regiontext = DEFAULT_FORM_VALUE_DICT[FormID.LOCUS]
 #    print('Parsing region text')
     chrom, startbp, endbp = parseRegionText(regiontext, build)
     summaryStats = summaryStats.loc[ [str(x) != '.' for x in list(summaryStats[chromcol])] ].copy()
@@ -674,6 +721,140 @@ def handle_file_upload(request):
                 request_entity_too_large(413)
         return classify_files(filenames)
     return None
+
+
+def get_gwas_column_names(request, gwas_data, runcoloc2=False):
+    """
+    Read and verify the GWAS column name fields; return list of column names.
+    Also validate the data types in each column, raising InvalidUsage if something is amiss.
+
+    Return ordered list of column names for subsetting GWAS data, as well as
+    a dict mapping FormIDs to the entered value in the form.
+    """
+    infer_variant = request.form.get('markerCheckbox')
+    chromcol, poscol, refcol, altcol = ('','','','')
+    snpcol = ''
+    column_names = []
+    column_dict: Dict[FormID, str] = {}
+    if infer_variant:
+        #print('User would like variant locations inferred')
+        snpcol = verify_gwas_col(FormID.SNP_COL, request, gwas_data.columns)
+        column_names = [ snpcol ]
+    else:
+        chromcol = verify_gwas_col(FormID.CHROM_COL, request, gwas_data.columns)
+        poscol = verify_gwas_col(FormID.POS_COL, request, gwas_data.columns)
+        refcol = verify_gwas_col(FormID.REF_COL, request, gwas_data.columns)
+        altcol = verify_gwas_col(FormID.ALT_COL, request, gwas_data.columns)
+        snpcol = request.form[FormID.SNP_COL] # optional input in this case
+        if snpcol != '':
+            snpcol = verify_gwas_col(FormID.SNP_COL, request, gwas_data.columns)
+            column_names = [ chromcol, poscol, snpcol, refcol, altcol ]
+        else:
+            column_names = [ chromcol, poscol, refcol, altcol ]
+            #print('No SNP ID column provided')
+        # Check whether data types are ok:
+        if not all(isinstance(x, int) for x in Xto23(list(gwas_data[chromcol]))):
+            raise InvalidUsage(f'Chromosome column ({chromcol}) contains unrecognizable values', status_code=410)
+        if not all(isinstance(x, int) for x in list(gwas_data[poscol])):
+            raise InvalidUsage(f'Position column ({poscol}) has non-integer entries', status_code=410)
+    pcol = verify_gwas_col(FormID.P_COL, request, gwas_data.columns)
+    column_names.append(pcol)
+    if not all(isinstance(x, float) for x in list(gwas_data[pcol])):
+        raise InvalidUsage(f'P-value column ({pcol}) has non-numeric entries', status_code=410)
+    if len(set(column_names)) != len(column_names):
+        raise InvalidUsage(f'Duplicate column names provided: {column_names}')
+
+    column_dict.update({
+        FormID.CHROM_COL: chromcol,
+        FormID.POS_COL: poscol,
+        FormID.REF_COL: refcol,
+        FormID.ALT_COL: altcol,
+        FormID.SNP_COL: snpcol,
+        FormID.P_COL: pcol
+    })
+
+    if runcoloc2:
+        #print('User would like COLOC2 results')
+        betacol = verify_gwas_col(FormID.BETA_COL, request, gwas_data.columns)
+        stderrcol = verify_gwas_col(FormID.STDERR_COL, request, gwas_data.columns)
+        numsamplescol = verify_gwas_col(FormID.NUMSAMPLES_COL, request, gwas_data.columns)
+        mafcol = verify_gwas_col(FormID.MAF_COL, request, gwas_data.columns)
+        column_names.extend([ betacol, stderrcol, numsamplescol, mafcol ])
+        studytype = request.form['studytype']
+        if 'type' not in gwas_data.columns:
+            studytypedf = pd.DataFrame({'type': np.repeat(studytype,gwas_data.shape[0]).tolist()})
+            gwas_data = pd.concat([gwas_data, studytypedf], axis=1)
+        column_names.append('type')
+        if studytype == 'cc':
+            coloc2gwascolnames.append('Ncases')
+            numcases = request.form['numcases']
+            if not str(numcases).isdigit(): raise InvalidUsage('Number of cases entered must be an integer', status_code=410)
+            numcasesdf = pd.DataFrame({'Ncases': np.repeat(int(numcases), gwas_data.shape[0]).tolist()})
+            if 'Ncases' not in gwas_data.columns:
+                gwas_data = pd.concat([gwas_data, numcasesdf], axis=1)
+            column_names.append('Ncases')
+        if not all(isinstance(x, float) for x in list(gwas_data[betacol])):
+            raise InvalidUsage(f'Beta column ({betacol}) has non-numeric entries')
+        if not all(isinstance(x, float) for x in list(gwas_data[stderrcol])):
+            raise InvalidUsage(f'Standard error column ({stderrcol}) has non-numeric entries')
+        if not all(isinstance(x, int) for x in list(gwas_data[numsamplescol])):
+            raise InvalidUsage(f'Number of samples column ({numsamplescol}) has non-integer entries')
+        if not all(isinstance(x, float) for x in list(gwas_data[mafcol])):
+            raise InvalidUsage(f'MAF column ({mafcol}) has non-numeric entries')
+        column_dict.update({
+            FormID.BETA_COL: betacol,
+            FormID.STDERR_COL: stderrcol,
+            FormID.NUMSAMPLES_COL: numsamplescol,
+            FormID.MAF_COL: mafcol
+        })
+
+    # Further check column names provided:
+    if len(set(column_names)) != len(column_names):
+        raise InvalidUsage(f'Duplicate column names provided: {column_names}')
+
+    return gwas_data, column_names, column_dict, infer_variant
+
+
+def subset_gwas_data_to_entered_columns(request, gwas_data, column_names, column_dict, infer_variant):
+    """
+    Selects only the column names from the form in the GWAS file.
+    Also, handles chrom_pos_ref_alt_build SNP format in gwas data.
+
+    Returns column_dict mapping form field names to entered values for columns, and
+    whether variant ID is to be inferred.
+    """
+    gwas_data = gwas_data[ column_names ]
+
+    if column_dict[FormID.SNP_COL] == '':
+        gwas_data = addVariantID(
+            gwas_data,
+            column_dict[FormID.CHROM_COL],
+            column_dict[FormID.POS_COL],
+            column_dict[FormID.REF_COL],
+            column_dict[FormID.ALT_COL],
+            request.form["coordinate"]
+        )
+        column_dict[FormID.SNP_COL] = DEFAULT_FORM_VALUE_DICT[FormID.SNP_COL]
+
+    return gwas_data, column_dict, infer_variant
+
+
+def standardize_gwas_variant_ids(column_dict, gwas_data, regionstr: str, coordinate: str):
+    # standardize variant id's:
+    variant_list = standardizeSNPs(list(gwas_data[column_dict[FormID.SNP_COL]]), regionstr, coordinate)
+    if all(x=='.' for x in variant_list):
+        raise InvalidUsage(f'None of the variants provided could be mapped to {regionstr}!', status_code=410)
+    # get the chrom, pos, ref, alt info from the standardized variant_list
+    vardf = decomposeVariant(variant_list)
+    gwas_data = pd.concat([vardf, gwas_data], axis=1)
+    column_dict[FormID.CHROM_COL] = DEFAULT_FORM_VALUE_DICT[FormID.CHROM_COL]
+    column_dict[FormID.POS_COL] = DEFAULT_FORM_VALUE_DICT[FormID.POS_COL]
+    column_dict[FormID.REF_COL] = DEFAULT_FORM_VALUE_DICT[FormID.REF_COL]
+    column_dict[FormID.ALT_COL] = DEFAULT_FORM_VALUE_DICT[FormID.ALT_COL]
+    gwas_data = gwas_data.loc[ [str(x) != '.' for x in list(gwas_data[column_dict[FormID.CHROM_COL]])] ].copy()
+    gwas_data.reset_index(drop=True, inplace=True)
+    return gwas_data, column_dict
+
 
 ####################################
 # LD Calculation from 1KG using PLINK (on-the-fly)
@@ -1294,72 +1475,21 @@ def index():
         t1 = datetime.now() # timing started for GWAS loading/subsetting/cleaning
         gwas_data = read_gwasfile(gwas_filepath)
 
-        inferVariant = request.form.get('markerCheckbox')
-        chromcol, poscol, refcol, altcol = ('','','','')
-        snpcol = ''
-        columnnames = []
-        if inferVariant:
-            #print('User would like variant locations inferred')
-            snpcol = verifycol(formname = request.form['snp-col'], defaultname = default_snpname, filecolnames = gwas_data.columns, error_message_='Variant ID column not found')
-            columnnames = [ snpcol ]
-        else:
-            chromcol = verifycol(formname = request.form['chrom-col'], defaultname = default_chromname, filecolnames = gwas_data.columns, error_message_=f"Chromosome column ({request.form['chrom-col']}) not found")
-            poscol = verifycol(formname = request.form['pos-col'], defaultname = default_posname, filecolnames = gwas_data.columns, error_message_=f"Basepair position column ({request.form['pos-col']}) not found")
-            refcol = verifycol(formname = request.form['ref-col'], defaultname = default_refname, filecolnames = gwas_data.columns, error_message_=f"Reference allele column ({request.form['ref-col']}) not found")
-            altcol = verifycol(formname = request.form['alt-col'], defaultname = default_altname, filecolnames = gwas_data.columns, error_message_=f"Alternate allele column ({request.form['alt-col']}) not found")
-            snpcol = request.form['snp-col'] # optional input in this case
-            if snpcol != '':
-                snpcol = verifycol(formname = snpcol, defaultname = default_snpname, filecolnames = gwas_data.columns, error_message_='Variant ID column not found')
-                columnnames = [ chromcol, poscol, snpcol, refcol, altcol ]
-            else:
-                columnnames = [ chromcol, poscol, refcol, altcol ]
-                #print('No SNP ID column provided')
-            # Check whether data types are ok:
-            if not all(isinstance(x, int) for x in Xto23(list(gwas_data[chromcol]))):
-                raise InvalidUsage(f'Chromosome column ({chromcol}) contains unrecognizable values', status_code=410)
-            if not all(isinstance(x, int) for x in list(gwas_data[poscol])):
-                raise InvalidUsage(f'Position column ({poscol}) has non-integer entries', status_code=410)
-        pcol = verifycol(formname = request.form['pval-col'], defaultname = default_pname, filecolnames = gwas_data.columns, error_message_='P-value column not found')
-        columnnames.append(pcol)
-        if not all(isinstance(x, float) for x in list(gwas_data[pcol])):
-            raise InvalidUsage(f'P-value column ({pcol}) has non-numeric entries', status_code=410)
         runcoloc2 = request.form.get('coloc2check')
-        if runcoloc2:
-            #print('User would like COLOC2 results')
-            betacol = verifycol(formname = request.form['beta-col'], defaultname = default_betaname, filecolnames = gwas_data.columns, error_message_='Beta column not found')
-            stderrcol = verifycol(formname = request.form['stderr-col'], defaultname = default_betaname, filecolnames = gwas_data.columns, error_message_='Stderr column not found')
-            numsamplescol = verifycol(formname = request.form['numsamples-col'], defaultname = default_nname, filecolnames = gwas_data.columns, error_message_='Number of samples column not found')
-            mafcol = verifycol(formname = request.form['maf-col'], defaultname = default_mafname, filecolnames = gwas_data.columns, error_message_='MAF column not found')
-            columnnames.extend([ betacol, stderrcol, numsamplescol, mafcol ])
-            studytype = request.form['studytype']
-            studytypedf = pd.DataFrame({'type': np.repeat(studytype,gwas_data.shape[0]).tolist()})
-            if 'type' not in gwas_data.columns:
-                gwas_data = pd.concat([gwas_data, studytypedf], axis=1)
-            columnnames.append('type')
-            if studytype == 'cc':
-                coloc2gwascolnames.append('Ncases')
-                numcases = request.form['numcases']
-                if not str(numcases).isdigit(): raise InvalidUsage('Number of cases entered must be an integer', status_code=410)
-                numcasesdf = pd.DataFrame({'Ncases': np.repeat(int(numcases), gwas_data.shape[0]).tolist()})
-                if 'Ncases' not in gwas_data.columns:
-                    gwas_data = pd.concat([gwas_data, numcasesdf], axis=1)
-                columnnames.append('Ncases')
-            if not all(isinstance(x, float) for x in list(gwas_data[betacol])):
-                raise InvalidUsage(f'Beta column ({betacol}) has non-numeric entries')
-            if not all(isinstance(x, float) for x in list(gwas_data[stderrcol])):
-                raise InvalidUsage(f'Standard error column ({stderrcol}) has non-numeric entries')
-            if not all(isinstance(x, int) for x in list(gwas_data[numsamplescol])):
-                raise InvalidUsage(f'Number of samples column ({numsamplescol}) has non-integer entries')
-            if not all(isinstance(x, float) for x in list(gwas_data[mafcol])):
-                raise InvalidUsage(f'MAF column ({mafcol}) has non-numeric entries')
+        gwas_data, column_names, column_dict, infer_variant = get_gwas_column_names(request, gwas_data, runcoloc2)
+        gwas_data, column_dict, infer_variant = subset_gwas_data_to_entered_columns(request, gwas_data, column_names, column_dict, infer_variant)
 
-        # Further check column names provided:
-        if len(set(columnnames)) != len(columnnames):
-            raise InvalidUsage(f'Duplicate column names provided: {columnnames}')
-        gwas_data = gwas_data[ columnnames ]
-        if snpcol == '':
-            gwas_data = addVariantID(gwas_data, chromcol, poscol, refcol, altcol, coordinate)
-            snpcol = default_snpname
+        # TODO: Replace these everywhere, or use something other than a dictionary?
+        chromcol = column_dict[FormID.CHROM_COL]
+        poscol = column_dict[FormID.POS_COL]
+        refcol = column_dict[FormID.REF_COL]
+        altcol = column_dict[FormID.ALT_COL]
+        snpcol = column_dict[FormID.SNP_COL]
+        pcol = column_dict[FormID.P_COL]
+        betacol = column_dict[FormID.BETA_COL]
+        stderrcol = column_dict[FormID.STDERR_COL]
+        numsamplescol = column_dict[FormID.NUMSAMPLES_COL]
+        mafcol = column_dict[FormID.MAF_COL]
 
         # LD:
         pops = request.form['LD-populations']
@@ -1397,32 +1527,22 @@ def index():
         if ldmat_filepath != '' and poscol != '' and not isSorted(list(gwas_data[poscol])):
             raise InvalidUsage('GWAS data input is not sorted and may not match with the LD matrix', status_code=410)
 
-        regionstr = request.form['locus']
-        if regionstr == "": regionstr = default_region
+        regionstr = request.form[FormID.LOCUS]
+        if regionstr == "": regionstr = DEFAULT_FORM_VALUE_DICT[FormID.LOCUS]
         leadsnpname = request.form['leadsnp']
 
         #######################################################
         # Standardizing variant ID's to chrom_pos_ref_alt_build format
         #######################################################
-        if inferVariant:
-            # standardize variant id's:
-            variant_list = standardizeSNPs(list(gwas_data[snpcol]), regionstr, coordinate)
-            if all(x=='.' for x in variant_list):
-                raise InvalidUsage(f'None of the variants provided could be mapped to {regionstr}!', status_code=410)
-            # get the chrom, pos, ref, alt info from the standardized variant_list
-            vardf = decomposeVariant(variant_list)
-            gwas_data = pd.concat([vardf, gwas_data], axis=1)
-            chromcol = default_chromname
-            poscol = default_posname
-            refcol = default_refname
-            altcol = default_altname
-            gwas_data = gwas_data.loc[ [str(x) != '.' for x in list(gwas_data[chromcol])] ].copy()
-            gwas_data.reset_index(drop=True, inplace=True)
+        if infer_variant:
+            gwas_data, column_dict = standardize_gwas_variant_ids(column_dict, gwas_data, regionstr, coordinate)
 
         #######################################################
         # Subsetting GWAS file
         #######################################################
-        gwas_data, gwas_indices_kept = subsetLocus(coordinate, gwas_data, regionstr, chromcol, poscol, pcol)
+        gwas_data, gwas_indices_kept = subsetLocus(
+            coordinate, gwas_data, regionstr,
+            chromcol, poscol, pcol)
         lead_snp_position_index = getLeadSNPindex(leadsnpname, gwas_data, snpcol, pcol)
         lead_snp_position = gwas_data.iloc[lead_snp_position_index,:][poscol]
         positions = list(gwas_data[poscol])
@@ -1442,8 +1562,8 @@ def index():
         buildstr = 'b37'
         if coordinate == 'hg38':
             buildstr = 'b38'
-        for i in np.arange(gwas_data.shape[0]):
-            std_snp = str(thechr[i]).replace('23','X') + "_" + str(thepos[i]) + "_" + str(theref[i]) + "_" + str(thealt[i]) + "_" + buildstr
+        for _, row in gwas_data.iterrows():
+            std_snp = str(row[chromcol]).replace('23','X') + "_" + str(row[poscol]) + "_" + str(row[refcol]) + "_" + str(row[altcol]) + "_" + buildstr
             std_snp_list.append(std_snp)
 
         # Check that a good portion of these SNPs can be found
@@ -1496,7 +1616,7 @@ def index():
 
         data = {}
         data['snps'] = snp_list
-        data['inferVariant'] = inferVariant
+        data['inferVariant'] = infer_variant
         data['pvalues'] = list(gwas_data[pcol])
         data['lead_snp'] = lead_snp
         data['ld_values'] = r2
@@ -1638,7 +1758,7 @@ def index():
 
         # optimizing best match variant if given a mix of rsids and non-rsid variants
         # varids = SS_snp_list
-        # if inferVariant:
+        # if infer_variant:
         #     rsidx = [i for i,e in enumerate(SS_snp_list) if e.startswith('rs')]
         #     varids = standardizeSNPs(SS_snp_list, SSlocustext, coordinate)
         #     SS_rsids = torsid(SS_std_snp_list, SSlocustext, coordinate)
