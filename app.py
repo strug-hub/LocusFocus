@@ -1555,10 +1555,6 @@ def index():
         gwas_load_time = datetime.now() - t1
 
         std_snp_list = []
-        thechr = gwas_data[chromcol].tolist()
-        thepos = gwas_data[poscol].tolist()
-        theref = gwas_data[refcol].tolist()
-        thealt = gwas_data[altcol].tolist()
         buildstr = 'b37'
         if coordinate == 'hg38':
             buildstr = 'b38'
@@ -2171,10 +2167,23 @@ def setbasedtest():
         data['dataset_colnames'] = [CHROM, BP, SNP, P]
         data.update(summary_datasets)
     elif summary_stats_extension in ['tsv', 'txt']:
-        # One dataset, easy
         gwas_data = read_gwasfile(summary_stats_filepath, sep='\t')
+        gwas_data, column_names, column_dict, infer_variant = get_gwas_column_names(request, gwas_data)
+        gwas_data, column_dict, infer_variant = subset_gwas_data_to_entered_columns(request, gwas_data, column_names, column_dict, infer_variant)
 
-        # TODO: Get relevant columns (CHROM, BP, SNP, P)
+        # subset to only relevant columns (CHROM, BP, SNP, P)
+        title = os.path.basename(summary_stats_filepath)
+        data['dataset_titles'] = [title]
+        data['dataset_colnames'] = [column_dict[key] for key in [
+            FormID.CHROM_COL,
+            FormID.POS_COL,
+            FormID.SNP_COL,
+            FormID.P_COL
+        ]]
+        column_names = data['dataset_colnames']
+        gwas_data = gwas_data[ column_names ]
+        summary_datasets[title] = gwas_data.to_dict(orient='records')
+
     # Get LD:
     ld_mat = pd.read_csv(ldmat_filepath, sep="\t", encoding='utf-8', header=None)
     ld_mat = np.matrix(ld_mat)
