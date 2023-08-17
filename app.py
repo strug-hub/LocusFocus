@@ -14,7 +14,6 @@ import mysecrets
 import glob
 import tarfile
 from typing import Dict
-from enum import Enum
 
 from flask import Flask, request, redirect, url_for, jsonify, render_template, flash, send_file, Markup
 from werkzeug.utils import secure_filename
@@ -40,7 +39,7 @@ APP_STATIC = os.path.join(MYDIR, 'static')
 # Default settings
 ##################
 
-class FormID(Enum):
+class FormID():
     """
     Constants for referencing the HTML "id" values of various form elements in LocusFocus
     (region of interest, GWAS columns, etc.)
@@ -61,8 +60,14 @@ class FormID(Enum):
     SET_BASED_P = "setbasedP"
     LD_1000GENOME_POP = "LD-populations"
 
+    def __repr__(self):
+        return self.value
+
+    def __getattribute__(self, name):
+        return self.value
+
 # Maps form input ID -> expected default value
-DEFAULT_FORM_VALUE_DICT: Dict[FormID, str] = {
+DEFAULT_FORM_VALUE_DICT: Dict[str, str] = {
     FormID.LOCUS: "1:205500000-206000000",
     FormID.CHROM_COL: "#CHROM",
     FormID.POS_COL: "POS",
@@ -87,7 +92,7 @@ coloc2eqtlcolnames = coloc2colnames + ['ProbeID']
 coloc2gwascolnames = coloc2colnames + ['type']
 
 # Maps form input ID -> human-readable name
-COLUMN_NAMES: Dict[FormID, str] = {
+COLUMN_NAMES: Dict[str, str] = {
     FormID.CHROM_COL: "Chromosome",
     FormID.POS_COL: "Basepair position",
     FormID.REF_COL: "Reference allele",
@@ -268,7 +273,7 @@ def verifycol(formname, defaultname, filecolnames, error_message_):
         raise InvalidUsage(error_message_, status_code=410)
     return theformname
 
-def verify_gwas_col(form_col_id: FormID, request, gwas_data_columns):
+def verify_gwas_col(form_col_id: str, request, gwas_data_columns):
     """
     Wrapper for common column validation for GWAS/COLOC2 form inputs.
     """
@@ -738,7 +743,7 @@ def get_gwas_column_names(request, gwas_data, runcoloc2=False):
     chromcol, poscol, refcol, altcol = ('','','','')
     snpcol = ''
     column_names = []
-    column_dict: Dict[FormID, str] = {}
+    column_dict: Dict[str, str] = {}
     if infer_variant:
         #print('User would like variant locations inferred')
         snpcol = verify_gwas_col(FormID.SNP_COL, request, gwas_data.columns)
