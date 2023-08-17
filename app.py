@@ -1238,7 +1238,11 @@ def get_region_from_summary_stats(summary_datasets: Dict[str, pd.DataFrame], bpc
     if len(chroms) > 1:
         raise InvalidUsage(f"Datasets have multiple chromosomes: '{chroms}'", status_code=410)
 
-    return chroms.pop(), minbp, maxbp
+    chrom = chroms.pop()
+    if isinstance(chrom, float):
+        chrom = int(chrom)
+
+    return chrom, minbp, maxbp
 
 #####################################
 # API Routes

@@ -117,8 +117,31 @@
               <strong>File size limit is 500 MB total for 2 files</strong>
             </div>
             </p>
+          <div class="row">
+            <div class="col-md-3" id="snp"></div>
           </div>
+          <div class="row">
+            <div class="col-md-6">
+              <input type="checkbox" id="markerCheckbox" name="markerCheckbox" onclick="inferVariant(this)"><label
+                for="markerCheckbox" style="margin: 0px; padding: 10px;  height:42px" data-toggle="tooltip"
+                data-html="true"
+                title="<p>If checked, the variant ID will be used to infer the chromosome, position, reference and alternate alleles using dbSNP151.</p>
+            <p>This option is <em>not</em> recommended due to multi-mapping of some rsid's and ambiguity for multi-allelic rsid variants.</p>""> Use marker ID column to infer variant position and alleles</label>
+          </div>
+          </div>
+          <div class="row" id="variantInputs">
+            <div class="col-md-3" id="chrom"></div>
+            <div class="col-md-3" id="pos"></div>
+            <div class="col-md-3" id="ref"></div>
+            <div class="col-md-3" id="alt"></div>
+        </div>
+
+
+        <div class="row" id="statsDiv"></div>
+
+      </div>
         </div> <!-- row closing div -->
+
 
         <div class="row">
           <div class="col-md-12 borderit">

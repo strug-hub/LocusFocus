@@ -37,7 +37,7 @@ p <- add_argument(p, "--set_based_p", default = NULL, help = paste0(
   "Entering a value will override the default threshold."
 ))
 p <- add_argument(p, "--outfilename", default = "SSPvalues.txt", help = "Output filename")
-p <- add_argument(p, "--first_stage_only", flag = TRUE, help = "Whether to only perform and record first-stage set-based tests on secondary datasets.")
+p <- add_argument(p, "--first_stage_only", flag = TRUE, help = "Whether to only perform and record first-stage set-based tests on both primary and secondary datasets.")
 argv <- parse_args(p)
 P_values_filename <- argv$P_values_filename
 ld_matrix_filename <- argv$ld_matrix_filename
