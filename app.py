@@ -2156,7 +2156,7 @@ def setbasedtest():
     coordinate = request.form[FormID.COORDINATE]
 
     # Set-based P override:
-    setbasedP = request.form['setbasedP']
+    setbasedP = request.form[FormID.SET_BASED_P]
     if setbasedP=='':
         setbasedP = 'default'
     else:
