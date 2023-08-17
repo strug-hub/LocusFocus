@@ -66,6 +66,23 @@
         </div>
         <div class="row">
           <div class="col-md-12 borderit">
+            <div class="col-md-4">
+              <h5 data-toggle="tooltip" data-html="true" title="<p>Select the human coordinate system your files are stored in.</p>
+              <p>
+                <ul>
+                  <li>hg19 is GRCh37</li>
+                  <li>hg38 is GRCh38</li>
+                </ul>
+              </p>">Select coordinate system</h5>
+              <select id="coordinate" name="coordinate" onchange="coordinateChange(this.value)">
+                <option id="hg19" value="hg19" label="hg19" selected="selected"></option>
+                <option id="hg38" value="hg38" label="hg38"></option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-md-12 borderit">
             <h5>Select files to upload</h5>
             <dl>
               <p>
@@ -105,8 +122,30 @@
 
         <div class="row">
           <div class="col-md-12 borderit">
+            <div class="col-md-4">
+              <h5 data-toggle="tooltip" data-html="true" title="<p>For the most accurate results, the LD (r<sup>2</sup>) matrix for your primary (e.g. GWAS) dataset is recommended to be uploaded as a .ld square matrix file.
+            If the .ld file is unavailable, you may choose one of the publicly-available 1000 Genomes population datasets.</p>
+          <p>
+          <ul>
+            <li>EUR: European</li>
+            <li>NFE: Non-Finnish European</li>
+            <li>AFR: African</li>
+            <li>EAS: East Asian</li>
+            <li>SAS: South Asian</li>
+            <li>AMR: Ad Mixed American</li>
+          </ul></p>">Select Populations for LD</h5>
+            </div>
+            <div class="col-md-6">
+              <select id="LD-populations" name="LD-populations">
+              </select>
+            </div>
+          </div>
+        </div> <!-- row closing div -->
+
+        <div class="row">
+          <div class="col-md-12 borderit">
             <div class="col-md-8">
-              <label for="set-based-P" id="set-based-P-label" data-toggle="tooltip" data-html="true" title="<p>For the Simple Sum method, a first-stage set-based Bonferroni p-value threshold is used for the set of secondary datasets with alpha 0.05 (0.05 divided by the number of secondary datasets)</p>
+              <label for="setbasedP" id="set-based-P-label" data-toggle="tooltip" data-html="true" title="<p>For the Simple Sum method, a first-stage set-based Bonferroni p-value threshold is used for the set of secondary datasets with alpha 0.05 (0.05 divided by the number of secondary datasets)</p>
             <p>Enter a value if you would like to override the default threshold.</p>">Stage one set-based p-value
                 threshold</label>
               <input class="form-control" id="setbasedP" name="setbasedP" type="text"
