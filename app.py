@@ -57,6 +57,9 @@ class FormID(Enum):
     STDERR_COL = "stderr-col"
     NUMSAMPLES_COL = "numsamples-col"
     MAF_COL = "maf-col"
+    COORDINATE = "coordinate"
+    SET_BASED_P = "setbasedP"
+    LD_1000GENOME_POP = "LD-populations"
 
 # Maps form input ID -> expected default value
 DEFAULT_FORM_VALUE_DICT: Dict[FormID, str] = {
@@ -115,7 +118,7 @@ collapsed_genes_df_hg19 = pd.read_csv(os.path.join(MYDIR, 'data/collapsed_gencod
 collapsed_genes_df_hg38 = pd.read_csv(os.path.join(MYDIR, 'data/collapsed_gencode_v26_hg38.gz'), compression='gzip', sep='\t', encoding='utf-8')
 
 collapsed_genes_df = collapsed_genes_df_hg19 # For now
-ld_mat_diag_constant = 1e-6
+LD_MAT_DIAG_CONSTANT = 1e-6
 
 conn = "mongodb://localhost:27017"
 client = MongoClient(conn)
@@ -856,6 +859,18 @@ def standardize_gwas_variant_ids(column_dict, gwas_data, regionstr: str, coordin
     return gwas_data, column_dict
 
 
+def clean_summary_datasets(summary_datasets: Dict[str, dict], snp_column: str, chrom_column: str):
+    new_summary_datasets = {}
+    for key, dataset in summary_datasets.items():
+        dataset = pd.DataFrame(dataset)
+        dataset = dataset.dropna()  # remove null rows
+        dataset = dataset[dataset[chrom_column] != "."]
+        dataset = dataset.drop_duplicates(subset=snp_column)  # remove duplicate SNPs
+        dataset = dataset.set_index(pd.MultiIndex.from_arrays([dataset.index, dataset[snp_column]], names=["int_index", "snp_index"]))
+        new_summary_datasets[key] = dataset
+    return new_summary_datasets
+
+
 ####################################
 # LD Calculation from 1KG using PLINK (on-the-fly)
 ####################################
@@ -1202,6 +1217,24 @@ def read_gwasfile(infile, sep="\t"):
         except:
             raise InvalidUsage('Failed to load primary dataset. Please check formatting is adequate.', status_code=410)
 
+
+def get_region_from_summary_stats(summary_datasets: Dict[str, pd.DataFrame], bpcol: str, chromcol: str):
+    """
+    Finds chromosome, min and max positions across all datasets
+    """
+    minbp, maxbp = float("inf"), float("-inf")
+    chroms = set()
+
+    for dataset in summary_datasets.values():
+        minbp = min(minbp, dataset[bpcol].min())
+        maxbp = max(maxbp, dataset[bpcol].max())
+        chroms = chroms.union(set(dataset[chromcol].drop_duplicates()))
+
+    if len(chroms) > 1:
+        raise InvalidUsage(f"Datasets have multiple chromosomes: '{chroms}'", status_code=410)
+
+    return chroms.pop(), minbp, maxbp
+
 #####################################
 # API Routes
 #####################################
@@ -1465,7 +1498,7 @@ def index():
         # Checking form input parameters
         #######################################################
         my_session_id = uuid.uuid4()
-        coordinate = request.form['coordinate']
+        coordinate = request.form[FormID.COORDINATE]
         gtex_version = "V7"
         collapsed_genes_df = collapsed_genes_df_hg19
         if coordinate.lower() == "hg38":
@@ -1492,7 +1525,7 @@ def index():
         mafcol = column_dict[FormID.MAF_COL]
 
         # LD:
-        pops = request.form['LD-populations']
+        pops = request.form[FormID.LD_1000GENOME_POP]
         if len(pops) == 0: pops = 'EUR'
         #print('Populations:', pops)
 
@@ -1910,7 +1943,7 @@ def index():
             #print('Extracting LD matrix')
             ld_mat_snps, ld_mat = plink_ldmat(coordinate, pops, chrom, SS_positions, plink_outfilepath)
             ld_mat_positions = [int(snp.split(":")[1]) for snp in ld_mat_snps]
-        np.fill_diagonal(ld_mat, np.diag(ld_mat) + ld_mat_diag_constant)
+        np.fill_diagonal(ld_mat, np.diag(ld_mat) + LD_MAT_DIAG_CONSTANT)
         ldmat_time = datetime.now() - t1
 
         ####################################################################################################
@@ -1929,10 +1962,7 @@ def index():
         writeList(ld_mat_snps, os.path.join(MYDIR,'static', f'session_data/ldmat_snps-{my_session_id}.txt'))
         writeList(ld_mat_positions, os.path.join(MYDIR,'static', f'session_data/ldmat_positions-{my_session_id}.txt'))
         ldmat_subsetting_time = datetime.now() - t1
-        ####
 
-        ####################################################################################################
-        #print('Calculating Simple Sum stats')
         t1 = datetime.now() # timer for Simple Sum calculation time
         Rscript_code_path = os.path.join(MYDIR, 'getSimpleSumStats.R')
         # Rscript_path = subprocess.run(args=["which","Rscript"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
@@ -2123,6 +2153,7 @@ def setbasedtest():
         raise InvalidUsage(f"Missing summary stats file. Please upload one of (.txt, .tsv, .html)", status_code=410)
 
     my_session_id = uuid.uuid4()
+    coordinate = request.form[FormID.COORDINATE]
 
     # Set-based P override:
     setbasedP = request.form['setbasedP']
@@ -2136,7 +2167,16 @@ def setbasedtest():
         except:
             raise InvalidUsage('Invalid value provided for the set-based p-value threshold. Value must be numeric between 0 and 1.')
 
+    pops = request.form[FormID.LD_1000GENOME_POP]
+    if len(pops) == 0: pops = 'EUR'
+
+
+    # TODO: implement in the future
+    use_dataset_union = False
+
     data = {}
+
+    data['set_based_p'] = setbasedP
 
     #######################################################
     # Loading datasets uploaded
@@ -2184,60 +2224,78 @@ def setbasedtest():
         gwas_data = gwas_data[ column_names ]
         summary_datasets[title] = gwas_data.to_dict(orient='records')
 
+    # keep track of column names
+    chrom, bp, snp, p = data['dataset_colnames']
+
     # Get LD:
-    ld_mat = pd.read_csv(ldmat_filepath, sep="\t", encoding='utf-8', header=None)
-    ld_mat = np.matrix(ld_mat)
-    first_dataset = iter(summary_datasets.values()).__next__()
-    if not ((ld_mat.shape[0] == ld_mat.shape[1]) and (ld_mat.shape[0] == len(first_dataset))):
-        raise InvalidUsage('LD matrix input and first HTML dataset have different dimensions', status_code=410)
+    if ldmat_filepath != "":
+        ld_mat = pd.read_csv(ldmat_filepath, sep="\t", encoding='utf-8', header=None)
+        ld_mat = np.matrix(ld_mat)
+        if not len(ld_mat.shape) == 2:
+            raise InvalidUsage(f"Provided LD matrix is not 2 dimensional. Shape: '{ld_mat.shape}'", status_code=410)
 
-    data['set_based_p'] = setbasedP
+        if not (ld_mat.shape[0] == ld_mat.shape[1]):
+            raise InvalidUsage(f"Provided LD matrix is not square as expected. Shape: '{ld_mat.shape}'", status_code=410)
 
-    # determine intersection of SNPs in "secondary" datasets
-    # first dataset with same length as LD matrix is used as 'model' dataset
-    # de-duplicate, set index to SNP
-    for key, dataset in summary_datasets.items():
-        dataset = pd.DataFrame(dataset)
-        dataset = dataset.dropna()  # remove null rows
-        dataset = dataset[dataset[CHROM] != "."]
-        dataset = dataset.drop_duplicates(subset=SNP)  # remove duplicate SNPs
-        dataset = dataset.set_index(pd.MultiIndex.from_arrays([dataset.index, dataset[SNP]], names=["int_index", "snp_index"]))
-        summary_datasets[key] = dataset
+        # find dataset whose length is same as LD
+        model_dataset_key = None
+        for title, dataset in summary_datasets.items():
+            if len(dataset) == ld_mat.shape[0]:
+                model_dataset_key = title
+                break
+        if model_dataset_key is None:
+            raise InvalidUsage(f"Provided LD matrix length does not match length of any provided datasets. LD length: '{ld_mat.shape[0]}', Dataset lengths: '{[(title, len(dataset)) for title, dataset in summary_datasets.items()]}'", status_code=410)
 
-    # determine intersection of all datasets by SNP index
-    # we assume that the first_dataset is correct corresponding to the LD matrix
-    first_dataset = iter(summary_datasets.values()).__next__()
-    intersection_idx = first_dataset.index.get_level_values("snp_index")  # only contains SNPs
+        summary_datasets = clean_summary_datasets(summary_datasets, snp, chrom)
+        # TODO: Finish handling user-provided LD matrix
+        if len(summary_datasets) > 1:
+            if use_dataset_union:
+                pass
+            else:
+                pass
+        else:
+            pass
 
-    # get intersection of SNP values only, ignore formatting
-    for dataset in summary_datasets.values():
-        intersection_idx = intersection_idx.intersection(dataset.index.get_level_values("snp_index"))
+    else:
+        summary_datasets = clean_summary_datasets(summary_datasets, snp, chrom)
+        if len(summary_datasets) > 1:
+            if use_dataset_union:
+                # TODO: calculate union of dataset SNPs to create ld_mat
+                # for now, this doesn't happen
+                pass
+            else:
+                # use intersection of dataset SNPs to create LD
+                first_dataset = iter(summary_datasets.values()).__next__()
+                intersection_idx = first_dataset.index.get_level_values("snp_index")  # only contains SNPs
 
-    # subset LD matrix according to intersection_idx
-    # use intersection to figure out int index vals that are kept
-    indices_kept = first_dataset.index.get_level_values("int_index")[
-        first_dataset.index.get_level_values("snp_index").isin(intersection_idx.values)
-    ]
+                # get intersection of SNP values only, ignore formatting
+                for dataset in summary_datasets.values():
+                    intersection_idx = intersection_idx.intersection(dataset.index.get_level_values("snp_index"))
 
-    ld_mat = ld_mat[indices_kept][:, indices_kept]
+                for key, dataset in summary_datasets.items():
+                    summary_datasets[key] = dataset.loc[dataset.index.get_level_values("snp_index").isin(intersection_idx.values)]
 
-    for key, dataset in summary_datasets.items():
-        summary_datasets[key] = dataset.loc[dataset.index.get_level_values("snp_index").isin(intersection_idx.values)]
+                chromosome, start, end = get_region_from_summary_stats(summary_datasets, bp, chrom)
+                first_dataset = iter(summary_datasets.values()).__next__()
+                snp_positions = list(first_dataset[bp]) # all datasets are now intersected, so they all have the same SNPs
+                if len(snp_positions) == 0:
+                    raise InvalidUsage("Unable to compute LD matrix using intersection strategy; There are 0 SNPs shared by all provided datasets.", status_code=410)
+                plink_outfilepath = os.path.join(MYDIR, "static", f"session_data/ld-{my_session_id}")
+                ld_mat_snps, ld_mat = plink_ldmat(coordinate, pops, chromosome, snp_positions, plink_outfilepath)
+                # ld_mat_positions = [int(snp.split(":")[1]) for snp in ld_mat_snps]
 
-    # determine region based on chrom and min/max BPs within first dataset
-    chroms = first_dataset[CHROM].unique()
-    if chroms.shape[0] != 1:
-        InvalidUsage(f"More than 1 chromosome specified in first dataset: {chroms}")
-
-    chrom = chroms[0]
-    # infer region from smallest and largest base pairs
-    # TODO: we might not even need these
-    start, end = first_dataset[BP].min(), first_dataset[BP].max()
-    regionstr = f"{chrom}:{start}-{end}"
+        else:
+            # only one dataset
+            chromosome, _, _ = get_region_from_summary_stats(summary_datasets, bp, chrom)
+            dataset = iter(summary_datasets.values()).__next__()
+            snp_positions = list(dataset[bp])
+            plink_outfilepath = os.path.join(MYDIR, "static", f"session_data/ld-{my_session_id}")
+            ld_mat_snps, ld_mat = plink_ldmat(coordinate, pops, chromosome, snp_positions, plink_outfilepath)
+            # ld_mat_positions = [int(snp.split(":")[1]) for snp in ld_mat_snps]
 
     PvaluesMat = [dataset[P] for dataset in summary_datasets.values()]
 
-    np.fill_diagonal(ld_mat, np.diag(ld_mat) + ld_mat_diag_constant)
+    np.fill_diagonal(ld_mat, np.diag(ld_mat) + LD_MAT_DIAG_CONSTANT)
 
     PvaluesMat = np.matrix(PvaluesMat)
     # 7. Write the p-values and LD matrix into session_data
