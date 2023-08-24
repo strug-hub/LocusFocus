@@ -1253,6 +1253,9 @@ def get_region_from_summary_stats(summary_datasets: Dict[str, pd.DataFrame], bpc
     chrom = chroms.pop()
     if isinstance(chrom, float):
         chrom = int(chrom)
+    [chrom] = Xto23([chrom])
+    if chrom == ".":
+        raise InvalidUsage(f"Unrecognized chromosome: '{chrom}'", status_code=410)
 
     return chrom, minbp, maxbp
 
@@ -1818,6 +1821,7 @@ def index():
         #SS_std_snp_list = standardizeSNPs(SS_snp_list, SSlocustext, coordinate)
         #SS_rsids = torsid(SS_std_snp_list, SSlocustext, coordinate)
         SS_positions = list(SS_gwas_data[poscol])
+        # TODO: does it make sense to reject duplicate positions if the alt alleles are different?
         check_pos_duplicates(SS_positions)
 
         SS_std_snp_list = [e for i,e in enumerate(std_snp_list) if SS_indices[i]]
