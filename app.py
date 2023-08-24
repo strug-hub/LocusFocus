@@ -714,6 +714,18 @@ def getLeadSNPindex(leadsnpname, summaryStats, snpcol, pcol):
     return lead_snp_position_index
 
 
+def check_pos_duplicates(positions):
+    """
+    Return if there are no duplicates in the given position column (eg. GWAS data, subsetted for Simple Sum, etc.)
+    """
+    if len(positions) != len(set(positions)):
+        # collect duplicates for error message
+        dups = set([x for x in positions if positions.count(x) > 1])
+        dup_counts = [(x, positions.count(x)) for x in dups]
+        raise InvalidUsage(f'Duplicate chromosome basepair positions detected: {[f"bp: {dup[0]}, num. duplicates: {dup[1]}" for dup in dup_counts]}')
+    return None
+
+
 def handle_file_upload(request):
     """
     Check 'files[]' and download the files if they exist.
@@ -1528,10 +1540,11 @@ def index():
         altcol = column_dict[FormID.ALT_COL]
         snpcol = column_dict[FormID.SNP_COL]
         pcol = column_dict[FormID.P_COL]
-        betacol = column_dict[FormID.BETA_COL]
-        stderrcol = column_dict[FormID.STDERR_COL]
-        numsamplescol = column_dict[FormID.NUMSAMPLES_COL]
-        mafcol = column_dict[FormID.MAF_COL]
+        if runcoloc2:
+            betacol = column_dict[FormID.BETA_COL]
+            stderrcol = column_dict[FormID.STDERR_COL]
+            numsamplescol = column_dict[FormID.NUMSAMPLES_COL]
+            mafcol = column_dict[FormID.MAF_COL]
 
         # LD:
         pops = request.form[FormID.LD_1000GENOME_POP]
@@ -1805,9 +1818,7 @@ def index():
         #SS_std_snp_list = standardizeSNPs(SS_snp_list, SSlocustext, coordinate)
         #SS_rsids = torsid(SS_std_snp_list, SSlocustext, coordinate)
         SS_positions = list(SS_gwas_data[poscol])
-        if len(SS_positions) != len(set(SS_positions)):
-            dups = set([x for x in SS_positions if SS_positions.count(x) > 1])
-            raise InvalidUsage('Duplicate chromosome basepair positions detected at: ' + str(dups))
+        check_pos_duplicates(SS_positions)
 
         SS_std_snp_list = [e for i,e in enumerate(std_snp_list) if SS_indices[i]]
 
