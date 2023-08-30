@@ -50,8 +50,6 @@
   <div class="container">
     <div class="row" id="myjumbotron"></div>
     <div class="row" id="navigation-bar"></div>
-
-
     <div class="inputs-and-upload-form">
       <form method=post enctype=multipart/form-data>
         <div class="row">
@@ -119,10 +117,10 @@
                   for="markerCheckbox" style="margin: 0px; padding: 10px;  height:42px" data-toggle="tooltip"
                   data-html="true"
                   title="<p>If checked, the variant ID will be used to infer the chromosome, position, reference and alternate alleles using dbSNP151.</p>
-              <p>This option is <em>not</em> recommended due to multi-mapping of some rsid's and ambiguity for multi-allelic rsid variants.</p>""> Use marker ID column to infer variant position and alleles
+              <p>This option is <em>not</em> recommended due to multi-mapping of some rsid's and ambiguity for multi-allelic rsid variants.</p>""> Use marker ID column to infer variant position and alleles</label>
             </div>
           </div>
-          <div class=" row" id="variantInputs">
+          <div class="row" id="variantInputs">
                   <div class="col-md-3" id="chrom"></div>
                   <div class="col-md-3" id="pos"></div>
                   <div class="col-md-3" id="ref"></div>
@@ -138,13 +136,12 @@
                     for="coloc2check" style="margin: 0px; padding: 10px;  height:42px" data-toggle="tooltip"
                     title='If you would also like to run and compare colocalization analysis with Coloc2 method, extra input fields are required.'>
                     Add required inputs for COLOC2
+                  </label>
                 </div>
               </div>
 
               <div class="row" id="statsDiv"></div>
               <div class="row" id="statsDiv2"></div>
-
-
               <hr>
 
               <div class="row">
@@ -248,7 +245,7 @@
               <hr>
 
               <div class="col-md-8">
-                <label for="set-based-P" id="set-based-P-label" data-toggle="tooltip" data-html="true" title="<p>For the Simple Sum method, a first-stage set-based Bonferroni p-value threshold is used for the set of secondary datasets with alpha 0.05 (0.05 divided by the number of secondary datasets)</p>
+                <label for="setbasedP" id="set-based-P-label" data-toggle="tooltip" data-html="true" title="<p>For the Simple Sum method, a first-stage set-based Bonferroni p-value threshold is used for the set of secondary datasets with alpha 0.05 (0.05 divided by the number of secondary datasets)</p>
             <p>Enter a value if you would like to override the default threshold.</p>">Stage one set-based p-value
                   threshold</label>
                 <input class="form-control" id="setbasedP" name="setbasedP" type="text"

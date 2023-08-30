@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-LCN3CN42ZL"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+
+    gtag('config', 'G-LCN3CN42ZL');
+  </script>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>LocusFocus: A Colocalization Tool to Prioritize Genes and Tissues from GWAS and eQTL Integration</title>
+  <link rel="shortcut icon" href="#" />
+  <meta property="og:title"
+    content="LocusFocus: A Colocalization Tool to Prioritize Genes and Tissues from GWAS and eQTL Integration">
+  <meta property="og:type" content="website">
+  <meta property="og:image"
+    content="https://locusfocus.research.sickkids.ca/static/images/eqtl_co-localization_heatmap_slc26a9.png">
+  <meta property="og:site_name" content="LocusFocus Web Application">
+  <meta property="og:description"
+    content="LocusFocus is a web-based colocalization tool for the annotation and functional follow-up of GWAS.
+  It applies the Simple Sum frequentist method to formally test colocalization between two SNP-based summary statistic datasets.">
+  <meta property="og:url" content="https://locusfocus.research.sickkids.ca/">
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.0/css/all.css">
+  <!-- JQuery-UI -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/jquery-ui.css') }}" />
+  <!-- JQuery -->
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+  <!-- JQuery-UI -->
+  <script type="text/javascript" src="{{ url_for('static', filename='js/jquery-ui.js') }}"></script>
+  <!-- Bootstrap core CSS -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+    integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+  <!-- Material Design Bootstrap -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/mdbootstrap/4.7.4/css/mdb.min.css" rel="stylesheet">
+  <!-- DataTables -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/jquery.dataTables.min.css') }}" />
+  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/bootstrap-multiselect.css') }}" />
+  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/d3Style.css') }}">
+</head>
+
+<body>
+  <div class="container">
+    <div class="row" id="myjumbotron"></div>
+    <div class="row" id="navigation-bar"></div>
+    <div class="inputs-and-upload-form">
+      <!-- Set-based test form -->
+      <form id="primary-form" method="post" enctype="multipart/form-data">
+        <div class="row">
+          <h2>Set-based Test</h3>
+        </div>
+        <div class="row">
+          <p>
+            Upload summary statistics datasets to perform a simple set-based test.
+            Results will include P-values for each dataset provided, as well as whether it passed or failed
+            based on the P-value threshold.
+          </p>
+          <p>
+            PLINK is used to generate an LD matrix using the intersection of all positions
+            found in the uploaded datasets. Any positions that are not shared among all datasets are
+            ignored and removed.
+          </p>
+          <p>
+            <b>
+              This feature is a work in progress. The webpage is subject to change,
+              and results are currently displayed as raw JSON for testing purposes.
+            </b>
+          </p>
+        </div>
+        <div class="row">
+          <div class="col-md-12 borderit">
+            <div class="col-md-4">
+              <h5 data-toggle="tooltip" data-html="true" title="<p>Select the human coordinate system your files are stored in.</p>
+              <p>
+                <ul>
+                  <li>hg19 is GRCh37</li>
+                  <li>hg38 is GRCh38</li>
+                </ul>
+              </p>">Select coordinate system</h5>
+              <select id="coordinate" name="coordinate" onchange="coordinateChange(this.value)">
+                <option id="hg19" value="hg19" label="hg19" selected="selected"></option>
+                <option id="hg38" value="hg38" label="hg38"></option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-md-12 borderit">
+            <h5>Select files to upload</h5>
+            <dl>
+              <p>
+                <input type="file" name="files[]" multiple="true" autocomplete="off" required data-toggle="tooltip"
+                  title="1 file may be uploaded as described below (press and hold the Ctrl key to select multiple files).">
+              </p>
+            </dl>
+            <p>
+            <div class="alert alert-dismissible alert-info">
+              <button type="button" class="close" data-dismiss="alert">&times;</button>
+              <strong>You must upload 2 files:</strong>
+              <ul>
+                <!-- <li>.ld <b>(optional)</b>: PLINK-generated LD matrix with your dataset(s). LD matrix length must be equal to at least 1 of your datasets' lengths.</li> -->
+                <li>One of (.txt, .tsv, .csv, .html) <b>(required)</b>: Summary statistics file to perform set-based test(s) (GWAS, eQTL). .txt files will be interpreted the same as .tsv files. If .html file is provided, each data table must be preceded by
+                  an
+                  &lt;h3&gt; title tag describing the table</li>
+                <ul>
+                  <li>Refer to the <a
+                      href="https://locusfocus.readthedocs.io/en/latest/quick_start.html#formatting-custom-secondary-datasets">documentation</a>
+                    on how to generate the HTML file.</li>
+                  <li>You may use the <a
+                      href="https://github.com/naim-panjwani/LocusFocus/blob/master/merge_and_convert_to_html.py">merge_and_convert_to_html.py</a>
+                    script,
+                    or <a
+                      href="https://github.com/naim-panjwani/LocusFocus/blob/master/merge_and_convert_to_html_coloc2.py">merge_and_convert_to_html_coloc2.py</a>.
+                  </li>
+                  <li>You may use provided <a
+                      href="https://github.com/naim-panjwani/LocusFocus/tree/master/data/sample_datasets">sample
+                      datasets</a> as a guide to formatting your files.</li>
+                </ul>
+              </ul>
+              <strong>File size limit is 500 MB total for 1 file</strong>
+            </div>
+            </p>
+          <div class="row">
+            <div class="col-md-3" id="snp"></div>
+          </div>
+          <div class="row">
+            <div class="col-md-6">
+              <input type="checkbox" id="markerCheckbox" name="markerCheckbox" onclick="inferVariant(this)"><label
+                for="markerCheckbox" style="margin: 0px; padding: 10px;  height:42px" data-toggle="tooltip"
+                data-html="true"
+                title="<p>If checked, the variant ID will be used to infer the chromosome, position, reference and alternate alleles using dbSNP151.</p>
+            <p>This option is <em>not</em> recommended due to multi-mapping of some rsid's and ambiguity for multi-allelic rsid variants.</p>""> Use marker ID column to infer variant position and alleles</label>
+          </div>
+          </div>
+          <div class="row" id="variantInputs">
+            <div class="col-md-3" id="chrom"></div>
+            <div class="col-md-3" id="pos"></div>
+            <div class="col-md-3" id="ref"></div>
+            <div class="col-md-3" id="alt"></div>
+        </div>
+
+
+        <div class="row" id="statsDiv"></div>
+
+      </div>
+        </div> <!-- row closing div -->
+
+
+        <div class="row">
+          <div class="col-md-12 borderit">
+            <div class="col-md-4">
+              <h5 data-toggle="tooltip" data-html="true" title="<p>For the most accurate results, the LD (r<sup>2</sup>) matrix for your primary (e.g. GWAS) dataset is recommended to be uploaded as a .ld square matrix file.
+            If the .ld file is unavailable, you may choose one of the publicly-available 1000 Genomes population datasets.</p>
+          <p>
+          <ul>
+            <li>EUR: European</li>
+            <li>NFE: Non-Finnish European</li>
+            <li>AFR: African</li>
+            <li>EAS: East Asian</li>
+            <li>SAS: South Asian</li>
+            <li>AMR: Ad Mixed American</li>
+          </ul></p>">Select Populations for LD</h5>
+            </div>
+            <div class="col-md-6">
+              <select id="LD-populations" name="LD-populations">
+              </select>
+            </div>
+          </div>
+        </div> <!-- row closing div -->
+
+        <div class="row">
+          <div class="col-md-12 borderit">
+            <div class="col-md-8">
+              <label for="setbasedP" id="set-based-P-label" data-toggle="tooltip" data-html="true" title="<p>For the Simple Sum method, a first-stage set-based Bonferroni p-value threshold is used for the set of secondary datasets with alpha 0.05 (0.05 divided by the number of secondary datasets)</p>
+            <p>Enter a value if you would like to override the default threshold.</p>">Stage one set-based p-value
+                threshold</label>
+              <input class="form-control" id="setbasedP" name="setbasedP" type="text"
+                placeholder="default: 0.05 / (number of datasets uploaded in .html)" data-toggle="tooltip"
+                data-html="true" title="<p>For the Simple Sum method, a first-stage set-based Bonferroni p-value threshold is used for the set of secondary datasets with alpha 0.05 (0.05 divided by the number of datasets)</p>
+            <p>Enter a value if you would like to override the default threshold.</p>">
+            </div>
+          </div>
+        </div> <!-- row closing div -->
+
+        <div class="row">
+          <div class="col-md-12"><input id="submit-btn" type="submit" class="btn btn-default" value="Submit"></div>
+        </div> <!-- row closing div -->
+
+        <div class="row">
+          <div class="col-md-12">
+            <h6><b><i>By hitting submit, you understand that you are uploading your dataset to a public server</i></b>
+            </h6>
+          </div>
+        </div> <!-- row closing div -->
+
+      </form>
+
+      <div class="row">
+        <div class="col-md-12">
+          <div id="error-messages" class="error-text"></div>
+        </div>
+      </div>
+    </div> <!-- inputs-and-upload-form closing div -->
+  </div> <!-- container closing div -->
+
+  <!-- JS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/5.9.1/d3.js"></script>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/navigation-bar.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/inputChecker.js') }}"></script>
+  <!-- Bootstrap tooltips -->
+  <script type="text/javascript"
+    src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.4/umd/popper.min.js"></script>
+  <script type="text/javascript" src="{{ url_for('static', filename='js/tooltip.min.js') }}"></script>
+  <!-- Bootstrap core JavaScript -->
+  <script type="text/javascript"
+    src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.3.1/js/bootstrap.min.js"></script>
+  <!-- MDB core JavaScript -->
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mdbootstrap/4.7.4/js/mdb.min.js"></script>
+  <!-- DataTables -->
+  <script type="text/javascript" src="{{ url_for('static', filename='js/jquery.dataTables.min.js') }}"></script>
+  <!-- Multiselect -->
+  <script src="{{ url_for('static', filename='js/bootstrap-multiselect.js') }}"></script>
+
+</body>
+
+</html>
