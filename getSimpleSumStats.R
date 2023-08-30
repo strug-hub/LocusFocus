@@ -37,12 +37,14 @@ p <- add_argument(p, "--set_based_p", default = NULL, help = paste0(
   "Entering a value will override the default threshold."
 ))
 p <- add_argument(p, "--outfilename", default = "SSPvalues.txt", help = "Output filename")
+p <- add_argument(p, "--first_stage_only", flag = TRUE, help = "Whether to only perform and record first-stage set-based tests on both primary and secondary datasets.")
 argv <- parse_args(p)
 P_values_filename <- argv$P_values_filename
 ld_matrix_filename <- argv$ld_matrix_filename
 set_based_p <- argv$set_based_p
 if (as.character(set_based_p) == "default") set_based_p <- NULL
 outfilename <- argv$outfilename
+first_stage_only <- argv$first_stage_only
 
 # test
 # id <- "f4f9f7ac-64ea-4cd3-9c15-887eabd38a02"
@@ -66,15 +68,15 @@ set_based_test <- function(summary_stats, ld, num_genes, alpha = 0.05) {
   pv <- abs(imhof(statistic, eigenvalues)$Qq)
   if (is.null(set_based_p)) {
     if (pv < (alpha / num_genes)) {
-      return(TRUE)
+      return(list(TRUE, pv))
     } else {
-      return(FALSE)
+      return(list(FALSE, pv))
     }
   } else if (!is.na(as.numeric(set_based_p))) {
     if (pv < as.numeric(set_based_p)) {
-      return(TRUE)
+      return(list(TRUE, pv))
     } else {
-      return(FALSE)
+      return(list(FALSE, pv))
     }
   } else {
     stop(paste0("Provided set-based p-value (", set_based_p, ") is invalid."))
@@ -114,7 +116,7 @@ get_a_diag <- function(eqtl_evid, m) {
 
 get_eigenvalues <- function(eqtl_evid, ld.mat, m) {
   diag(ld.mat) <- diag(ld.mat) + ACONSTANT
-  chol_Sigma = chol(ld.mat)
+  chol_Sigma <- chol(ld.mat)
   a_diag <- get_a_diag(eqtl_evid, m)
 
   matrix_A <- matrix(0, nrow = m, ncol = m)
@@ -164,7 +166,6 @@ simple_sum_p <- function(P_gwas, P_eqtl, ld.mat, cut, m, meth = "davies") {
   return(pv)
 }
 
-
 ############
 # MAIN
 ############
@@ -177,19 +178,21 @@ simple_sum_p <- function(P_gwas, P_eqtl, ld.mat, cut, m, meth = "davies") {
 
 ### Load data
 
-Pmat <- fread(P_values_filename, header = F, stringsAsFactors = F, na.strings = c("NaN", "nan", "NA", "-1"), sep = "\t")
-ldmat <- fread(ld_matrix_filename, header = F, stringsAsFactors = F, na.strings = c("NaN", "nan", "NA", "-1"), sep = "\t")
+Pmat <- fread(P_values_filename, header = FALSE, stringsAsFactors = FALSE, na.strings = c("NaN", "nan", "NA", "-1"), sep = "\t")
+ldmat <- fread(ld_matrix_filename, header = FALSE, stringsAsFactors = FALSE, na.strings = c("NaN", "nan", "NA", "-1"), sep = "\t")
 # filename = 'testdata/Pvalues.txt'
 # Pmat <- fread(filename, header=F, stringsAsFactors=F, na.strings=c("NaN","nan","NA","-1"), sep="\t")
 # filename = 'testdata/ldmat.txt'
 # ldmat <- fread(filename, header=F, stringsAsFactors=F, na.strings=c("NaN","nan","NA","-1"), sep="\t")
 
+# Columns for final returned result
+Pss <- NULL
+n <- NULL
+comp_used <- NULL
+first_stages <- NULL
+first_stage_p <- NULL
+
 Pmat <- as.matrix(Pmat)
-if (nrow(Pmat) < 1) {
-  stop("No secondary dataset P-values provided")
-}
-P_gwas <- Pmat[1, ]
-P_eqtl <- matrix(Pmat[2:nrow(Pmat), ], nrow = nrow(Pmat) - 1, ncol = ncol(Pmat))
 ldmat <- as.matrix(ldmat)
 
 # Remove any NA variants due to no LD:
@@ -199,8 +202,7 @@ if (!all(is.na(ldmat))) {
     ldNA <- which(is.na(ldmat[i, ]))
     if (!all(is.na(ldNA))) {
       ldmat <- ldmat[-ldNA, -ldNA]
-      P_gwas <- P_gwas[-ldNA]
-      P_eqtl <- P_eqtl[, -ldNA, drop = FALSE]
+      Pmat <- Pmat[, -ldNA, drop = FALSE]
     }
     i <- i + 1
   }
@@ -208,61 +210,125 @@ if (!all(is.na(ldmat))) {
   stop("LD matrix has all missing values")
 }
 
-num_iterations = nrow(P_eqtl)
-
-Pss <- NULL
-n <- NULL
-comp_used <- NULL
-
-for (i in 1:num_iterations) {
-  tempmat <- cbind(P_gwas, P_eqtl[i, ])
-  ld_mat_i <- ldmat
-
-  # Remove NA rows
-  NArows = which(is.na(tempmat[, 1]) | is.na(tempmat[, 2]))
-  if (length(NArows) >= 1) {
-    tempmat = tempmat[-NArows, ]
-    ld_mat_i <- ld_mat_i[-NArows, -NArows]
-  }
-
-  P_gwas_i <- as.numeric(tempmat[, 1])
-  P_eqtl_i <- as.numeric(tempmat[, 2])
-
-  # Count SNPs
-  snp_count <- nrow(tempmat)
-  n <- c(n, snp_count)
-
-  if (snp_count < 1) {
-    Pss <- c(Pss, -1) # no eQTL data
-    comp_used <- c(comp_used, "na")
-    next
-  }
-
-  # do pretest (set_based_test)
-  t <- try({
-    if (set_based_test(P_eqtl_i, ld_mat_i, num_iterations)) {
-      # if(TRUE) {
-      P = simple_sum_p(P_gwas = P_gwas_i, P_eqtl = P_eqtl_i, ld.mat = ld_mat_i, cut = 0, m = snp_count, meth = "davies")
-      if (P == 0 | P < 0) {
-        P = simple_sum_p(P_gwas = P_gwas_i, P_eqtl = P_eqtl_i, ld.mat = ld_mat_i, cut = 0, m = snp_count, meth = "imhof")
-        comp_used <- c(comp_used, "imhof")
-        Pss <- c(Pss, P)
-      } else {
-        comp_used <- c(comp_used, "davies")
-        Pss <- c(Pss, P)
-      }
-    } else {
-      Pss <- c(Pss, -2) # not significant eQTL as per set-based test
-      comp_used <- c(comp_used, "na")
-    }
-  })
-  if ("try-error" %in% class(t)) {
-    print(t[1])
-    Pss <- c(Pss, -3)
-    comp_used <- c(comp_used, "na")
-  } # could not compute a SS p-value (SNPs not dense enough? can also get this if the LD matrix if not positive definite)
+if (nrow(Pmat) < 1) {
+  stop("No secondary dataset P-values provided")
 }
 
+if (first_stage_only) {
+  # only care about set based test result & P value
+  # treat all lines in Pmat as if they came from .html
+  num_lines <- nrow(Pmat)
+  for (i in 1:num_lines) {
+    P_mat_i <- Pmat[i, ]
+    ld_mat_i <- ldmat
+    set_based_test_result <- "na"
+    set_based_test_passed <- "na"
+    set_based_test_p <- "na"
+    # remove NA rows
+    NArows <- which(is.na(P_mat_i))
+    if (length(NArows) >= 1) {
+      P_mat_i <- P_mat_i[-NArows]
+      ld_mat_i <- ld_mat_i[-NArows, -NArows]
+    }
+
+    P_mat_i <- as.numeric(P_mat_i)
+
+    if (length(P_mat_i) < 1) {
+      first_stages <- c(first_stages, "na")
+      first_stage_p <- c(first_stage_p, "na")
+      next
+    }
+
+    # do pretest (set_based_test)
+    t <- try({
+      set_based_test_result <- set_based_test(P_mat_i, ld_mat_i, num_lines) # [1] is TRUE/FALSE, [2] is p value
+      set_based_test_passed <- set_based_test_result[[1]]
+      set_based_test_p <- set_based_test_result[[2]]
+      first_stages <- c(first_stages, set_based_test_passed)
+      first_stage_p <- c(first_stage_p, set_based_test_p)
+    })
+    if ("try-error" %in% class(t)) {
+      print(t[1])
+      first_stages <- c(first_stages, set_based_test_passed)
+      first_stage_p <- c(first_stage_p, set_based_test_p)
+    } # could not compute a SS p-value (SNPs not dense enough? can also get this if the LD matrix if not positive definite)
+  }
+  result <- data.frame(first_stages = first_stages, first_stage_p = first_stage_p)
+} else {
+  # Normal simple sum here
+  P_gwas <- Pmat[1, ]
+  P_eqtl <- matrix(Pmat[2:nrow(Pmat), ], nrow = nrow(Pmat) - 1, ncol = ncol(Pmat))
+
+  num_genes <- nrow(P_eqtl)
+  for (i in 1:num_genes) {
+    tempmat <- cbind(P_gwas, P_eqtl[i, ])
+    ld_mat_i <- ldmat
+    set_based_test_result <- "na"
+    set_based_test_passed <- "na"
+    set_based_test_p <- "na"
+
+    # Remove NA rows
+    NArows <- which(is.na(tempmat[, 1]) | is.na(tempmat[, 2]))
+    if (length(NArows) >= 1) {
+      tempmat <- tempmat[-NArows, ]
+      ld_mat_i <- ld_mat_i[-NArows, -NArows]
+    }
+
+    P_gwas_i <- as.numeric(tempmat[, 1])
+    P_eqtl_i <- as.numeric(tempmat[, 2])
+
+    # Count SNPs
+    snp_count <- nrow(tempmat)
+    n <- c(n, snp_count)
+
+    if (snp_count < 1) {
+      Pss <- c(Pss, -1) # no eQTL data
+      comp_used <- c(comp_used, "na")
+      first_stages <- c(first_stages, "na")
+      first_stage_p <- c(first_stage_p, set_based_test_p)
+      next
+    }
+
+    # do pretest (set_based_test)
+    t <- try({
+      set_based_test_result <- set_based_test(P_eqtl_i, ld_mat_i, num_genes) # [1] is TRUE/FALSE, [2] is p value
+      set_based_test_passed <- set_based_test_result[[1]]
+      set_based_test_p <- set_based_test_result[[2]]
+      if (isTRUE(set_based_test_passed)) {
+        # if(TRUE) {
+        P <- simple_sum_p(P_gwas = P_gwas_i, P_eqtl = P_eqtl_i, ld.mat = ld_mat_i, cut = 0, m = snp_count, meth = "davies")
+        if (P == 0 | P < 0) {
+          P <- simple_sum_p(P_gwas = P_gwas_i, P_eqtl = P_eqtl_i, ld.mat = ld_mat_i, cut = 0, m = snp_count, meth = "imhof")
+          comp_used <- c(comp_used, "imhof")
+          Pss <- c(Pss, P)
+        } else {
+          comp_used <- c(comp_used, "davies")
+          Pss <- c(Pss, P)
+        }
+      } else {
+        # always happens if first_stage_only, but we only look at first_stages afterwards anyways
+        Pss <- c(Pss, -2) # not significant eQTL as per set-based test
+        comp_used <- c(comp_used, "na")
+      }
+      first_stages <- c(first_stages, set_based_test_passed)
+      first_stage_p <- c(first_stage_p, set_based_test_p)
+    })
+    if ("try-error" %in% class(t)) {
+      print(t[1])
+      Pss <- c(Pss, -3)
+      comp_used <- c(comp_used, "na")
+      first_stages <- c(first_stages, set_based_test_passed)
+      first_stage_p <- c(first_stage_p, set_based_test_p)
+    } # could not compute a SS p-value (SNPs not dense enough? can also get this if the LD matrix if not positive definite)
+  }
+
+  # print(Pss)
+  # print(first_stages)
+  # print(first_stage_p)
+
+  result <- data.frame(Pss = Pss, n = n, comp_used = comp_used, first_stages = first_stages, first_stage_p = first_stage_p)
+}
+
+
 sessionid <- gsub(".txt", "", gsub("Pvalues-", "", P_values_filename))
-result <- data.frame(Pss = Pss, n = n, comp_used = comp_used)
-write.table(result, outfilename, row.names = F, col.names = T, quote = F, sep = "\t")
+write.table(result, outfilename, row.names = FALSE, col.names = TRUE, quote = FALSE, sep = "\t")
