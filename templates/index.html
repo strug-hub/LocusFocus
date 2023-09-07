@@ -277,9 +277,7 @@
 
   <!-- JS -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/5.9.1/d3.js"></script>
-
   <script src="{{ url_for('static', filename='js/app.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/navigation-bar.js') }}"></script>
   <script src="{{ url_for('static', filename='js/inputChecker.js') }}"></script>
   <!-- Bootstrap tooltips -->
   <script type="text/javascript"
@@ -294,7 +292,13 @@
   <script type="text/javascript" src="{{ url_for('static', filename='js/lib/jquery.dataTables.min.js') }}"></script>
   <!-- Multiselect -->
   <script src="{{ url_for('static', filename='js/lib/bootstrap-multiselect.js') }}"></script>
-
+  <!-- HTML components -->
+  <script>
+    $(function(){
+      $("#myjumbotron").load("{{ url_for('static', filename='html/myjumbotron.html')}}");
+      $("#navigation-bar").load("{{ url_for('static', filename='html/navigation-bar.html')}}");
+    });
+  </script>
 </body>
 
 </html>

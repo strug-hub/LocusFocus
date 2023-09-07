@@ -970,7 +970,6 @@
       type="text/javascript"
       src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"
     ></script>
-    <script src="{{ url_for('static', filename='js/navigation-bar.js') }}"></script>
     <!-- Bootstrap tooltips -->
     <script
       type="text/javascript"
@@ -995,5 +994,16 @@
       type="text/javascript"
       src="{{ url_for('static', filename='DataTables/datatables.min.js') }}"
     ></script>
+    <!-- HTML components -->
+    <script>
+      $(function () {
+        $("#myjumbotron").load(
+          "{{ url_for('static', filename='html/myjumbotron.html')}}"
+        );
+        $("#navigation-bar").load(
+          "{{ url_for('static', filename='html/navigation-bar.html')}}"
+        );
+      });
+    </script>
   </body>
 </html>
