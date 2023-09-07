@@ -27,22 +27,15 @@
   </head>
 
   <body>
-    <div class="row" id="myjumbotron"></div>
-    <div class="row" id="navigation-bar"></div>
+    <div class="row" id="myjumbotron">
+      {% include "components/myjumbotron.html" %}
+    </div>
+    <div class="row" id="navigation-bar">
+      {% include "components/navigation-bar.html" %}
+    </div>
     <div class="error-text">No file selected or invalid input</div>
 
     <!-- JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/5.9.1/d3.js"></script>
-    <!-- HTML components -->
-    <script>
-      $(function () {
-        $("#myjumbotron").load(
-          "{{ url_for('static', filename='html/myjumbotron.html')}}"
-        );
-        $("#navigation-bar").load(
-          "{{ url_for('static', filename='html/navigation-bar.html')}}"
-        );
-      });
-    </script>
   </body>
 </html>

@@ -55,8 +55,12 @@
 
   <body>
     <div class="container">
-      <div class="row" id="myjumbotron"></div>
-      <div class="row" id="navigation-bar"></div>
+      <div class="row" id="myjumbotron">
+        {% include "components/myjumbotron.html" %}
+      </div>
+      <div class="row" id="navigation-bar">
+        {% include "components/navigation-bar.html" %}
+      </div>
       <div class="row">
         <div class="col-md-12 d-flex justify-content-center align-items-center">
           <div class="card border-primary mb-9" style="max-width: 60rem">
@@ -994,16 +998,5 @@
       type="text/javascript"
       src="{{ url_for('static', filename='DataTables/datatables.min.js') }}"
     ></script>
-    <!-- HTML components -->
-    <script>
-      $(function () {
-        $("#myjumbotron").load(
-          "{{ url_for('static', filename='html/myjumbotron.html')}}"
-        );
-        $("#navigation-bar").load(
-          "{{ url_for('static', filename='html/navigation-bar.html')}}"
-        );
-      });
-    </script>
   </body>
 </html>
