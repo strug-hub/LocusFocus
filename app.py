@@ -19,6 +19,7 @@ from flask import Flask, request, redirect, url_for, jsonify, render_template, f
 from werkzeug.utils import secure_filename
 from flask_sitemap import Sitemap
 from flask_uploads import UploadSet, configure_uploads, DATA
+from flask_talisman import Talisman
 
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
@@ -110,6 +111,32 @@ COLUMN_NAMES: Dict[str, str] = {
 
 app = Flask(__name__)
 ext = Sitemap(app=app)
+talisman = Talisman(app,
+                    content_security_policy={
+                        'default-src': '\'self\'',
+                        'img-src': ['*', 'data:'],
+                        'script-src': [
+                            '\'self\'',
+                            '\'unsafe-inline\'', # TODO
+                            '\'unsafe-eval\'', # TODO
+                            'www.googletagmanager.com',
+                            'cdnjs.cloudflare.com',
+                            'cdn.plot.ly',
+                        ],
+                        'style-src': [
+                            '\'self\'',
+                            '\'unsafe-inline\'', # TODO
+                            'use.fontawesome.com',
+                            'cdnjs.cloudflare.com',
+                            'stackpath.bootstrapcdn.com',
+                        ],
+                        'font-src': [
+                            '\'self\'',
+                            'use.fontawesome.com',
+                            'cdnjs.cloudflare.com',
+                            'stackpath.bootstrapcdn.com',
+                        ],
+                    })
 app.config['UPLOAD_FOLDER'] = os.path.join(MYDIR, 'static/upload/')
 app.config['UPLOADED_FILES_DEST'] = os.path.join(MYDIR, 'static/upload/')
 app.config['MAX_CONTENT_LENGTH'] = fileSizeLimit
