@@ -136,8 +136,7 @@ talisman = Talisman(app,
                             'cdnjs.cloudflare.com',
                             'stackpath.bootstrapcdn.com',
                         ],
-                    },
-                    strict_transport_security=False) # TODO
+                    })
 app.config['UPLOAD_FOLDER'] = os.path.join(MYDIR, 'static/upload/')
 app.config['UPLOADED_FILES_DEST'] = os.path.join(MYDIR, 'static/upload/')
 app.config['MAX_CONTENT_LENGTH'] = fileSizeLimit
