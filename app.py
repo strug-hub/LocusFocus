@@ -1689,7 +1689,8 @@ def index():
             "gwas_filepath": gwas_filepath or "",
             "ldmat_filepath": ldmat_filepath or "",
             "html_filepath": html_filepath or "",
-            "session_id": str(my_session_id)
+            "session_id": str(my_session_id),
+            "type": "default",
         })
 
         metadatafilepath = os.path.join(MYDIR, 'static', f'session_data/metadata-{my_session_id}.json')
@@ -2158,7 +2159,7 @@ def index():
             if coloc2_time != 0: f.write(f'Time for COLOC2 run: {coloc2_time}\n')
             f.write(f'Total time: {t2_total}\n')
 
-        return render_template("plot.html", sessionfile = sessionfile, genesfile = genes_sessionfile, SSPvalues_file = SSPvalues_file, coloc2_file = coloc2_file, sessionid = my_session_id)
+        return render_template("plot.html", sessionfile = sessionfile, genesfile = genes_sessionfile, SSPvalues_file = SSPvalues_file, coloc2_file = coloc2_file, sessionid = my_session_id, metadata_file = metadata_file)
     return render_template("index.html")
 
 
@@ -2225,6 +2226,20 @@ def setbasedtest():
 
     # TODO: implement in the future
     use_dataset_union = False
+
+    metadata = {}
+    metadata.update({
+        "datetime": datetime.now().isoformat(),
+        "gwas_filepath": gwas_filepath or "",
+        "ldmat_filepath": ldmat_filepath or "",
+        "html_filepath": html_filepath or "",
+        "session_id": str(my_session_id),
+        "type": "set-based-test",
+    })
+
+    metadatafilepath = os.path.join(MYDIR, 'static', f'session_data/metadata-{my_session_id}.json')
+    with open(metadatafilepath, 'w') as metadatafile:
+        json.dump(metadata, metadatafile)
 
     data = {}
 
