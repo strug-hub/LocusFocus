@@ -114,12 +114,12 @@ ext = Sitemap(app=app)
 talisman = Talisman(app,
                     content_security_policy={
                         'default-src': '\'self\'',
-                        'img-src': ['*', 'data:'],
+                        'img-src': ['*', 'data:', 'https://*.google-analytics.com', 'https://*.googletagmanager.com']
                         'script-src': [
                             '\'self\'',
                             '\'unsafe-inline\'', # TODO
                             '\'unsafe-eval\'', # TODO
-                            'www.googletagmanager.com',
+                            'https://*.googletagmanager.com',
                             'cdnjs.cloudflare.com',
                             'cdn.plot.ly',
                         ],
@@ -136,6 +136,7 @@ talisman = Talisman(app,
                             'cdnjs.cloudflare.com',
                             'stackpath.bootstrapcdn.com',
                         ],
+                        'connect-src': ['https://*.google-analytics.com', 'https://*.analytics.google.com', 'https://*.googletagmanager.com']
                     })
 app.config['UPLOAD_FOLDER'] = os.path.join(MYDIR, 'static/upload/')
 app.config['UPLOADED_FILES_DEST'] = os.path.join(MYDIR, 'static/upload/')
