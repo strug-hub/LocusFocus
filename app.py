@@ -136,7 +136,7 @@ talisman = Talisman(app,
                             'cdnjs.cloudflare.com',
                             'stackpath.bootstrapcdn.com',
                         ],
-                        'connect-src': ['https://*.google-analytics.com', 'https://*.analytics.google.com', 'https://*.googletagmanager.com']
+                        'connect-src': ['\'self\'','https://*.google-analytics.com', 'https://*.analytics.google.com', 'https://*.googletagmanager.com']
                     })
 app.config['UPLOAD_FOLDER'] = os.path.join(MYDIR, 'static/upload/')
 app.config['UPLOADED_FILES_DEST'] = os.path.join(MYDIR, 'static/upload/')
