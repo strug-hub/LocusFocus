@@ -114,7 +114,7 @@ ext = Sitemap(app=app)
 talisman = Talisman(app,
                     content_security_policy={
                         'default-src': '\'self\'',
-                        'img-src': ['*', 'data:', 'https://*.google-analytics.com', 'https://*.googletagmanager.com']
+                        'img-src': ['*', 'data:', 'https://*.google-analytics.com', 'https://*.googletagmanager.com'],
                         'script-src': [
                             '\'self\'',
                             '\'unsafe-inline\'', # TODO
