@@ -80,7 +80,14 @@
       <div class="row">
         <div class="col-md-12" id="snpWarning" name="snpWarning"></div>
       </div>
-      <div class="row">
+
+      <div class="d-flex justify-content-center" id="loading-spinner">
+        <div class="spinner-border" role="status">
+          <span class="sr-only">Loading...</span>
+        </div>
+      </div>
+
+      <div class="row" id="params-table-row" hidden>
         <div class="col-md-12">
           <table
             id="params-table"
@@ -90,8 +97,9 @@
           ></table>
         </div>
       </div>
-      <hr />
-      <div class="row">
+      <hr id="params-table-divider" hidden />
+
+      <div class="row" id="plot-row" hidden>
         <div class="col-md-12">
           <h3>Colocalization Plot</h3>
           <select id="selGene" onchange="optionChanged(this.value)"></select>
@@ -211,8 +219,9 @@
           </div>
         </div>
       </div>
-      <hr />
-      <div class="row">
+      <hr id="plot-divider" hidden />
+
+      <div class="row" id="heatmap-row" hidden>
         <div class="col-md-12">
           <h3>
             Heatmap of Simple Sum Colocalization P-values for GTEx Tissues
@@ -300,8 +309,9 @@
           </div>
         </div>
       </div>
-      <hr />
-      <div class="row">
+      <hr id="heatmap-divider" hidden />
+
+      <div class="row" id="variants-table-row" hidden>
         <div class="col-md-12">
           <div id="table-area">
             <h3>
@@ -379,9 +389,9 @@
         </div>
         <!-- col-md-12 closing div -->
       </div>
-      <!-- row closing div -->
+      <hr id="variants-table-divider" hidden />
 
-      <div class="row">
+      <div class="row" id="numSSsnpsUsed-table-row" hidden>
         <div class="col-md-12">
           <div id="table-area">
             <h3>
@@ -403,10 +413,9 @@
         <!-- col-md-12 closing div -->
       </div>
       <!-- row closing div -->
-      <hr />
+      <hr id="numSSsnpsUsed-table-divider" hidden />
 
-      <hr />
-      <div class="row">
+      <div class="row" id="secondary-table-row" hidden>
         <div class="col-md-12">
           <div id="table-area">
             <h3>
@@ -476,9 +485,9 @@
         <!-- col-md-12 closing div -->
       </div>
       <!-- row closing div -->
-      <hr />
+      <hr id="secondary-table-divider" hidden />
 
-      <div class="row">
+      <div class="row" id="SSguidance-table-row" hidden>
         <div class="col-md-12">
           <div id="table-area">
             <h3>Simple Sum Guidance Summary</h3>
@@ -498,9 +507,9 @@
         <!-- col-md-12 closing div -->
       </div>
       <!-- row closing div -->
+      <hr id="SSguidance-table-divider" hidden />
 
-      <hr />
-      <div class="row">
+      <div class="row" id="coloc2-table-row" hidden>
         <div class="col-md-12">
           <div id="coloc2-table-area">
             <h3>COLOC2 Posterior Probability Results Table</h3>
@@ -514,8 +523,8 @@
           </div>
         </div>
       </div>
+      <hr id="coloc2-table-divider" hidden />
 
-      <hr />
       <div class="row">
         <div class="col-md-4">
           <input
@@ -538,7 +547,11 @@
       type="module"
       src="{{ url_for('static', filename='js/file-saver/src/FileSaver.js') }}"
     ></script>
-
+    <!-- JQuery -->
+    <script
+      type="text/javascript"
+      src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"
+    ></script>
     <!-- Plotly -->
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <script
@@ -573,8 +586,14 @@
       var sessionid = "{{ sessionid }}";
       var metadata_file = "{{ metadata_file }}";
       var transpose = false;
+      function showSection(name, hidden = false) {
+        let rowId = "#" + name + "-row";
+        let dividerId = "#" + name + "-divider";
+        $(rowId).prop("hidden", hidden);
+        $(dividerId).prop("hidden", hidden);
+      }
+
       function init() {
-        // d3.select('#plot_message').append("p").attr("class","text-warning").text(`Please wait while loading colocalization plot`);
         d3.select("#plot_message")
           .append("i")
           .classed("fa", true)
@@ -601,25 +620,40 @@
             coloc2ResponseJson,
             metadataResponseJson,
           ] = results.map((v) => (v.status === "fulfilled" ? v.value : null));
+          $("#loading-spinner").remove();
           if (
             metadataResponseJson !== null &&
             metadataResponseJson["type"] === "set-based-test"
           ) {
             // set based test case
+            // show elements used for set-based test results
+            ["params-table"].forEach((name) => showSection(name));
           } else {
             // default case
-            if (sessionData["snp_warning"] === true) {
-              d3.select("#snpWarning")
-                .append("div")
-                .classed("alert alert-danger", true)
-                .append("p")
-                .append("center")
-                .append("strong")
-                .html(
-                  "Warning: The number of SNPs that match GTEx variants is lower than 80%.<br> Please ensure variant names given are accurate, including REF and ALT columns."
-                );
-            }
+            // show elements used for default case
+            [
+              "params-table",
+              "plot",
+              "heatmap",
+              "variants-table",
+              "numSSsnpsUsed-table",
+              "secondary-table",
+              "SSguidance-table",
+              "coloc2-table",
+            ].forEach((name) => showSection(name));
+
             if (sessionData !== null) {
+              if (sessionData["snp_warning"] === true) {
+                d3.select("#snpWarning")
+                  .append("div")
+                  .classed("alert alert-danger", true)
+                  .append("p")
+                  .append("center")
+                  .append("strong")
+                  .html(
+                    "Warning: The number of SNPs that match GTEx variants is lower than 80%.<br> Please ensure variant names given are accurate, including REF and ALT columns."
+                  );
+              }
               buildParamsTable(sessionData, sessionid);
               if (genesData !== null) {
                 populate_genes(genesData, sessionData);
@@ -985,11 +1019,6 @@
         saveSvg(heatmap_container, "SS-heatmap.svg", widthinput, heightinput);
       });
     </script>
-    <!-- JQuery -->
-    <script
-      type="text/javascript"
-      src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"
-    ></script>
     <!-- Bootstrap tooltips -->
     <script
       type="text/javascript"
