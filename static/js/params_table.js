@@ -1,3 +1,6 @@
+const START = 0;
+const END = 1;
+
 function buildParamsTable(data, sessionid, type = "default") {
   var tableselect = d3.select("#params-table");
 
@@ -5,12 +8,6 @@ function buildParamsTable(data, sessionid, type = "default") {
   header = tableselect.append("thead").append("tr");
   header.append("th").attr("class", "th-sm").text("Field");
   header.append("th").attr("class", "th-sm").text("Value");
-
-  chrom = data["chrom"];
-  startbp = data["startbp"];
-  endbp = data["endbp"];
-  SS_start = data["SS_region"][0];
-  SS_end = data["SS_region"][1];
 
   // Table body:
   let tbody = tableselect.append("tbody");
@@ -20,12 +17,15 @@ function buildParamsTable(data, sessionid, type = "default") {
     table_data = [
       ["Session ID", sessionid],
       ["Lead SNP", data["lead_snp"]],
-      ["Chromosome", chrom],
-      ["Start position", startbp],
-      ["End position", endbp],
+      ["Chromosome", data["chrom"]],
+      ["Start position", data["startbp"]],
+      ["End position", data["endbp"]],
       ["Build", data["coordinate"]],
       ["Infer variants", data["inferVariant"]],
-      [`Number of SNPs in ${chrom}:${startbp}-${endbp}`, data["snps"].length],
+      [
+        `Number of SNPs in ${data["chrom"]}:${data["startbp"]}-${data["endbp"]}`,
+        data["snps"].length,
+      ],
       ["LD Population", data["ld_populations"]],
       ["GTEx version", data["gtex_version"]],
       ["Number of GTEx tissues selected", data["gtex_tissues"].length],
@@ -36,7 +36,10 @@ function buildParamsTable(data, sessionid, type = "default") {
           : undefined,
       ],
       ["SS region", data["SS_region"]],
-      [`Number of SNPs in ${chrom}:${SS_start}-${SS_end}`, data["num_SS_snps"]],
+      [
+        `Number of SNPs in ${data["chrom"]}:${data["SS_region"][START]}-${data["SS_region"][END]}`,
+        data["num_SS_snps"],
+      ],
       ["First stage -log10(SS P-value) threshold", data["set_based_p"]],
       ["Many SNPs not matching GTEx SNPs", data["snp_warning"]],
       ["SNPs matching threshold level", data["thresh"]],
@@ -48,7 +51,23 @@ function buildParamsTable(data, sessionid, type = "default") {
       ["Run COLOC2", data["runcoloc2"]],
     ];
   } else if (type === "set-based-test") {
-    table_data = []; // TODO
+    table_data = [
+      ["Session ID", sessionid],
+      ["Chromosome", data["chrom"]],
+      ["Start position", data["startbp"]],
+      ["End position", data["endbp"]],
+      ["Build", data["coordinate"]],
+      [
+        `Number of SNPs in ${data["chrom"]}:${data["startbp"]}-${data["endbp"]}`,
+        data["snps"].length,
+      ],
+      ["LD Population", data["ld_populations"]],
+      ["First stage -log10(SS P-value) threshold", data["set_based_p"]],
+      [
+        "Number of user-provided secondary datasets",
+        data["secondary_dataset_titles"].length,
+      ],
+    ];
   } else {
     // Shouldn't get here
     throw Error(`Unexpected params table type: ${type}`);

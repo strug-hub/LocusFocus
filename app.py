@@ -2223,7 +2223,6 @@ def setbasedtest():
     pops = request.form[FormID.LD_1000GENOME_POP]
     if len(pops) == 0: pops = 'EUR'
 
-
     # TODO: implement in the future
     use_dataset_union = False
 
@@ -2244,6 +2243,9 @@ def setbasedtest():
     data = {}
 
     data['set_based_p'] = setbasedP
+    data['coordinate'] = coordinate
+    data['sessionid'] = str(my_session_id)
+    data['ld_populations'] = pops
 
     #######################################################
     # Loading datasets uploaded
@@ -2349,16 +2351,21 @@ def setbasedtest():
                     raise InvalidUsage("Unable to compute LD matrix using intersection strategy; There are 0 SNPs shared by all provided datasets.", status_code=410)
                 plink_outfilepath = os.path.join(MYDIR, "static", f"session_data/ld-{my_session_id}")
                 ld_mat_snps, ld_mat = plink_ldmat(coordinate, pops, chromosome, snp_positions, plink_outfilepath)
-                # ld_mat_positions = [int(snp.split(":")[1]) for snp in ld_mat_snps]
 
         else:
             # only one dataset
-            chromosome, _, _ = get_region_from_summary_stats(summary_datasets, bp, chrom)
+            chromosome, start, end = get_region_from_summary_stats(summary_datasets, bp, chrom)
             dataset = iter(summary_datasets.values()).__next__()
             snp_positions = list(dataset[bp])
             plink_outfilepath = os.path.join(MYDIR, "static", f"session_data/ld-{my_session_id}")
             ld_mat_snps, ld_mat = plink_ldmat(coordinate, pops, chromosome, snp_positions, plink_outfilepath)
-            # ld_mat_positions = [int(snp.split(":")[1]) for snp in ld_mat_snps]
+
+    data.update({
+        "chrom": chromosome,
+        "startbp": start,
+        "endbp": end,
+        "snp_positions": snp_positions
+    })
 
     PvaluesMat = [dataset[P] for dataset in summary_datasets.values()]
 
@@ -2396,9 +2403,9 @@ def setbasedtest():
 
     # Set Based Test
     SBTresults = {
-        'Secondary_dataset_titles': table_titles
-        ,'First_stages': first_stages
-        ,'First_stage_Pvalues': first_stage_p
+        'secondary_dataset_titles': table_titles
+        ,'first_stages': first_stages
+        ,'first_stage_Pvalues': first_stage_p
     }
     SBTvalues_file = f'session_data/SBTvalues_setbasedtest-{my_session_id}.json'
     SBTvalues_filepath = os.path.join(MYDIR, 'static', SBTvalues_file)
