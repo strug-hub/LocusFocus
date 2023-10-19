@@ -58,11 +58,16 @@ function buildParamsTable(data, sessionid, type = "default") {
       ["End position", data["endbp"]],
       ["Build", data["coordinate"]],
       [
-        `Number of SNPs in ${data["chrom"]}:${data["startbp"]}-${data["endbp"]}`,
-        data["snps"].length,
+        `Number of unique SNPs in ${data["chrom"]}:${data["startbp"]}-${data["endbp"]}`,
+        data["total_unique_snps"],
       ],
       ["LD Population", data["ld_populations"]],
       ["First stage -log10(SS P-value) threshold", data["set_based_p"]],
+      ["Total set-based tests performed", data["first_stages"].length],
+      [
+        "Total set-based tests passed",
+        data["first_stages"].filter((v) => Boolean(v)).length,
+      ],
       [
         "Number of user-provided secondary datasets",
         data["secondary_dataset_titles"].length,
