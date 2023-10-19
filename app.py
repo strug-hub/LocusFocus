@@ -26,6 +26,7 @@ from pymongo.errors import ConnectionFailure
 
 from pprint import pprint
 import htmltableparser
+from numpy_encoder import NumpyEncoder
 
 #import getSimpleSumStats
 
@@ -1388,21 +1389,30 @@ def prev_session():
         if old_session_id != '':
             my_session_id = old_session_id
             sessionfile =  f'session_data/form_data-{my_session_id}.json'
+            SBTsessionfile = f'session_data/form_data_setbasedtest-{my_session_id}.json'
             genes_sessionfile = f'session_data/genes_data-{my_session_id}.json'
             SSPvalues_file = f'session_data/SSPvalues-{my_session_id}.json'
             coloc2_file = f'session_data/coloc2result-{my_session_id}.json'
+            metadatafile = f'session_data/metadata-{my_session_id}.json' # don't check if this exists; new addition
             sessionfilepath = os.path.join(MYDIR, 'static', sessionfile)
             genes_sessionfilepath = os.path.join(MYDIR, 'static', genes_sessionfile)
             SSPvalues_filepath = os.path.join(MYDIR, 'static', SSPvalues_file)
             coloc2_filepath = os.path.join(MYDIR, 'static', coloc2_file)
+            SBTsessionfilepath = os.path.join(MYDIR, 'static', SBTsessionfile)
         else: # blank input
             raise InvalidUsage('Invalid input')
         # print(f'Session filepath: {sessionfilepath} is {str(os.path.isfile(sessionfilepath))}')
         # print(f'Genes filepath: {genes_sessionfilepath} is {str(os.path.isfile(genes_sessionfilepath))}')
         # print(f'SSPvalues filepath: {SSPvalues_filepath} is {str(os.path.isfile(SSPvalues_filepath))}')
-        if not (os.path.isfile(sessionfilepath) and os.path.isfile(genes_sessionfilepath) and os.path.isfile(SSPvalues_filepath) and os.path.isfile(coloc2_filepath)):
-            raise InvalidUsage(f'Could not locate session {my_session_id}')
-        return render_template("plot.html", sessionfile = sessionfile, genesfile = genes_sessionfile, SSPvalues_file = SSPvalues_file, coloc2_file = coloc2_file, sessionid = my_session_id)
+        if (os.path.isfile(SBTsessionfilepath)):
+            # set based test results
+            return render_template("plot.html", sessionfile = SBTsessionfile, sessionid = my_session_id, metadata_file = metadatafile)
+        if (os.path.isfile(sessionfilepath) and os.path.isfile(genes_sessionfilepath) and os.path.isfile(SSPvalues_filepath) and os.path.isfile(coloc2_filepath)):
+            # regular results
+            return render_template("plot.html", sessionfile = sessionfile, genesfile = genes_sessionfile, SSPvalues_file = SSPvalues_file, coloc2_file = coloc2_file, sessionid = my_session_id, metadata_file = metadatafile)
+
+        raise InvalidUsage(f'Could not locate session {my_session_id}')
+
     return render_template('session_form.html')
 
 @app.route("/session_id/<old_session_id>")
@@ -1410,21 +1420,29 @@ def prev_session_input(old_session_id):
     if old_session_id != '':
         my_session_id = old_session_id
         sessionfile =  f'session_data/form_data-{my_session_id}.json'
+        SBTsessionfile = f'session_data/form_data_setbasedtest-{my_session_id}.json'
         genes_sessionfile = f'session_data/genes_data-{my_session_id}.json'
         SSPvalues_file = f'session_data/SSPvalues-{my_session_id}.json'
         coloc2_file = f'session_data/coloc2result-{my_session_id}.json'
+        metadatafile = f'session_data/metadata-{my_session_id}.json' # don't check if this exists; new addition
         sessionfilepath = os.path.join(MYDIR, 'static', sessionfile)
         genes_sessionfilepath = os.path.join(MYDIR, 'static', genes_sessionfile)
         SSPvalues_filepath = os.path.join(MYDIR, 'static', SSPvalues_file)
         coloc2_filepath = os.path.join(MYDIR, 'static', coloc2_file)
+        SBTsessionfilepath = os.path.join(MYDIR, 'static', SBTsessionfile)
     else: # blank input
         raise InvalidUsage('Invalid input')
     # print(f'Session filepath: {sessionfilepath} is {str(os.path.isfile(sessionfilepath))}')
     # print(f'Genes filepath: {genes_sessionfilepath} is {str(os.path.isfile(genes_sessionfilepath))}')
     # print(f'SSPvalues filepath: {SSPvalues_filepath} is {str(os.path.isfile(SSPvalues_filepath))}')
-    if not (os.path.isfile(sessionfilepath) and os.path.isfile(genes_sessionfilepath) and os.path.isfile(SSPvalues_filepath) and os.path.isfile(coloc2_filepath)):
-        raise InvalidUsage(f'Could not locate session {my_session_id}')
-    return render_template("plot.html", sessionfile = sessionfile, genesfile = genes_sessionfile, SSPvalues_file = SSPvalues_file, coloc2_file = coloc2_file, sessionid = my_session_id)
+    if (os.path.isfile(SBTsessionfilepath)):
+        # set based test results
+        return render_template("plot.html", sessionfile = SBTsessionfile, sessionid = my_session_id, metadata_file = metadatafile)
+    if (os.path.isfile(sessionfilepath) and os.path.isfile(genes_sessionfilepath) and os.path.isfile(SSPvalues_filepath) and os.path.isfile(coloc2_filepath)):
+        # regular results
+        return render_template("plot.html", sessionfile = sessionfile, genesfile = genes_sessionfile, SSPvalues_file = SSPvalues_file, coloc2_file = coloc2_file, sessionid = my_session_id, metadata_file = metadatafile)
+
+    raise InvalidUsage(f'Could not locate session {my_session_id}')
 
 
 @app.route("/update/<session_id>/<newgene>")
@@ -2229,16 +2247,16 @@ def setbasedtest():
     metadata = {}
     metadata.update({
         "datetime": datetime.now().isoformat(),
-        "gwas_filepath": gwas_filepath or "",
+        "summary_stats_filepath": summary_stats_filepath or "",
         "ldmat_filepath": ldmat_filepath or "",
-        "html_filepath": html_filepath or "",
         "session_id": str(my_session_id),
         "type": "set-based-test",
     })
 
-    metadatafilepath = os.path.join(MYDIR, 'static', f'session_data/metadata-{my_session_id}.json')
-    with open(metadatafilepath, 'w') as metadatafile:
-        json.dump(metadata, metadatafile)
+    metadatafile = f'session_data/metadata-{my_session_id}.json'
+    metadatafilepath = os.path.join(MYDIR, 'static', metadatafile)
+    with open(metadatafilepath, 'w') as f:
+        json.dump(metadata, f)
 
     data = {}
 
@@ -2295,6 +2313,7 @@ def setbasedtest():
 
     # keep track of column names
     chrom, bp, snp, p = data['dataset_colnames']
+    total_unique_SNPs = -1
 
     # Get LD:
     if ldmat_filepath != "":
@@ -2324,9 +2343,10 @@ def setbasedtest():
                 pass
         else:
             pass
-
     else:
         summary_datasets = clean_summary_datasets(summary_datasets, snp, chrom)
+        total_unique_SNPs = pd.concat(list(summary_datasets.values()))[snp].nunique()
+
         if len(summary_datasets) > 1:
             if use_dataset_union:
                 # TODO: calculate union of dataset SNPs to create ld_mat
@@ -2364,7 +2384,9 @@ def setbasedtest():
         "chrom": chromosome,
         "startbp": start,
         "endbp": end,
-        "snp_positions": snp_positions
+        "snp_positions": snp_positions,  # snps we end up using in LD generation
+        "total_unique_snps": total_unique_SNPs,
+        "total_used_snps": len(snp_positions)
     })
 
     PvaluesMat = [dataset[P] for dataset in summary_datasets.values()]
@@ -2409,7 +2431,7 @@ def setbasedtest():
     }
     SBTvalues_file = f'session_data/SBTvalues_setbasedtest-{my_session_id}.json'
     SBTvalues_filepath = os.path.join(MYDIR, 'static', SBTvalues_file)
-    json.dump(SBTresults, open(SBTvalues_filepath, 'w'))
+    json.dump(SBTresults, open(SBTvalues_filepath, 'w'), cls=NumpyEncoder)
     t2_total = datetime.now() - t1
 
     ####################################################################################################
@@ -2421,7 +2443,7 @@ def setbasedtest():
     # Save data in JSON format for plotting
     sessionfile = f'session_data/form_data_setbasedtest-{my_session_id}.json'
     sessionfilepath = os.path.join(MYDIR, 'static', sessionfile)
-    json.dump(data, open(sessionfilepath, 'w'))
+    json.dump(data, open(sessionfilepath, 'w'), cls=NumpyEncoder)
 
     ####################################################################################################
 
@@ -2434,7 +2456,7 @@ def setbasedtest():
         f.write(f'Total time: {t2_total}\n')
 
 
-    return jsonify(data)
+    return render_template("plot.html", sessionfile = sessionfile, sessionid = my_session_id, metadata_file = metadatafile)
 
 
 @app.route('/downloaddata/<my_session_id>')
@@ -2473,5 +2495,5 @@ def hello_world():
 
 
 if __name__ == "__main__":
-    app.run()
+    app.run(debug=True, port=5000, host="0.0.0.0")
 

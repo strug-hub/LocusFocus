@@ -621,13 +621,16 @@
             metadataResponseJson,
           ] = results.map((v) => (v.status === "fulfilled" ? v.value : null));
           $("#loading-spinner").remove();
+          let session_type = "default";
           if (
             metadataResponseJson !== null &&
             metadataResponseJson["type"] === "set-based-test"
           ) {
             // set based test case
             // show elements used for set-based test results
+            session_type = "set-based-test";
             ["params-table"].forEach((name) => showSection(name));
+            buildParamsTable(sessionData, sessionid, type = session_type);
           } else {
             // default case
             // show elements used for default case
@@ -654,7 +657,7 @@
                     "Warning: The number of SNPs that match GTEx variants is lower than 80%.<br> Please ensure variant names given are accurate, including REF and ALT columns."
                   );
               }
-              buildParamsTable(sessionData, sessionid);
+              buildParamsTable(sessionData, sessionid, type = session_type);
               if (genesData !== null) {
                 populate_genes(genesData, sessionData);
                 plot_gwas(sessionData, genesData);
