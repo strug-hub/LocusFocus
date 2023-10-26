@@ -163,36 +163,18 @@ function buildNTable(genes, tissues, num_SS_snps_used, transpose = false) {
 }
 
 function list_secondary_SSPvalues(titles, SSPvalues, SSPvaluesN) {
-  var tbody = d3.select("#secondary-table").select("tbody");
-
-  // Column headers
-  d3.select("#dataset-desc").text("Dataset description");
-  secondaryTable
-    .select("thead")
-    .select("tr")
-    .append("th")
-    .attr("class", "th-sm")
-    .text("Simple Sum -log10P");
-  secondaryTable
-    .select("thead")
-    .select("tr")
-    .append("th")
-    .attr("class", "th-sm")
-    .text("Number of SNPs Used in SS Calculation");
-
-  // Table body:
-  for (i = 0; i < titles.length; i++) {
-    // for each title description
-    var row = tbody.append("tr");
-    row.append("td").text(titles[i]);
-    row.append("td").text(SSPvalues[i]);
-    row.append("td").text(SSPvaluesN[i]);
-  }
+  let table_data = titles.map((title, i) => [title, SSPvalues[i], SSPvaluesN[i]]);
 
   // Add DataTables functionality:
-  secTable = $(document).ready(function () {
-    var thesectable = $("#secondary-table").DataTable({
+  $(document).ready(function () {
+    $("#secondary-table").DataTable({
       dom: "Bfrtipl",
+      data: table_data,
+      columns: [
+        { title: "Dataset description" },
+        { title: "Simple Sum -log10P" },
+        { title: "Number of SNPs Used in SS Calculation" },
+      ],
       buttons: [
         "copy",
         {

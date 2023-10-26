@@ -2,16 +2,6 @@ const START = 0;
 const END = 1;
 
 function buildParamsTable(data, sessionid, type = "default") {
-  var tableselect = d3.select("#params-table");
-
-  // Column headers
-  header = tableselect.append("thead").append("tr");
-  header.append("th").attr("class", "th-sm").text("Field");
-  header.append("th").attr("class", "th-sm").text("Value");
-
-  // Table body:
-  let tbody = tableselect.append("tbody");
-  // field-value pairs in order displayed in table
   let table_data = [];
   if (type === "default") {
     table_data = [
@@ -78,17 +68,15 @@ function buildParamsTable(data, sessionid, type = "default") {
     throw Error(`Unexpected params table type: ${type}`);
   }
 
-  for (const [key, value] of table_data) {
-    if (value === undefined) continue;
-    let row = tbody.append("tr");
-    row.append("td").text(key);
-    row.append("td").text(value);
-  }
-
   // Add DataTables functionality:
   paramsTable = $(document).ready(function () {
     $("#params-table").DataTable({
       dom: "Bfrtipl",
+      data: table_data,
+      columns: [
+        { title: "Field" },
+        { title: "Value" },
+      ],
       buttons: [
         "copy",
         {
