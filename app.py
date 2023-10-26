@@ -1711,9 +1711,10 @@ def index():
             "type": "default",
         })
 
-        metadatafilepath = os.path.join(MYDIR, 'static', f'session_data/metadata-{my_session_id}.json')
-        with open(metadatafilepath, 'w') as metadatafile:
-            json.dump(metadata, metadatafile)
+        metadatafile = f'session_data/metadata-{my_session_id}.json'
+        metadatafilepath = os.path.join(MYDIR, 'static', metadatafile)
+        with open(metadatafilepath, 'w') as f:
+            json.dump(metadata, f)
 
         data = {}
         data['snps'] = snp_list
@@ -2094,6 +2095,9 @@ def index():
         json.dump(SSPvalues_dict, open(SSPvalues_filepath, 'w'))
         SS_time = datetime.now() - t1
 
+        data['first_stages'] = first_stages
+        data['first_stage_Pvalues'] = first_stage_p
+
         ####################################################################################################
         coloc2_time = 0
         if runcoloc2:
@@ -2177,7 +2181,7 @@ def index():
             if coloc2_time != 0: f.write(f'Time for COLOC2 run: {coloc2_time}\n')
             f.write(f'Total time: {t2_total}\n')
 
-        return render_template("plot.html", sessionfile = sessionfile, genesfile = genes_sessionfile, SSPvalues_file = SSPvalues_file, coloc2_file = coloc2_file, sessionid = my_session_id, metadata_file = metadata_file)
+        return render_template("plot.html", sessionfile = sessionfile, genesfile = genes_sessionfile, SSPvalues_file = SSPvalues_file, coloc2_file = coloc2_file, sessionid = my_session_id, metadata_file = metadatafile)
     return render_template("index.html")
 
 

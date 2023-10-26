@@ -34,7 +34,7 @@ And then paste the session ID string in the input form and click submit.
    :figclass: borderit
 
 
-As an example, you can try submitting `session ID 0d074aff-76f4-42ab-87ef-5e2fa34b04e8 <https://locusfocus.research.sickkids.ca/session_id/0d074aff-76f4-42ab-87ef-5e2fa34b04e8>`_
+As an example, you can try submitting `session ID 3f41cea2-5843-4942-bba3-b28fa7e4b949 <https://locusfocus.research.sickkids.ca/session_id/3f41cea2-5843-4942-bba3-b28fa7e4b949>`_
 
 The example above will bring the plots associated with the 
 GWAS association results for meconium ileus, a complication in cystic fibrosis patients
