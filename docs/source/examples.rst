@@ -13,7 +13,7 @@ Sample Data and Output
 ***************************
 
 You may follow along by downloading the `sample data for meconium ileus <https://github.com/naim-panjwani/LocusFocus/blob/master/data/sample_datasets/MI_GWAS_2019_1_205500-206000kbp.tsv>`_.
-The output after a run using this dataset can be accessed by entering the `session ID 3f41cea2-5843-4942-bba3-b28fa7e4b949 <https://locusfocus.research.sickkids.ca/session_id/3f41cea2-5843-4942-bba3-b28fa7e4b949>`_ 
+The output after a run using this dataset can be accessed by entering the `session ID "example-output" <https://locusfocus.research.sickkids.ca/session_id/example-output>`_ 
 
 1. Click on "Choose File" to upload the GWAS summary statistics. As stated, the file must be tab-delimited and not exceed 100MB.
 
@@ -265,7 +265,7 @@ the same association p-values for the GWAS and eQTL SNPs simultaneously - see ex
 
 In the example image above, we find a particular top GWAS SNP (rs7419153) 
 that also has a high -log\ :sub:`10` eQTL P-value in the Pancreas. To get this result, simply zoom 
-into the `example session <https://locusfocus.research.sickkids.ca/session_id/3f41cea2-5843-4942-bba3-b28fa7e4b949>`_,
+into the `example session <https://locusfocus.research.sickkids.ca/session_id/example-output>`_,
 click on the "Compare data on hover" tool, and hover over the SNPs (if the SNP data is dense, it is easier to
 first zoom in and show only the top GWAS hits - you could deselect the SNPs with low LD by clicking on the legend).
 The y-axes can be rescaled by clicking and dragging at the corners; clicking and dragging the y-axes from the middle repositions the zero line.
