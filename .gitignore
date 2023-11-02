@@ -145,3 +145,4 @@ data/*lookup_table.txt.gz
 node_modules
 locusfocus_env
 locusfocusR.tar.gz
+!templates/lib/
