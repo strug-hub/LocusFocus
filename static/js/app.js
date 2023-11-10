@@ -183,29 +183,6 @@ function askSNPInput(markerColDiv) {
       "<p>Enter the header text corresponding to the variant ID column in your txt/tsv file (primary dataset).</p><p>Accepted formats: rs7512462, 1_205899595_T_C_b37</p>"
     );
 }
-function addVariantInputs() {
-  variantInputsDiv.html("");
-  var chromColDiv = variantInputsDiv
-    .append("div")
-    .attr("class", "col-md-3")
-    .attr("id", "chrom");
-  var posColDiv = variantInputsDiv
-    .append("div")
-    .attr("class", "col-md-3")
-    .attr("id", "pos");
-  var refColDiv = variantInputsDiv
-    .append("div")
-    .attr("class", "col-md-3")
-    .attr("id", "ref");
-  var altColDiv = variantInputsDiv
-    .append("div")
-    .attr("class", "col-md-3")
-    .attr("id", "alt");
-  askChromInput(chromColDiv);
-  askPosInput(posColDiv);
-  askRefInput(refColDiv);
-  askAltInput(altColDiv);
-}
 
 function askBetaInput(betaColDiv) {
   betaColDiv.html("");
@@ -431,9 +408,9 @@ function askColocInputs() {
 
 function inferVariant(snpbox) {
   if (snpbox.checked) {
-    variantInputsDiv.html("");
+    $("#variantInputs").hide();
   } else {
-    addVariantInputs();
+    $("#variantInputs").show();
   }
   // re-initialize popover and tooltip
   $(function () {
