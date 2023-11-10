@@ -143,6 +143,7 @@ app.config['UPLOAD_FOLDER'] = os.path.join(MYDIR, 'static/upload/')
 app.config['UPLOADED_FILES_DEST'] = os.path.join(MYDIR, 'static/upload/')
 app.config['MAX_CONTENT_LENGTH'] = fileSizeLimit
 ALLOWED_EXTENSIONS = set(['txt', 'tsv', 'ld', 'html'])
+ALLOWED_SBT_EXTENSIONS = set(['txt', 'tsv', 'ld'])
 app.config['UPLOADED_FILES_ALLOW'] = ALLOWED_EXTENSIONS
 app.secret_key = mysecrets.mysecret
 files = UploadSet('files', DATA)
@@ -905,7 +906,7 @@ def standardize_gwas_variant_ids(column_dict, gwas_data, regionstr: str, coordin
     return gwas_data, column_dict
 
 
-def clean_summary_datasets(summary_datasets: Dict[str, dict], snp_column: str, chrom_column: str):
+def clean_summary_datasets(summary_datasets, snp_column: str, chrom_column: str):
     new_summary_datasets = {}
     for key, dataset in summary_datasets.items():
         dataset = pd.DataFrame(dataset)
@@ -2187,6 +2188,16 @@ def index():
 
 @app.route('/setbasedtest', methods=['GET', 'POST'])
 def setbasedtest():
+    """
+    Route for performing a set-based test on a single set of summary statistics 
+    (ideally with a user-provided LD matrix, however we use PLINK with 1000 Genome pops if none is provided).
+
+    Users should only provide one dataset. However, multiple positions across chromosomes can be specified, 
+    and thus a sparse LD will be provided/created.
+
+    Summary stats file should be uploaded in .txt or .tsv format. 
+    LD should be uploaded (optional) with .ld format.
+    """
     if request.method == 'GET':
         return render_template("set_based_test.html")
 
@@ -2198,34 +2209,34 @@ def setbasedtest():
     # classify_files, modified
     ldmat_filepath = ''
     summary_stats_filepath = ''
-    summary_stats_extension = ''
     uploaded_extensions = []
+    # TODO: One dataset (.txt, .tsv) and one LD matrix maximum
     for file in files:
         filename = secure_filename(file.filename)
         filepath = os.path.join(MYDIR, app.config['UPLOAD_FOLDER'], filename)
         # classify_files, modified
         extension = filename.split('.')[-1]
-        # Users can upload up to 1 LD, and must upload 1 summary stats file (.txt, .tsv, .csv, .html)
+        # Users can upload up to 1 LD, and must upload 1 summary stats file (.txt, .tsv)
         if len(uploaded_extensions) >= 2:
             raise InvalidUsage(f"Too many files uploaded. Expecting maximum of 2 files", status_code=410)
         if extension not in uploaded_extensions:
-            if (extension == 'ld') or (extension in ['html', 'tsv', 'txt'] and summary_stats_filepath == ''):
+            if extension in ALLOWED_SBT_EXTENSIONS:
                 uploaded_extensions.append(extension)
             else:
                 raise InvalidUsage(f"Unexpected file extension: {filename}", status_code=410)
         else:
-            raise InvalidUsage('Please upload 2 different file types as described', status_code=410)
+            raise InvalidUsage('Please upload at most 2 different file types as described', status_code=410)
 
         if extension == 'ld':
-            ldmat_filepath = os.path.join(MYDIR, app.config['UPLOAD_FOLDER'], filename)
-        elif extension in ['html', 'tsv', 'txt']:
-            summary_stats_filepath = os.path.join(MYDIR, app.config['UPLOAD_FOLDER'], filename)
-            summary_stats_extension = extension
+            ldmat_filepath = filepath
+        elif extension in ['tsv', 'txt']:
+            summary_stats_filepath = filepath
+        
         # Save after we know it's a file we want
-
         file.save(filepath)
+
     if summary_stats_filepath == '':
-        raise InvalidUsage(f"Missing summary stats file. Please upload one of (.txt, .tsv, .html)", status_code=410)
+        raise InvalidUsage(f"Missing summary stats file. Please upload one of (.txt, .tsv)", status_code=410)
 
     my_session_id = uuid.uuid4()
     coordinate = request.form[FormID.COORDINATE]
@@ -2244,9 +2255,6 @@ def setbasedtest():
 
     pops = request.form[FormID.LD_1000GENOME_POP]
     if len(pops) == 0: pops = 'EUR'
-
-    # TODO: implement in the future
-    use_dataset_union = False
 
     metadata = {}
     metadata.update({
@@ -2273,54 +2281,33 @@ def setbasedtest():
     # Loading datasets uploaded
     #######################################################
 
-    # If non-html is provided, this will contain only 1 dataset with default title
-    # 'summary_stats_<session_id>'
-    summary_datasets = {}
-    table_titles = []
-    if summary_stats_extension == 'html':
-        # One or more datasets, presumably all related or in the same region
-        with open(summary_stats_filepath, encoding='utf-8', errors='replace') as f:
-            html = f.read()
-            if (not html.startswith('<h3>')) and (not html.startswith('<html>')) and (not html.startswith('<table>') and (not html.startswith('<!DOCTYPE html>'))):
-                raise InvalidUsage('Secondary dataset(s) provided are not formatted correctly. Please use the merge_and_convert_to_html.py script for formatting.', status_code=410)
-        soup = bs(html, 'lxml')
-        table_titles = soup.find_all('h3')
-        table_titles = [x.text for x in table_titles]
-        tables = soup.find_all('table')
-        hp = htmltableparser.HTMLTableParser()
-        for i in range(len(tables)):
-            try:
-                table = hp.parse_html_table(tables[i])
-                summary_datasets[table_titles[i]] = table.fillna(-1).to_dict(orient='records')
-            except:
-                summary_datasets[table_titles[i]] = []
-        data['dataset_titles'] = table_titles
-        data['dataset_colnames'] = [CHROM, BP, SNP, P]
-        data.update(summary_datasets)
-    elif summary_stats_extension in ['tsv', 'txt']:
-        gwas_data = read_gwasfile(summary_stats_filepath, sep='\t')
-        gwas_data, column_names, column_dict, infer_variant = get_gwas_column_names(request, gwas_data)
-        gwas_data, column_dict, infer_variant = subset_gwas_data_to_entered_columns(request, gwas_data, column_names, column_dict, infer_variant)
+    # one dataset
+    gwas_data = read_gwasfile(summary_stats_filepath, sep='\t')
+    gwas_data, column_names, column_dict, infer_variant = get_gwas_column_names(request, gwas_data)
+    gwas_data, column_dict, infer_variant = subset_gwas_data_to_entered_columns(request, gwas_data, column_names, column_dict, infer_variant)
 
-        # subset to only relevant columns (CHROM, BP, SNP, P)
-        title = os.path.basename(summary_stats_filepath)
-        data['dataset_titles'] = [title]
-        data['dataset_colnames'] = [column_dict[key] for key in [
-            FormID.CHROM_COL,
-            FormID.POS_COL,
-            FormID.SNP_COL,
-            FormID.P_COL
-        ]]
-        column_names = data['dataset_colnames']
-        gwas_data = gwas_data[ column_names ]
-        summary_datasets[title] = gwas_data.to_dict(orient='records')
+    # subset to only relevant columns (CHROM, BP, SNP, P)
+    title = os.path.basename(summary_stats_filepath)
+    data['dataset_title'] = title
+    data['dataset_colnames'] = [column_dict[key] for key in [
+        FormID.CHROM_COL,
+        FormID.POS_COL,
+        FormID.SNP_COL,
+        FormID.P_COL
+    ]]
+    column_names = data['dataset_colnames']
+    gwas_data = gwas_data[ column_names ]
+    summary_dataset = gwas_data
 
     # keep track of column names
     chrom, bp, snp, p = data['dataset_colnames']
-    total_unique_SNPs = -1
+    chromosome, _, _ = get_region_from_summary_stats({ 'dataset': summary_dataset }, bp, chrom)
+    snp_positions = list(summary_dataset[bp])
+    summary_dataset = clean_summary_datasets({ 'dataset': summary_dataset }, snp, chrom).get('dataset')
 
     # Get LD:
     if ldmat_filepath != "":
+        # User provided their own LD matrix
         ld_mat = pd.read_csv(ldmat_filepath, sep="\t", encoding='utf-8', header=None)
         ld_mat = np.matrix(ld_mat)
         if not len(ld_mat.shape) == 2:
@@ -2330,70 +2317,21 @@ def setbasedtest():
             raise InvalidUsage(f"Provided LD matrix is not square as expected. Shape: '{ld_mat.shape}'", status_code=410)
 
         # find dataset whose length is same as LD
-        model_dataset_key = None
-        for title, dataset in summary_datasets.items():
-            if len(dataset) == ld_mat.shape[0]:
-                model_dataset_key = title
-                break
-        if model_dataset_key is None:
-            raise InvalidUsage(f"Provided LD matrix length does not match length of any provided datasets. LD length: '{ld_mat.shape[0]}', Dataset lengths: '{[(title, len(dataset)) for title, dataset in summary_datasets.items()]}'", status_code=410)
+        if not (ld_mat.shape[0] == len(summary_dataset)):
+            raise InvalidUsage(f"Provided LD matrix length does not match length of provided dataset. LD length: '{ld_mat.shape[0]}', Dataset length: '{len(summary_dataset)}'", status_code=410)
 
-        summary_datasets = clean_summary_datasets(summary_datasets, snp, chrom)
-        # TODO: Finish handling user-provided LD matrix
-        if len(summary_datasets) > 1:
-            if use_dataset_union:
-                pass
-            else:
-                pass
-        else:
-            pass
     else:
-        summary_datasets = clean_summary_datasets(summary_datasets, snp, chrom)
-        total_unique_SNPs = pd.concat(list(summary_datasets.values()))[snp].nunique()
-
-        if len(summary_datasets) > 1:
-            if use_dataset_union:
-                # TODO: calculate union of dataset SNPs to create ld_mat
-                # for now, this doesn't happen
-                pass
-            else:
-                # use intersection of dataset SNPs to create LD
-                first_dataset = iter(summary_datasets.values()).__next__()
-                intersection_idx = first_dataset.index.get_level_values("snp_index")  # only contains SNPs
-
-                # get intersection of SNP values only, ignore formatting
-                for dataset in summary_datasets.values():
-                    intersection_idx = intersection_idx.intersection(dataset.index.get_level_values("snp_index"))
-
-                for key, dataset in summary_datasets.items():
-                    summary_datasets[key] = dataset.loc[dataset.index.get_level_values("snp_index").isin(intersection_idx.values)]
-
-                chromosome, start, end = get_region_from_summary_stats(summary_datasets, bp, chrom)
-                first_dataset = iter(summary_datasets.values()).__next__()
-                snp_positions = list(first_dataset[bp]) # all datasets are now intersected, so they all have the same SNPs
-                if len(snp_positions) == 0:
-                    raise InvalidUsage("Unable to compute LD matrix using intersection strategy; There are 0 SNPs shared by all provided datasets.", status_code=410)
-                plink_outfilepath = os.path.join(MYDIR, "static", f"session_data/ld-{my_session_id}")
-                ld_mat_snps, ld_mat = plink_ldmat(coordinate, pops, chromosome, snp_positions, plink_outfilepath)
-
-        else:
-            # only one dataset
-            chromosome, start, end = get_region_from_summary_stats(summary_datasets, bp, chrom)
-            dataset = iter(summary_datasets.values()).__next__()
-            snp_positions = list(dataset[bp])
-            plink_outfilepath = os.path.join(MYDIR, "static", f"session_data/ld-{my_session_id}")
-            ld_mat_snps, ld_mat = plink_ldmat(coordinate, pops, chromosome, snp_positions, plink_outfilepath)
+        # No LD provided, so we generate one with PLINK + 1000 Genomes population
+        plink_outfilepath = os.path.join(MYDIR, "static", f"session_data/ld-{my_session_id}")
+        ld_mat_snps, ld_mat = plink_ldmat(coordinate, pops, chromosome, snp_positions, plink_outfilepath)  # TODO: Handling multiple regions / sparse ld matrix
 
     data.update({
         "chrom": chromosome,
-        "startbp": start,
-        "endbp": end,
         "snp_positions": snp_positions,  # snps we end up using in LD generation
-        "total_unique_snps": total_unique_SNPs,
         "total_used_snps": len(snp_positions)
     })
 
-    PvaluesMat = [dataset[P] for dataset in summary_datasets.values()]
+    PvaluesMat = [summary_dataset[P]]
 
     np.fill_diagonal(ld_mat, np.diag(ld_mat) + LD_MAT_DIAG_CONSTANT)
 
@@ -2429,8 +2367,7 @@ def setbasedtest():
 
     # Set Based Test
     SBTresults = {
-        'secondary_dataset_titles': table_titles
-        ,'first_stages': first_stages
+        'first_stages': first_stages
         ,'first_stage_Pvalues': first_stage_p
     }
     SBTvalues_file = f'session_data/SBTvalues_setbasedtest-{my_session_id}.json'
@@ -2459,8 +2396,8 @@ def setbasedtest():
         f.write('-----------------------------------------------------------\n')
         f.write(f'Total time: {t2_total}\n')
 
-
-    return render_template("plot.html", sessionfile = sessionfile, sessionid = my_session_id, metadata_file = metadatafile)
+    return redirect(url_for("prev_session_input", session_id=my_session_id))
+    # return render_template("plot.html", sessionfile = sessionfile, sessionid = my_session_id, metadata_file = metadatafile)
 
 
 @app.route('/downloaddata/<my_session_id>')
