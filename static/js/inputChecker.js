@@ -40,6 +40,26 @@ function checkNumSamplesInput(numsamples) {
 }
 
 /**
+ * Determine if two regions overlap. 
+ * Assume proper format (chrom:start-end).
+ * 
+ * @param {string} regiontextA 
+ * @param {string} regiontextB 
+ */
+function regionIsOverlapping(regiontextA, regiontextB) {
+    let [chromA, startA, endA] = regiontextA.split(":").flatMap((s) => s.split("-"));
+    let [chromB, startB, endB] = regiontextB.split(":").flatMap((s) => s.split("-"));
+    if (chromA !== chromB) return false;
+    
+    startA = Number(startA);
+    endA = Number(endA);
+    startB = Number(startB);
+    endB = Number(endB);
+
+    return startA <= endB && startB <= endA;
+}
+
+/**
  * Validate input format for multiple region inputs.
  * No overlaps, no negative BP positions, and no unusual chromosome values.
  */
@@ -60,5 +80,15 @@ async function checkMultipleRegionsInput() {
         }    
     }
 
+    if (errors.length === 0) {
+        // overlap check
+        for (let i = 0; i < regions.length; i++) {
+            for (let j = i+1; j < regions.length; j++) {
+                if (regionIsOverlapping(regions[i], regions[j])) {
+                    errors.push(`Region on line ${i+1} overlaps wtih region on line ${j+1}`);
+                }
+            }
+        }
+    }
     errordiv.text(errors.join("\n<br />\n"));
 }
