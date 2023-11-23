@@ -116,6 +116,18 @@
           <div class="row">
             <div class="col-md-6">
               {% include "components/form/multi-region.html" %}
+              <div class="input-error" id="multi-region-error"></div>
+            </div>
+            <div class="col-md-6">
+              <div class="alert alert-info">
+                <h5>Specify one or more regions in your dataset</h5>
+                <p>
+                  If you would like to have LocusFocus generate an LD matrix for you, you may specify region(s) of interest here.
+                  <strong>SNPs that are outside of these regions will be removed before LD calculation and before the set-based test.</strong>
+                  <br />
+                  More information: <a href="https://locusfocus.readthedocs.io" target="_blank" rel="noopener"><u>Set-based test documentation</u></a>
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -201,6 +213,9 @@
   <script type="text/javascript" src="{{ url_for('static', filename='js/lib/jquery.dataTables.min.js') }}"></script>
   <!-- Multiselect -->
   <script src="{{ url_for('static', filename='js/lib/bootstrap-multiselect.js') }}"></script>
+  <script>
+    $("#multi-region").on("change", checkMultipleRegionsInput);
+  </script>
 </body>
 
 </html>
