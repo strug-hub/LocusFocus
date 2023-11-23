@@ -143,7 +143,6 @@ app.config['UPLOAD_FOLDER'] = os.path.join(MYDIR, 'static/upload/')
 app.config['UPLOADED_FILES_DEST'] = os.path.join(MYDIR, 'static/upload/')
 app.config['MAX_CONTENT_LENGTH'] = fileSizeLimit
 ALLOWED_EXTENSIONS = set(['txt', 'tsv', 'ld', 'html'])
-ALLOWED_SBT_EXTENSIONS = set(['txt', 'tsv', 'ld'])
 app.config['UPLOADED_FILES_ALLOW'] = ALLOWED_EXTENSIONS
 app.secret_key = mysecrets.mysecret
 files = UploadSet('files', DATA)
@@ -2186,6 +2185,8 @@ def index():
     return render_template("index.html")
 
 
+ALLOWED_SBT_EXTENSIONS = set(['txt', 'tsv', 'ld'])
+
 @app.route('/setbasedtest', methods=['GET', 'POST'])
 def setbasedtest():
     """
@@ -2210,7 +2211,6 @@ def setbasedtest():
     ldmat_filepath = ''
     summary_stats_filepath = ''
     uploaded_extensions = []
-    # TODO: One dataset (.txt, .tsv) and one LD matrix maximum
     for file in files:
         filename = secure_filename(file.filename)
         filepath = os.path.join(MYDIR, app.config['UPLOAD_FOLDER'], filename)
