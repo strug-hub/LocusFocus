@@ -68,15 +68,17 @@ async function checkMultipleRegionsInput() {
     let errordiv = $("#multi-region-error");
     errordiv.text("");
     let build = d3.select("#coordinate").property("value");
-    let regions = regiontext.trim().split("\n");
+    let regions = regiontext.trim().split("\n").filter(r => r !== "");
+    if (regions.length === 0) return;
     let errors = [];
 
     for (let i = 0; i < regions.length; i++) {
         let region = regions[i];
+        if (region === "") continue;
         let response = await d3.json(`/regionCheck/${build}/${region}`);
         let message = response['response'];
         if (message !== "OK") {
-            errors.push(`Line ${i+1}: ${message}`);
+            errors.push(`Line ${i+1} ("${region}"): ${message}`);
         }    
     }
 
@@ -85,10 +87,12 @@ async function checkMultipleRegionsInput() {
         for (let i = 0; i < regions.length; i++) {
             for (let j = i+1; j < regions.length; j++) {
                 if (regionIsOverlapping(regions[i], regions[j])) {
-                    errors.push(`Region on line ${i+1} overlaps wtih region on line ${j+1}`);
+                    errors.push(`Region on line ${i+1} ("${regions[i]}") overlaps wtih region on line ${j+1} ("${regions[j]}")`);
                 }
             }
         }
     }
+
+
     errordiv.text(errors.join("\n<br />\n"));
 }
