@@ -15,17 +15,6 @@
 
     <!-- Links -->
     <ul class="navbar-nav mr-auto">
-
-      <li class="nav-item dropdown">
-        <a class="nav-link dropdown-toggle" id="navbarDropdownMenuLinkColoc" data-toggle="dropdown"
-          aria-haspopup="true" aria-expanded="false">Colocalization</a>
-        <div class="dropdown-menu dropdown-primary" aria-labelledby="navbarDropdownMenuLinkColoc">
-          <a class="dropdown-item" href="/">Colocalization Test</a>
-          <a class="dropdown-item" href="/previous_session">Lookup Previous Session</a>
-          <a class="dropdown-item" href="/session_id/example-output">See Example Output</a>
-        </div>
-      </li>
-
       <li class="nav-item dropdown">
         <a class="nav-link dropdown-toggle" id="navbarDropdownMenuLinkTools" data-toggle="dropdown"
           aria-haspopup="true" aria-expanded="false">Tools</a>
@@ -33,12 +22,20 @@
           <a class="dropdown-item" href="/setbasedtest">Set-based Test</a>
         </div>
       </li>
-
+      <li class="nav-item">
+        <a class="nav-link" href="/">Colocalization</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="/setbasedtest">Set-based Test</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="https://svatalog.research.sickkids.ca/">GWAS SVatalog</a>
+      </li>
       <li class="nav-item">
         <a class="nav-link" href="https://locusfocus.readthedocs.io">Documentation</a>
       </li>
       <li class="nav-item">
-        <a class="nav-link" href="mailto:mackenzie.frew@sickkids.ca?subject=LocusFocus">Contact Us</a>
+        <a class="nav-link" data-toggle="modal" data-target="#contactModal">Contact Us</a>
       </li>
       <li class="nav-item">
         <a class="nav-link" href="https://mailchi.mp/752ab1c4d516/locusfocus">Subscribe</a>
@@ -88,6 +85,28 @@
         >
           Close
         </button>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="contactModal" class="modal fade" role="dialog">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h4 class="modal-title">
+          Contact Us
+        </h4>
+        <button type="button" class="close" data-dismiss="modal">×</button>
+      </div>
+      <div class="modal-body">
+        <p>
+          <h5>GWAS SVatalog</h5>
+          Shalvi Chirmade <a href="mailto:shalvi.chirmade@sickkids.ca">shalvi.chirmade@sickkids.ca</a>
+        </p>
+        <p>
+          <h5>LocusFocus</h5>
+          Mackenzie Frew <a href="mailto:mackenzie.frew@sickkids.ca">mackenzie.frew@sickkids.ca</a>
+        </p>
       </div>
     </div>
   </div>
