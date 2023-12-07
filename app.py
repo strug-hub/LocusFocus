@@ -13,7 +13,8 @@ import pysam
 import mysecrets
 import glob
 import tarfile
-from typing import Dict
+from typing import Dict, Tuple, List
+import gc
 
 from flask import Flask, request, redirect, url_for, jsonify, render_template, flash, send_file, Markup
 from werkzeug.utils import secure_filename
@@ -30,7 +31,7 @@ from numpy_encoder import NumpyEncoder
 
 #import getSimpleSumStats
 
-genomicWindowLimit = 2000000
+genomicWindowLimit = 2_000_000
 one_sided_SS_window_size = 100000 # (100 kb on either side of the lead SNP)
 fileSizeLimit = 500 * 1024 * 1024 # in Bytes
 
@@ -40,7 +41,6 @@ APP_STATIC = os.path.join(MYDIR, 'static')
 ##################
 # Default settings
 ##################
-
 class FormID():
     """
     Constants for referencing the HTML "id" values of various form elements in LocusFocus
@@ -61,6 +61,7 @@ class FormID():
     COORDINATE = "coordinate"
     SET_BASED_P = "setbasedP"
     LD_1000GENOME_POP = "LD-populations"
+    LOCUS_MULTIPLE = "multi-region"
 
     def __repr__(self):
         return self.value
@@ -104,7 +105,7 @@ COLUMN_NAMES: Dict[str, str] = {
     FormID.BETA_COL: "Beta",
     FormID.STDERR_COL: "Stderr",
     FormID.NUMSAMPLES_COL: "Number of samples",
-    FormID.MAF_COL: "MAF"
+    FormID.MAF_COL: "MAF",
 }
 
 ################
@@ -905,15 +906,22 @@ def standardize_gwas_variant_ids(column_dict, gwas_data, regionstr: str, coordin
     return gwas_data, column_dict
 
 
-def clean_summary_datasets(summary_datasets, snp_column: str, chrom_column: str):
-    new_summary_datasets = {}
-    for key, dataset in summary_datasets.items():
+def clean_summary_datasets(summary_datasets, snp_column: str, chrom_column: str) -> List[pd.DataFrame]:
+    """
+    Clean a list of summary datasets before returning a list of new datasets and a list of removed indexes for each.
+    Null rows are removed, duplicate SNPs are removed, and 
+    """
+    new_summary_datasets = []
+    for dataset in summary_datasets:
         dataset = pd.DataFrame(dataset)
         dataset = dataset.dropna()  # remove null rows
         dataset = dataset[dataset[chrom_column] != "."]
         dataset = dataset.drop_duplicates(subset=snp_column)  # remove duplicate SNPs
+        # add SNPs as index, now that they're unique
+        # still has old int index, so you can use int_index to subset user-provided LD
         dataset = dataset.set_index(pd.MultiIndex.from_arrays([dataset.index, dataset[snp_column]], names=["int_index", "snp_index"]))
-        new_summary_datasets[key] = dataset
+        new_summary_datasets.append(dataset)
+
     return new_summary_datasets
 
 
@@ -949,20 +957,27 @@ def resolve_plink_filepath(build, pop, chrom):
         raise InvalidUsage(f'{str(build)} is not a recognized genome build')
     return plink_filepath
 
-def plink_ldmat(build, pop, chrom, snp_positions, outfilename):
+def plink_ldmat(build, pop, chrom, snp_positions, outfilename, region=None):
     plink_filepath = resolve_plink_filepath(build, pop, chrom)
     # make snps file to extract:
     snps = [f"chr{str(int(chrom))}:{str(int(position))}" for position in snp_positions]
     writeList(snps, outfilename + "_snps.txt")
     #plink_path = subprocess.run(args=["which","plink"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
+    if region is not None:
+        from_bp = str(region[1])
+        to_bp = str(region[2])
+    else:
+        from_bp = str(min(snp_positions))
+        to_bp = str(max(snp_positions))
+    
     if build.lower() in ["hg19","grch37"]:
         if os.name == 'nt':
             plinkrun = subprocess.run(args=[
                 "./plink.exe", '--bfile', plink_filepath
                 , "--chr", str(chrom)
                 , "--extract", outfilename + "_snps.txt"
-                , "--from-bp", str(min(snp_positions))
-                , "--to-bp", str(max(snp_positions))
+                , "--from-bp", from_bp
+                , "--to-bp", to_bp
                 , "--r2", "square"
                 , "--make-bed"
                 , "--threads", "1"
@@ -973,8 +988,8 @@ def plink_ldmat(build, pop, chrom, snp_positions, outfilename):
                 "./plink", '--bfile', plink_filepath
                 , "--chr", str(chrom)
                 , "--extract", outfilename + "_snps.txt"
-                , "--from-bp", str(min(snp_positions))
-                , "--to-bp", str(max(snp_positions))
+                , "--from-bp", from_bp
+                , "--to-bp", to_bp
                 , "--r2", "square"
                 , "--make-bed"
                 , "--threads", "1"
@@ -988,8 +1003,8 @@ def plink_ldmat(build, pop, chrom, snp_positions, outfilename):
                 , "--keep", popfile # this is the difference in running GRCh38
                 , "--chr", str(chrom)
                 , "--extract", outfilename + "_snps.txt"
-                , "--from-bp", str(min(snp_positions))
-                , "--to-bp", str(max(snp_positions))
+                , "--from-bp", from_bp
+                , "--to-bp", to_bp
                 , "--r2", "square"
                 , "--make-bed"
                 , "--threads", "1"
@@ -1001,8 +1016,8 @@ def plink_ldmat(build, pop, chrom, snp_positions, outfilename):
                 , "--keep", popfile # this is the difference in running GRCh38
                 , "--chr", str(chrom)
                 , "--extract", outfilename + "_snps.txt"
-                , "--from-bp", str(min(snp_positions))
-                , "--to-bp", str(max(snp_positions))
+                , "--from-bp", from_bp
+                , "--to-bp", to_bp
                 , "--r2", "square"
                 , "--make-bed"
                 , "--threads", "1"
@@ -1015,6 +1030,7 @@ def plink_ldmat(build, pop, chrom, snp_positions, outfilename):
     ld_snps = list(pd.read_csv(outfilename + ".bim", sep="\t", header=None).iloc[:,1])
     ldmat = np.matrix(pd.read_csv(outfilename + ".ld", sep="\t", header=None))
     return ld_snps, ldmat
+
 
 def plink_ld_pairwise(build, lead_snp_position, pop, chrom, snp_positions, snp_pvalues, outfilename):
     # positions must be in hg19 coordinates
@@ -1287,6 +1303,76 @@ def get_region_from_summary_stats(summary_datasets: Dict[str, pd.DataFrame], bpc
         raise InvalidUsage(f"Unrecognized chromosome: '{chrom}'", status_code=410)
 
     return chrom, minbp, maxbp
+
+
+def get_multiple_regions(regionstext: str, build: str) -> List[Tuple[int, int, int]]:
+    """
+    Given a string of newline-separated region texts (format: "<chrom>:<start>-<end>", 1 start, fully-closed),
+    and a coordinate build (hg19, hg38), return a list of tuples 
+    representing the chrom, start, end of each provided region.
+    """
+    regionstext = regionstext.splitlines()
+    # TODO: check for overlaps
+    regions = []
+    for regiontext in regionstext:
+        chrom, start, end = parseRegionText(regiontext, build)
+        regions.append((chrom, start, end))
+    return regions
+
+
+def create_close_regions(regions: List[Tuple[int, int, int]], threshold=int(1e6)):
+    """
+    Given a list of regions, return a new list (length <= old list) of regions
+    where each region is far enough apart from each other (>1Mb apart, or different chrom).
+
+    In other terms, given a list of regions, create a list of regions that are sufficiently
+    far enough to have insignificant LD between them. This is useful for creating multiple
+    LD matrices using PLINK. If two regions are <=1Mb from each other or overlapping, they are
+    combined into one region.
+
+    Prerequisites:
+    - region[0] is valid chromosome number, for each region in regions
+    - 0 < region[1] <= region[2], for each region in regions
+    - regions are allowed to overlap
+    """
+    # Split by chromosome
+    chrom_buckets: Dict[int, List[Tuple[int, int, int]]] = dict()
+    for region in regions:
+        if chrom_buckets.get(region[0], None) == None:
+            chrom_buckets[region[0]] = [region]
+        else:
+            chrom_buckets[region[0]].append(region)
+
+    # For each chromosome, find close regions
+    for chrom, bucket in chrom_buckets.items():
+        if len(bucket) == 1:
+            # only one region, no combining necessary
+            continue
+        new_bucket = []
+        bucket.sort(key=lambda x: x[1]) # sort by start
+        i = 1
+        start = bucket[0][1]
+        end = bucket[0][2]
+        while i < len(bucket):
+            if bucket[i][1] - end < threshold or (bucket[i][1] <= end and bucket[i][2] >= start):
+                # close enough to be combined, or overlapping
+                end = max(bucket[i][2], end)
+            else:
+                # too far, make a new region
+                new_bucket.append((chrom, start, end))
+                start = bucket[i][1]
+                end = bucket[i][2]
+
+            # Last region in the bucket
+            if i == len(bucket) - 1:
+                new_bucket.append((chrom, start, end))
+                break
+        chrom_buckets[chrom] = new_bucket
+
+    close_regions = []
+    for bucket in chrom_buckets.values():
+        close_regions.extend(bucket)
+    return close_regions
 
 #####################################
 # API Routes
@@ -2256,6 +2342,11 @@ def setbasedtest():
     pops = request.form[FormID.LD_1000GENOME_POP]
     if len(pops) == 0: pops = 'EUR'
 
+    regionstext = request.form[FormID.LOCUS_MULTIPLE]
+    regions = get_multiple_regions(regionstext, coordinate)
+
+    user_wants_separate_tests = False  # TODO: Add checkbox for this, rename
+
     metadata = {}
     metadata.update({
         "datetime": datetime.now().isoformat(),
@@ -2303,27 +2394,55 @@ def setbasedtest():
     chrom, bp, snp, p = data['dataset_colnames']
     chromosome, _, _ = get_region_from_summary_stats({ 'dataset': summary_dataset }, bp, chrom)
     snp_positions = list(summary_dataset[bp])
-    summary_dataset = clean_summary_datasets({ 'dataset': summary_dataset }, snp, chrom).get('dataset')
+    summary_dataset = clean_summary_datasets([summary_dataset], snp, chrom)[0]
 
     # Get LD:
     if ldmat_filepath != "":
         # User provided their own LD matrix
+        # We assume that it works perfectly. We might need to subset it first?
         ld_mat = pd.read_csv(ldmat_filepath, sep="\t", encoding='utf-8', header=None)
         ld_mat = np.matrix(ld_mat)
+        # subset to cleaned-up summary dataset
+
         if not len(ld_mat.shape) == 2:
-            raise InvalidUsage(f"Provided LD matrix is not 2 dimensional. Shape: '{ld_mat.shape}'", status_code=410)
+            raise InvalidUsage(f"Provided LD matrix is not 2 dimensional. Shape: '{ld_mat.shape}'")
 
         if not (ld_mat.shape[0] == ld_mat.shape[1]):
-            raise InvalidUsage(f"Provided LD matrix is not square as expected. Shape: '{ld_mat.shape}'", status_code=410)
+            raise InvalidUsage(f"Provided LD matrix is not square as expected. Shape: '{ld_mat.shape}'")
 
-        # find dataset whose length is same as LD
-        if not (ld_mat.shape[0] == len(summary_dataset)):
-            raise InvalidUsage(f"Provided LD matrix length does not match length of provided dataset. LD length: '{ld_mat.shape[0]}', Dataset length: '{len(summary_dataset)}'", status_code=410)
+        # check size compared to dataset before cleaning
+        if not (ld_mat.shape[0] == len(gwas_data)):
+            raise InvalidUsage(f"Provided LD matrix length does not match length of provided dataset. LD length: '{ld_mat.shape[0]}', Dataset length: '{len(summary_dataset)}'")
+
+        ld_new_index = summary_dataset.index.get_level_values(0).to_numpy()
+        ld_mat = ld_mat[ld_new_index,ld_new_index]
 
     else:
-        # No LD provided, so we generate one with PLINK + 1000 Genomes population
-        plink_outfilepath = os.path.join(MYDIR, "static", f"session_data/ld-{my_session_id}")
-        ld_mat_snps, ld_mat = plink_ldmat(coordinate, pops, chromosome, snp_positions, plink_outfilepath)  # TODO: Handling multiple regions / sparse ld matrix
+        if user_wants_separate_tests:
+            regions_too_large = [i+1 for i in range(len(regions)) if (regions[i][2] - regions[i][1]) > genomicWindowLimit]
+            if len(regions_too_large) > 0:
+                raise InvalidUsage(f"Provided regions are too large. Please reduce the size of regions on following line numbers: {regions_too_large}")
+            pass # TODO:
+        else:
+            # One big test, one big LD in the end
+            close_regions = create_close_regions(regions)
+            # check length of regions
+            if sum([region[2] - region[1] for region in close_regions]) > genomicWindowLimit:
+                raise InvalidUsage(f"The provided collection of regions is too large.")
+            # rearrange summary stats so that its in same order as regions
+            # really just means sorting by chromosome, and then by position
+            summary_dataset = summary_dataset.sort_values([chrom, bp])
+            
+            for i, region in enumerate(close_regions):
+                # Named like 001, 002, etc.
+                plink_outfilepath = os.path.join(MYDIR, "static", f"session_data/ld-{my_session_id}-{i+1:03}-{len(close_regions):03}")
+                ld_mat_snps, ld_mat = plink_ldmat(coordinate, pops, region[0], snp_positions, plink_outfilepath, region=region)
+                np.fill_diagonal(ld_mat, np.diag(ld_mat) + LD_MAT_DIAG_CONSTANT)  # need to add diag
+                writeMat(ld_mat, os.path.join(MYDIR, 'static', f"session_data/ldmat-{my_session_id}-{i+1:03}-{len(close_regions):03}"))
+                # we don't need to hold onto these in memory, force garbage collection after each is done being loadded
+                del ld_mat
+                del ld_mat_snps
+                gc.collect()
 
     data.update({
         "chrom": chromosome,
@@ -2332,8 +2451,6 @@ def setbasedtest():
     })
 
     PvaluesMat = [summary_dataset[P]]
-
-    np.fill_diagonal(ld_mat, np.diag(ld_mat) + LD_MAT_DIAG_CONSTANT)
 
     PvaluesMat = np.matrix(PvaluesMat)
     # 7. Write the p-values and LD matrix into session_data
