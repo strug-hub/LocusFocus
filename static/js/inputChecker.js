@@ -82,17 +82,6 @@ async function checkMultipleRegionsInput() {
         }    
     }
 
-    if (errors.length === 0) {
-        // overlap check
-        for (let i = 0; i < regions.length; i++) {
-            for (let j = i+1; j < regions.length; j++) {
-                if (regionIsOverlapping(regions[i], regions[j])) {
-                    errors.push(`Region on line ${i+1} ("${regions[i]}") overlaps wtih region on line ${j+1} ("${regions[j]}")`);
-                }
-            }
-        }
-    }
-
 
     errordiv.text(errors.join("\n<br />\n"));
 }
