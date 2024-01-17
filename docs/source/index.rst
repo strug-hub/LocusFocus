@@ -2,7 +2,7 @@
 Documentation for LocusFocus
 ####################################
 
-`LocusFocus <https://locusfocus.research.sickkids.ca>`_ is a web application to facilitate the exploration of 
+`LocusFocus <https://locusfocus.research.sickkids.ca>`_ is a suite of tools for GWAS followup and finemapping. and to facilitate the exploration of 
 a GWAS signal at a particular locus of the genome and its degree of colocalization
 with any SNP-level association data (e.g. expression quantitative trait loci for genes within +/- 1Mbp
 in the relevant GTEx tissues selected). 
