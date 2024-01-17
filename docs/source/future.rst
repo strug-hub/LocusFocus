@@ -4,7 +4,7 @@
 Future Directions
 ######################################
 
-LocusFocus is `open source <https://github.com/naim-panjwani/LocusFocus>`_ and continuously undergoing development and improvements.  
+LocusFocus is `open source <https://github.com/strug-hub/LocusFocus>`_ and continuously undergoing development and improvements.  
 
 Below is a list of improvements and features currently under development:
 

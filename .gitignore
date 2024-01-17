@@ -138,7 +138,6 @@ data/uk_biobank/
 data/mQTL_eQTM_SNPs_SAKNORM_For_CoLoc*.txt
 data/Note.txt
 *test*
-!templates/set_based_test.html
 data/slc9a3_gwas_mqtl.html
 data/*lookup_table.txt.gz
 .Rproj.user
@@ -146,3 +145,4 @@ node_modules
 locusfocus_env
 locusfocusR.tar.gz
 !templates/lib/
+!*set_based_test*
