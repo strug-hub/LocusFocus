@@ -62,6 +62,7 @@ class FormID():
     SET_BASED_P = "setbasedP"
     LD_1000GENOME_POP = "LD-populations"
     LOCUS_MULTIPLE = "multi-region"
+    SEPARATE_TESTS = "separate-test-checkbox"
 
     def __repr__(self):
         return self.value
@@ -207,6 +208,27 @@ def parseRegionText(regiontext, build):
     else:
         return chrom, startbp, endbp
 
+
+def parseSNP(snp_text):
+    """
+    Extract chrom, position from string of format "chr{chrom}:{position}".
+    """
+    snp_text = snp_text.strip().replace(' ','').replace(',','').replace('chr','')
+    chrom = snp_text.split(':')[0].lower().replace('chr','').upper()
+    pos = snp_text.split(':')[1]
+    if chrom in ['X','x'] or chrom == '23':
+        chrom = 23
+        position = int(pos)
+    else:
+        chrom = int(chrom)
+        position = int(pos)
+    if chrom < 1 or chrom > 23:
+        # TODO: Internal server error
+        raise InvalidUsage('Chromosome input must be between 1 and 23', status_code=500)
+    else:
+        return chrom, position
+
+
 def allowed_file(filenames):
     if type(filenames) == type('str'):
         return '.' in filenames and filenames.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -215,10 +237,12 @@ def allowed_file(filenames):
             return False
     return True
 
+
 def writeList(alist, filename):
     with open(filename, 'w') as f:
         for item in alist:
             f.write("%s\n" % item)
+
 
 def writeMat(aMat, filename):
     aMat = np.matrix(aMat)
@@ -773,7 +797,7 @@ def handle_file_upload(request):
     return None
 
 
-def get_gwas_column_names(request, gwas_data, runcoloc2=False):
+def get_gwas_column_names_and_validate(request, gwas_data, runcoloc2=False):
     """
     Read and verify the GWAS column name fields; return list of column names.
     Also validate the data types in each column, raising InvalidUsage if something is amiss.
@@ -906,23 +930,75 @@ def standardize_gwas_variant_ids(column_dict, gwas_data, regionstr: str, coordin
     return gwas_data, column_dict
 
 
-def clean_summary_datasets(summary_datasets, snp_column: str, chrom_column: str) -> List[pd.DataFrame]:
+def clean_summary_datasets(summary_datasets, snp_column: str, chrom_column: str) -> Tuple[List[pd.DataFrame], List[pd.Index]]:
     """
     Clean a list of summary datasets before returning a list of new datasets and a list of removed indexes for each.
-    Null rows are removed, duplicate SNPs are removed, and 
+    Null rows are removed, duplicate SNPs are removed
     """
     new_summary_datasets = []
+    removed_rows = []
+
     for dataset in summary_datasets:
         dataset = pd.DataFrame(dataset)
-        dataset = dataset.dropna()  # remove null rows
-        dataset = dataset[dataset[chrom_column] != "."]
-        dataset = dataset.drop_duplicates(subset=snp_column)  # remove duplicate SNPs
+        new_dataset = dataset.dropna()  # remove null rows
+        new_dataset = new_dataset[new_dataset[chrom_column] != "."]
+        new_dataset = new_dataset.drop_duplicates(subset=snp_column)  # remove duplicate SNPs
+        mask = dataset.index.isin(new_dataset.index)
+        removed = dataset[~mask].index
         # add SNPs as index, now that they're unique
         # still has old int index, so you can use int_index to subset user-provided LD
-        dataset = dataset.set_index(pd.MultiIndex.from_arrays([dataset.index, dataset[snp_column]], names=["int_index", "snp_index"]))
-        new_summary_datasets.append(dataset)
+        new_dataset = new_dataset.set_index(pd.MultiIndex.from_arrays([new_dataset.index, new_dataset[snp_column]], names=["int_index", "snp_index"]))
+        new_summary_datasets.append(new_dataset)
+        removed_rows.append(removed)
 
-    return new_summary_datasets
+    return new_summary_datasets, removed_rows
+
+
+def validate_user_LD(ld_mat: np.matrix, old_dataset: pd.DataFrame, removed: pd.Index):
+    if not len(ld_mat.shape) == 2:
+        raise InvalidUsage(f"Provided LD matrix is not 2 dimensional. Shape: '{ld_mat.shape}'")
+
+    if not (ld_mat.shape[0] == ld_mat.shape[1]):
+        raise InvalidUsage(f"Provided LD matrix is not square as expected. Shape: '{ld_mat.shape}'")
+    
+    new_dataset = old_dataset.iloc[removed]
+    old_dataset_fits = (ld_mat.shape[0] == len(old_dataset))
+    new_dataset_fits = (ld_mat.shape[0] == len(new_dataset))
+
+    if not new_dataset_fits:
+        if old_dataset_fits:
+            raise InvalidUsage(f"Provided LD matrix was the correct size before cleaning, but after cleaning dataset. Please recreate your LD with the following rows in your dataset removed: '{list(removed)}'")
+        else:
+            raise InvalidUsage(f"Provided LD matrix is not the correct size before or after cleaning step. LD Shape: '{ld_mat.shape}', Original dataset length: '{len(old_dataset)}', cleaned dataset length: '{len(new_dataset)}', rows removed in cleaning step: '{list(removed)}'")
+
+    return True
+
+
+def validate_region_size(regions: List[Tuple[int, int, int]], inferred=False):
+    """
+    Return True if the list of regions are of an appropriate size (no region is greater than the genomic window limit).
+    Otherwise, raise InvalidUsage.
+    """
+
+    regions_too_large = [r for r in regions if (r[2] - r[1]) > genomicWindowLimit]
+    if len(regions_too_large) > 0:
+        if inferred:
+            raise InvalidUsage(f"Regions inferred from the provided dataset are too large (>{genomicWindowLimit}). Please specify smaller regions in the Coordinate Regions textbox, or upload a dataset with smaller regions. Inferred regions: {regions_too_large}")
+        raise InvalidUsage(f"Provided regions are too large (>{genomicWindowLimit}). Please reduce the size of regions on following regions: {regions_too_large}")
+    return True
+
+
+def infer_regions(dataset: pd.DataFrame, bp_column: str, chrom_column: str):
+    """
+    Given a summary dataset, create a list of regions within that dataset.
+    A region is created for each chromosome present in the dataset.
+    """
+    regions = []
+    for chromosome in dataset[chrom_column].unique().tolist():
+        minbp = dataset[bp_column].min()
+        maxbp = dataset[bp_column].max()
+        regions.append((chromosome, minbp, maxbp))
+    return regions
 
 
 ####################################
@@ -1027,9 +1103,9 @@ def plink_ldmat(build, pop, chrom, snp_positions, outfilename, region=None):
         raise InvalidUsage(f'{str(build)} is not a recognized genome build')
     if plinkrun.returncode != 0:
         raise InvalidUsage(plinkrun.stdout.decode('utf-8'), status_code=410)
-    ld_snps = list(pd.read_csv(outfilename + ".bim", sep="\t", header=None).iloc[:,1])
+    ld_snps_df = pd.read_csv(outfilename + ".bim", sep="\t", header=None)
     ldmat = np.matrix(pd.read_csv(outfilename + ".ld", sep="\t", header=None))
-    return ld_snps, ldmat
+    return ld_snps_df, ldmat
 
 
 def plink_ld_pairwise(build, lead_snp_position, pop, chrom, snp_positions, snp_pvalues, outfilename):
@@ -1312,7 +1388,6 @@ def get_multiple_regions(regionstext: str, build: str) -> List[Tuple[int, int, i
     representing the chrom, start, end of each provided region.
     """
     regionstext = regionstext.splitlines()
-    # TODO: check for overlaps
     regions = []
     for regiontext in regionstext:
         chrom, start, end = parseRegionText(regiontext, build)
@@ -1665,7 +1740,7 @@ def index():
         gwas_data = read_gwasfile(gwas_filepath)
 
         runcoloc2 = request.form.get('coloc2check')
-        gwas_data, column_names, column_dict, infer_variant = get_gwas_column_names(request, gwas_data, runcoloc2)
+        gwas_data, column_names, column_dict, infer_variant = get_gwas_column_names_and_validate(request, gwas_data, runcoloc2)
         gwas_data, column_dict, infer_variant = subset_gwas_data_to_entered_columns(request, gwas_data, column_names, column_dict, infer_variant)
 
         # TODO: Replace these everywhere, or use something other than a dictionary?
@@ -2099,7 +2174,8 @@ def index():
             ld_mat = ld_mat[SS_indices ][:,SS_indices]
         else:
             #print('Extracting LD matrix')
-            ld_mat_snps, ld_mat = plink_ldmat(coordinate, pops, chrom, SS_positions, plink_outfilepath)
+            ld_mat_snps_df, ld_mat = plink_ldmat(coordinate, pops, chrom, SS_positions, plink_outfilepath)
+            ld_mat_snps = list(ld_mat_snps_df.iloc[:, 1])
             ld_mat_positions = [int(snp.split(":")[1]) for snp in ld_mat_snps]
         np.fill_diagonal(ld_mat, np.diag(ld_mat) + LD_MAT_DIAG_CONSTANT)
         ldmat_time = datetime.now() - t1
@@ -2345,7 +2421,8 @@ def setbasedtest():
     regionstext = request.form[FormID.LOCUS_MULTIPLE]
     regions = get_multiple_regions(regionstext, coordinate)
 
-    user_wants_separate_tests = False  # TODO: Add checkbox for this, rename
+    # separate tests is only a valid option if no LD is provided
+    user_wants_separate_tests = request.form[FormID.SEPARATE_TESTS] != None and ldmat_filepath == ""
 
     metadata = {}
     metadata.update({
@@ -2374,7 +2451,7 @@ def setbasedtest():
 
     # one dataset
     gwas_data = read_gwasfile(summary_stats_filepath, sep='\t')
-    gwas_data, column_names, column_dict, infer_variant = get_gwas_column_names(request, gwas_data)
+    gwas_data, column_names, column_dict, infer_variant = get_gwas_column_names_and_validate(request, gwas_data)
     gwas_data, column_dict, infer_variant = subset_gwas_data_to_entered_columns(request, gwas_data, column_names, column_dict, infer_variant)
 
     # subset to only relevant columns (CHROM, BP, SNP, P)
@@ -2392,106 +2469,223 @@ def setbasedtest():
 
     # keep track of column names
     chrom, bp, snp, p = data['dataset_colnames']
-    chromosome, _, _ = get_region_from_summary_stats({ 'dataset': summary_dataset }, bp, chrom)
-    snp_positions = list(summary_dataset[bp])
-    summary_dataset = clean_summary_datasets([summary_dataset], snp, chrom)[0]
+    chromosomes = summary_dataset[chrom].unique().tolist()
+    snp_positions = summary_dataset[bp].tolist()
 
-    # Get LD:
-    if ldmat_filepath != "":
-        # User provided their own LD matrix
-        # We assume that it works perfectly. We might need to subset it first?
-        ld_mat = pd.read_csv(ldmat_filepath, sep="\t", encoding='utf-8', header=None)
-        ld_mat = np.matrix(ld_mat)
-        # subset to cleaned-up summary dataset
+    old_summary_dataset = summary_dataset
+    _summary_dataset, _removed = clean_summary_datasets([summary_dataset], snp, chrom)
+    summary_dataset = _summary_dataset[0]
+    removed = _removed[0]
+    if regions == []:
+        regions = infer_regions(summary_dataset, bp, chrom)
+        validate_region_size(regions, inferred=True)
 
-        if not len(ld_mat.shape) == 2:
-            raise InvalidUsage(f"Provided LD matrix is not 2 dimensional. Shape: '{ld_mat.shape}'")
-
-        if not (ld_mat.shape[0] == ld_mat.shape[1]):
-            raise InvalidUsage(f"Provided LD matrix is not square as expected. Shape: '{ld_mat.shape}'")
-
-        # check size compared to dataset before cleaning
-        if not (ld_mat.shape[0] == len(gwas_data)):
-            raise InvalidUsage(f"Provided LD matrix length does not match length of provided dataset. LD length: '{ld_mat.shape[0]}', Dataset length: '{len(summary_dataset)}'")
-
-        ld_new_index = summary_dataset.index.get_level_values(0).to_numpy()
-        ld_mat = ld_mat[ld_new_index,ld_new_index]
-
-    else:
-        if user_wants_separate_tests:
-            regions_too_large = [i+1 for i in range(len(regions)) if (regions[i][2] - regions[i][1]) > genomicWindowLimit]
-            if len(regions_too_large) > 0:
-                raise InvalidUsage(f"Provided regions are too large. Please reduce the size of regions on following line numbers: {regions_too_large}")
-            pass # TODO:
-        else:
-            # One big test, one big LD in the end
-            close_regions = create_close_regions(regions)
-            # check length of regions
-            if sum([region[2] - region[1] for region in close_regions]) > genomicWindowLimit:
-                raise InvalidUsage(f"The provided collection of regions is too large.")
-            # rearrange summary stats so that its in same order as regions
-            # really just means sorting by chromosome, and then by position
-            summary_dataset = summary_dataset.sort_values([chrom, bp])
-            
-            for i, region in enumerate(close_regions):
-                # Named like 001, 002, etc.
-                plink_outfilepath = os.path.join(MYDIR, "static", f"session_data/ld-{my_session_id}-{i+1:03}-{len(close_regions):03}")
-                ld_mat_snps, ld_mat = plink_ldmat(coordinate, pops, region[0], snp_positions, plink_outfilepath, region=region)
-                np.fill_diagonal(ld_mat, np.diag(ld_mat) + LD_MAT_DIAG_CONSTANT)  # need to add diag
-                writeMat(ld_mat, os.path.join(MYDIR, 'static', f"session_data/ldmat-{my_session_id}-{i+1:03}-{len(close_regions):03}"))
-                # we don't need to hold onto these in memory, force garbage collection after each is done being loadded
-                del ld_mat
-                del ld_mat_snps
-                gc.collect()
+    combine_lds = False
 
     data.update({
-        "chrom": chromosome,
+        "chroms": chromosomes,
         "snp_positions": snp_positions,  # snps we end up using in LD generation
         "total_used_snps": len(snp_positions)
     })
 
-    PvaluesMat = [summary_dataset[P]]
+    if user_wants_separate_tests:
+        # for separate tests, we run all the tests and collect results immediately to save memory
+        first_stages = []
+        first_stage_p = []
+        if ldmat_filepath != "":
+            ld_mat = pd.read_csv(ldmat_filepath, sep="\t", encoding='utf-8', header=None)
+            ld_mat = np.matrix(ld_mat)
+            validate_user_LD(ld_mat, old_summary_dataset, removed)
+            np.fill_diagonal(ld_mat, np.diag(ld_mat) + LD_MAT_DIAG_CONSTANT)
 
-    PvaluesMat = np.matrix(PvaluesMat)
-    # 7. Write the p-values and LD matrix into session_data
-    Pvalues_file = f'session_data/Pvalues-{my_session_id}.txt'
-    ldmatrix_file = f'session_data/ldmat-{my_session_id}.txt'
-    Pvalues_filepath = os.path.join(MYDIR, 'static', Pvalues_file)
-    ldmatrix_filepath = os.path.join(MYDIR, 'static', ldmatrix_file)
-    writeMat(PvaluesMat, Pvalues_filepath)
-    writeMat(ld_mat, ldmatrix_filepath)
+            # run all the tests
+            for i, region in enumerate(regions):
+                # for each region, subset dataset and LD accordingly before test
+                mask = (summary_dataset[chrom] == region[0]) & (summary_dataset[bp] => region[1]) & (summary_dataset[bp] <= region[2])
+                sep_ldmatrix_file = f"session_data/ldmat-{my_session_id}-{i+1:03}-{len(regions):03}.txt"
+                sep_ldmatrix_filepath = os.path.join(MYDIR, 'static', sep_ldmatrix_file)
+                sep_summary_dataset = summary_dataset[mask]
+                sep_ld_mat = ld_mat[mask, mask]
+                writeMat(sep_ld_mat, sep_ldmatrix_filepath)
+                # subset dataset to SNPs in LD
+                sep_PvaluesMat = np.matrix([sep_summary_dataset[P]])
 
-    Rscript_code_path = os.path.join(MYDIR, 'getSimpleSumStats.R')
-    # Rscript_path = subprocess.run(args=["which","Rscript"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
-    SSresult_path = os.path.join(MYDIR, 'static', f'session_data/SSPvalues_setbasedtest-{my_session_id}.txt')
-    Rscript_args = [
-        'Rscript',
-        Rscript_code_path,
-        Pvalues_filepath,
-        ldmatrix_filepath,
-        '--set_based_p', str(setbasedP),
-        '--outfilename', SSresult_path,
-        "--first_stage_only"
-        ]
+                sep_Pvalues_file = f"session_data/Pvalues-{my_session_id}-{i+1:03}-{len(regions):03}.txt"
+                sep_Pvalues_filepath = os.path.join(MYDIR, 'static', sep_Pvalues_file)
+                writeMat(sep_PvaluesMat, sep_Pvalues_filepath)
 
-    RscriptRun = subprocess.run(args=Rscript_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
-    if RscriptRun.returncode != 0:
-        raise InvalidUsage(RscriptRun.stdout, status_code=410)
-    SSdf = pd.read_csv(SSresult_path, sep='\t', encoding='utf-8')
+                # run test
+                SSresult_path = os.path.join(MYDIR, 'static', f'session_data/SSPvalues-{my_session_id}-{i+1:03}-{len(regions):03}.txt')
+                Rscript_args = [
+                    'Rscript',
+                    os.path.join(MYDIR, 'getSimpleSumStats.R'),
+                    sep_Pvalues_filepath,
+                    sep_ldmatrix_filepath,
+                    "--set_based_p", str(setbasedP),
+                    "--outfilename", SSresult_path,
+                    "--first_stage_only"
+                ]
+                RscriptRun = subprocess.run(args=Rscript_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
+                if RscriptRun.returncode != 0:
+                    raise InvalidUsage(RscriptRun.stdout, status_code=410)
+                SSdf = pd.read_csv(SSresult_path, sep='\t', encoding='utf-8')
 
-    first_stages = SSdf['first_stages'].tolist()
-    first_stage_p = SSdf['first_stage_p'].tolist()
+                first_stages.append(SSdf['first_stages'].tolist())
+                first_stage_p.append(SSdf['first_stage_p'].tolist())
 
-    # Set Based Test
-    SBTresults = {
-        'first_stages': first_stages
-        ,'first_stage_Pvalues': first_stage_p
-    }
-    SBTvalues_file = f'session_data/SBTvalues_setbasedtest-{my_session_id}.json'
-    SBTvalues_filepath = os.path.join(MYDIR, 'static', SBTvalues_file)
-    json.dump(SBTresults, open(SBTvalues_filepath, 'w'), cls=NumpyEncoder)
+        else:
+            # PLINK LD and run all separate tests in this block
+            validate_region_size(regions)
+
+            for i, region in enumerate(regions):
+                # generate LD
+                plink_outfilepath = os.path.join(MYDIR, "static", f"session_data/ld-{my_session_id}-{i+1:03}-{len(regions):03}")
+                ld_mat_snps_df, ld_mat = plink_ldmat(coordinate, pops, region[0], snp_positions, plink_outfilepath, region=region)
+                ld_mat_snps = list(ld_mat_snps_df.iloc[:, 1])
+                np.fill_diagonal(ld_mat, np.diag(ld_mat) + LD_MAT_DIAG_CONSTANT)  # need to add diag
+                sep_ldmatrix_file = f"session_data/ldmat-{my_session_id}-{i+1:03}-{len(regions):03}.txt"
+                sep_ldmatrix_filepath = os.path.join(MYDIR, 'static', sep_ldmatrix_file)
+                writeMat(ld_mat, sep_ldmatrix_filepath)
+                # subset dataset to SNPs in LD
+                ld_mat_positions = [int(snp.split(":")[1]) for snp in ld_mat_snps]
+                writeList(ld_mat_snps, os.path.join(MYDIR, 'static', f'session_data/ldmat_snps-{my_session_id}-{i+1:03}-{len(regions):03}.txt'))
+                writeList(ld_mat_positions, os.path.join(MYDIR, 'static', f'session_data/ldmat_positions-{my_session_id}-{i+1:03}-{len(regions):03}.txt'))
+                sep_PvaluesMat = np.matrix([summary_dataset[P]])
+                sep_pmat_indices = [i for i, e in enumerate(snp_positions) if e in ld_mat_positions]
+                sep_PvaluesMat = sep_PvaluesMat[:, sep_pmat_indices]
+
+                sep_Pvalues_file = f"session_data/Pvalues-{my_session_id}-{i+1:03}-{len(regions):03}.txt"
+                sep_Pvalues_filepath = os.path.join(MYDIR, 'static', sep_Pvalues_file)
+                writeMat(sep_PvaluesMat, sep_Pvalues_filepath)
+
+                # run test
+                SSresult_path = os.path.join(MYDIR, 'static', f'session_data/SSPvalues-{my_session_id}-{i+1:03}-{len(regions):03}.txt')
+                Rscript_args = [
+                    'Rscript',
+                    os.path.join(MYDIR, 'getSimpleSumStats.R'),
+                    sep_Pvalues_filepath,
+                    sep_ldmatrix_filepath,
+                    "--set_based_p", str(setbasedP),
+                    "--outfilename", SSresult_path,
+                    "--first_stage_only"
+                ]
+                RscriptRun = subprocess.run(args=Rscript_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
+                if RscriptRun.returncode != 0:
+                    raise InvalidUsage(RscriptRun.stdout, status_code=410)
+                SSdf = pd.read_csv(SSresult_path, sep='\t', encoding='utf-8')
+
+                first_stages.append(SSdf['first_stages'].tolist())
+                first_stage_p.append(SSdf['first_stage_p'].tolist())
+
+                # clear memory, next iteration
+                del ld_mat
+                del ld_mat_snps
+                del ld_mat_snps_df
+                gc.collect()
+
+        # collect results
+        data['first_stages'] = first_stages
+        data['first_stage_Pvalues'] = first_stage_p
+        data['multiple_tests'] = True
+        SBTresults = {
+            'first_stages': first_stages
+            ,'first_stage_Pvalues': first_stage_p
+            ,'multiple_tests': True
+        }
+        SBTvalues_file = f'session_data/SBTvalues_setbasedtest-{my_session_id}.json'
+        SBTvalues_filepath = os.path.join(MYDIR, 'static', SBTvalues_file)
+        json.dump(SBTresults, open(SBTvalues_filepath, 'w'), cls=NumpyEncoder)
+    else:
+        if ldmat_filepath != "":
+            # User provided their own LD matrix
+            ld_mat = pd.read_csv(ldmat_filepath, sep="\t", encoding='utf-8', header=None)
+            ld_mat = np.matrix(ld_mat)
+
+            validate_user_LD(ld_mat, old_summary_dataset, removed)
+            ld_new_index = summary_dataset.index.get_level_values(0).to_numpy()
+            ld_mat = ld_mat[ld_new_index,ld_new_index]
+            ld_mat_snps = [f"chr{_chrom}:{_pos}" for (_chrom, _pos) in list(zip(summary_dataset[chrom], summary_dataset[bp]))]
+
+            np.fill_diagonal(ld_mat, np.diag(ld_mat) + LD_MAT_DIAG_CONSTANT)
+            ldmatrix_file = f'session_data/ldmat-{my_session_id}.txt'
+            ldmatrix_filepath = os.path.join(MYDIR, 'static', ldmatrix_file)
+            writeMat(ld_mat, ldmatrix_filepath)
+        else:
+            # One big test, one big LD in the end
+            close_regions = create_close_regions(regions)
+            # check length of regions
+            total_region_length = sum([region[2] - region[1] for region in close_regions])
+            if total_region_length > genomicWindowLimit:
+                raise InvalidUsage(f"The provided collection of regions is too large ({total_region_length} bps > {genomicWindowLimit})")
+            # rearrange summary stats so that its in same order as regions
+            # really just means sorting by chromosome, and then by position
+            summary_dataset = summary_dataset.sort_values([chrom, bp])
+            ld_mat_snp_df_list = []
+
+            for i, region in enumerate(close_regions):
+                # Named like 001, 002, etc.
+                plink_outfilepath = os.path.join(MYDIR, "static", f"session_data/ld-{my_session_id}-{i+1:03}-{len(close_regions):03}")
+                ld_mat_snps_df, ld_mat = plink_ldmat(coordinate, pops, region[0], snp_positions, plink_outfilepath, region=region)
+                np.fill_diagonal(ld_mat, np.diag(ld_mat) + LD_MAT_DIAG_CONSTANT)  # need to add diag
+                writeMat(ld_mat, os.path.join(MYDIR, 'static', f"session_data/ldmat-{my_session_id}-{i+1:03}-{len(close_regions):03}.txt"))
+                ld_mat_snp_df_list.append(ld_mat_snps_df)
+                
+                # we don't need to hold onto these in memory, force garbage collection after each is done being loaded
+                del ld_mat
+                gc.collect()
+            if len(close_regions) > 1:
+                combine_lds = True
+            # pass off the first of the LDs; the r script knows how to get the rest
+            ldmatrix_file = f"session_data/ldmat-{my_session_id}-001-{len(close_regions):03}.txt"
+            ldmatrix_filepath = os.path.join(MYDIR, 'static', ldmatrix_file)
+            # subset to only the SNPs that survived
+            ld_mat_snp_df = pd.concat(ld_mat_snp_df_list, axis=0)
+            merged = summary_dataset.merge(ld_mat_snp_df, left_on=[chrom, bp], right_on=[0, 3], how='left', indicator=True)
+            ld_mask = (merged['_merge'] != 'right_only')
+            summary_dataset = summary_dataset[ld_mask]
+
+        PvaluesMat = [summary_dataset[P]]
+        PvaluesMat = np.matrix(PvaluesMat)
+        # 7. Write the p-values and LD matrix into session_data
+        Pvalues_file = f'session_data/Pvalues-{my_session_id}.txt'
+        Pvalues_filepath = os.path.join(MYDIR, 'static', Pvalues_file)
+        writeMat(PvaluesMat, Pvalues_filepath)
+
+        Rscript_code_path = os.path.join(MYDIR, 'getSimpleSumStats.R')
+        # Rscript_path = subprocess.run(args=["which","Rscript"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
+        SSresult_path = os.path.join(MYDIR, 'static', f'session_data/SSPvalues_setbasedtest-{my_session_id}.txt')
+        Rscript_args = [
+            'Rscript',
+            Rscript_code_path,
+            Pvalues_filepath,
+            ldmatrix_filepath,
+            '--set_based_p', str(setbasedP),
+            '--outfilename', SSresult_path,
+            "--first_stage_only"
+            ]
+        if combine_lds:
+            Rscript_args.append("--combine_lds")
+
+        RscriptRun = subprocess.run(args=Rscript_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
+        if RscriptRun.returncode != 0:
+            raise InvalidUsage(RscriptRun.stdout, status_code=410)
+        SSdf = pd.read_csv(SSresult_path, sep='\t', encoding='utf-8')
+
+        first_stages = SSdf['first_stages'].tolist()
+        first_stage_p = SSdf['first_stage_p'].tolist()
+
+        # Set Based Test
+        SBTresults = {
+            'first_stages': first_stages
+            ,'first_stage_Pvalues': first_stage_p
+            ,'multiple_tests': False
+        }
+        SBTvalues_file = f'session_data/SBTvalues_setbasedtest-{my_session_id}.json'
+        SBTvalues_filepath = os.path.join(MYDIR, 'static', SBTvalues_file)
+        json.dump(SBTresults, open(SBTvalues_filepath, 'w'), cls=NumpyEncoder)
+
     t2_total = datetime.now() - t1
-
+ 
     ####################################################################################################
     # Indicate that the request was a success
     data.update(SBTresults)

@@ -38,8 +38,3 @@ function buildFirstStageTable(sessionData) {
         });
     });
 }
-
-function buildFirstStageGTEXTable(sessionData) {
-    // TODO: implement when GTEx is ready for set-based route
-    return null;
-}
