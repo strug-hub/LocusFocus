@@ -253,6 +253,9 @@ if (first_stage_only) {
   num_lines <- nrow(Pmat)
   if (combine_lds) {
     ldmat <- read_bdiag_LD(ld_matrix_filename)
+  } else {
+    ldmat <- fread(ld_matrix_filename, header = FALSE, stringsAsFactors = FALSE, na.strings = c("NaN", "nan", "NA", "-1"), sep = "\t")
+    ldmat <- as.matrix(ldmat)
   }
   for (i in 1:num_lines) {
     P_mat_i <- Pmat[i, ]

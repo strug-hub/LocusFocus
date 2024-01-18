@@ -797,7 +797,7 @@ def handle_file_upload(request):
     return None
 
 
-def get_gwas_column_names_and_validate(request, gwas_data, runcoloc2=False):
+def get_gwas_column_names_and_validate(request, gwas_data, runcoloc2=False, setbasedtest=False):
     """
     Read and verify the GWAS column name fields; return list of column names.
     Also validate the data types in each column, raising InvalidUsage if something is amiss.
@@ -817,14 +817,12 @@ def get_gwas_column_names_and_validate(request, gwas_data, runcoloc2=False):
     else:
         chromcol = verify_gwas_col(FormID.CHROM_COL, request, gwas_data.columns)
         poscol = verify_gwas_col(FormID.POS_COL, request, gwas_data.columns)
-        refcol = verify_gwas_col(FormID.REF_COL, request, gwas_data.columns)
-        altcol = verify_gwas_col(FormID.ALT_COL, request, gwas_data.columns)
         snpcol = request.form[FormID.SNP_COL] # optional input in this case
         if snpcol != '':
             snpcol = verify_gwas_col(FormID.SNP_COL, request, gwas_data.columns)
-            column_names = [ chromcol, poscol, snpcol, refcol, altcol ]
+            column_names = [ chromcol, poscol, snpcol ]
         else:
-            column_names = [ chromcol, poscol, refcol, altcol ]
+            column_names = [ chromcol, poscol ]
             #print('No SNP ID column provided')
         # Check whether data types are ok:
         if not all(isinstance(x, int) for x in Xto23(list(gwas_data[chromcol]))):
@@ -841,11 +839,18 @@ def get_gwas_column_names_and_validate(request, gwas_data, runcoloc2=False):
     column_dict.update({
         FormID.CHROM_COL: chromcol,
         FormID.POS_COL: poscol,
-        FormID.REF_COL: refcol,
-        FormID.ALT_COL: altcol,
         FormID.SNP_COL: snpcol,
         FormID.P_COL: pcol
     })
+
+    if not setbasedtest:
+        refcol = verify_gwas_col(FormID.REF_COL, request, gwas_data.columns)
+        altcol = verify_gwas_col(FormID.ALT_COL, request, gwas_data.columns)
+        column_names.extend([ refcol, altcol ])
+        column_dict.update({
+            FormID.REF_COL: refcol,
+            FormID.ALT_COL: altcol
+        })
 
     if runcoloc2:
         #print('User would like COLOC2 results')
@@ -945,9 +950,6 @@ def clean_summary_datasets(summary_datasets, snp_column: str, chrom_column: str)
         new_dataset = new_dataset.drop_duplicates(subset=snp_column)  # remove duplicate SNPs
         mask = dataset.index.isin(new_dataset.index)
         removed = dataset[~mask].index
-        # add SNPs as index, now that they're unique
-        # still has old int index, so you can use int_index to subset user-provided LD
-        new_dataset = new_dataset.set_index(pd.MultiIndex.from_arrays([new_dataset.index, new_dataset[snp_column]], names=["int_index", "snp_index"]))
         new_summary_datasets.append(new_dataset)
         removed_rows.append(removed)
 
@@ -2422,7 +2424,7 @@ def setbasedtest():
     regions = get_multiple_regions(regionstext, coordinate)
 
     # separate tests is only a valid option if no LD is provided
-    user_wants_separate_tests = request.form[FormID.SEPARATE_TESTS] != None and ldmat_filepath == ""
+    user_wants_separate_tests = request.form.get(FormID.SEPARATE_TESTS) != None and ldmat_filepath == ""
 
     metadata = {}
     metadata.update({
@@ -2451,7 +2453,7 @@ def setbasedtest():
 
     # one dataset
     gwas_data = read_gwasfile(summary_stats_filepath, sep='\t')
-    gwas_data, column_names, column_dict, infer_variant = get_gwas_column_names_and_validate(request, gwas_data)
+    gwas_data, column_names, column_dict, infer_variant = get_gwas_column_names_and_validate(request, gwas_data, setbasedtest=True)
     gwas_data, column_dict, infer_variant = subset_gwas_data_to_entered_columns(request, gwas_data, column_names, column_dict, infer_variant)
 
     # subset to only relevant columns (CHROM, BP, SNP, P)
@@ -2501,7 +2503,7 @@ def setbasedtest():
             # run all the tests
             for i, region in enumerate(regions):
                 # for each region, subset dataset and LD accordingly before test
-                mask = (summary_dataset[chrom] == region[0]) & (summary_dataset[bp] => region[1]) & (summary_dataset[bp] <= region[2])
+                mask = (summary_dataset[chrom] == region[0]) & (summary_dataset[bp] >= region[1]) & (summary_dataset[bp] <= region[2])
                 sep_ldmatrix_file = f"session_data/ldmat-{my_session_id}-{i+1:03}-{len(regions):03}.txt"
                 sep_ldmatrix_filepath = os.path.join(MYDIR, 'static', sep_ldmatrix_file)
                 sep_summary_dataset = summary_dataset[mask]
@@ -2642,9 +2644,9 @@ def setbasedtest():
             ld_mat_snp_df = pd.concat(ld_mat_snp_df_list, axis=0)
             merged = summary_dataset.merge(ld_mat_snp_df, left_on=[chrom, bp], right_on=[0, 3], how='left', indicator=True)
             ld_mask = (merged['_merge'] != 'right_only')
-            summary_dataset = summary_dataset[ld_mask]
+            summary_dataset = summary_dataset.loc[ld_mask]
 
-        PvaluesMat = [summary_dataset[P]]
+        PvaluesMat = [summary_dataset[p]]
         PvaluesMat = np.matrix(PvaluesMat)
         # 7. Write the p-values and LD matrix into session_data
         Pvalues_file = f'session_data/Pvalues-{my_session_id}.txt'
@@ -2668,6 +2670,7 @@ def setbasedtest():
 
         RscriptRun = subprocess.run(args=Rscript_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
         if RscriptRun.returncode != 0:
+            print(f"R Script failed: {Rscript_args}")
             raise InvalidUsage(RscriptRun.stdout, status_code=410)
         SSdf = pd.read_csv(SSresult_path, sep='\t', encoding='utf-8')
 
@@ -2707,7 +2710,7 @@ def setbasedtest():
         f.write('-----------------------------------------------------------\n')
         f.write(f'Total time: {t2_total}\n')
 
-    return redirect(url_for("prev_session_input", session_id=my_session_id))
+    return redirect(url_for("prev_session_input", old_session_id=my_session_id))
     # return render_template("plot.html", sessionfile = sessionfile, sessionid = my_session_id, metadata_file = metadatafile)
 
 
