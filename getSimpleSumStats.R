@@ -193,7 +193,7 @@ drop_NA_from_LD <- function(P_mat, ld_mat) {
 # `{UUID}`: Unique identifier
 # `{end_index}`: Total number of LDs; 3 digits with leading zeros
 read_bdiag_LD <- function(ld_first_filename) {
-  ld_filename_regex_pattern <- "^(ldmat-.+-)([0-9]{3})-([0-9]{3})\\.ld$"
+  ld_filename_regex_pattern <- "^(ldmat-.+-)([0-9]{3})-([0-9]{3})\\.txt$"
 
   matches <- str_match(ld_first_filename, ld_filename_regex_pattern)
   ld_prefix <- matches[2]
@@ -207,7 +207,7 @@ read_bdiag_LD <- function(ld_first_filename) {
       break
     }
     # load next LD and add it to our sparse matrix
-    ld_filename <- sprintf("%s%03d-%03d.ld", ld_prefix, i, end_index)
+    ld_filename <- sprintf("%s%03d-%03d.txt", ld_prefix, i, end_index)
     ldmat_next <- fread(ld_filename, header = FALSE, stringsAsFactors = FALSE, na.strings = c("NaN", "nan", "NA", "-1"), sep = "\t")
     ldmat_next <- as.matrix(ldmat_next)
     ldmat_ <- bdiag(ldmat_, ldmat_next)
