@@ -2,17 +2,28 @@
  * Populates the #set-based-test-table with results from the first stage significance test.
  */
 function buildFirstStageTable(sessionData) {
-    let titleKey = "secondary_dataset_titles";
-    if (sessionData.hasOwnProperty('dataset_titles')) {
-        // for set-based only
-        titleKey = 'dataset_titles';
-    }
+    let testResultData = [];
+    if (sessionData.hasOwnProperty('regions')) {
+        // set-based only AND different format
+        testResultData = sessionData["regions"].map((regiontext, i) => [
+            regiontext,
+            sessionData["first_stages"][i] ? "Yes" : "No",
+            sessionData["first_stage_Pvalues"][i],
+        ])
 
-    let testResultData = sessionData[titleKey].map((title, i) => [
-        title,
-        sessionData["first_stages"][i] ? "Yes" : "No",
-        sessionData["first_stage_Pvalues"][i],
-    ]);
+        return;
+    } else {
+        let titleKey = "secondary_dataset_titles";
+        if (sessionData.hasOwnProperty('dataset_titles')) {
+            // for set-based only
+            titleKey = 'dataset_titles';
+        }
+        testResultData = sessionData[titleKey].map((title, i) => [
+            title,
+            sessionData["first_stages"][i] ? "Yes" : "No",
+            sessionData["first_stage_Pvalues"][i],
+        ]);
+    }
 
     $(document).ready(() => {
         $("#set-based-test-table").DataTable({

@@ -2612,11 +2612,12 @@ def setbasedtest():
             ldmatrix_file = f'session_data/ldmat-{my_session_id}.txt'
             ldmatrix_filepath = os.path.join(MYDIR, 'static', ldmatrix_file)
             writeMat(ld_mat, ldmatrix_filepath)
+            data['regions'] = 
         else:
             # One big test, one big LD in the end
-            close_regions = create_close_regions(regions)
+            regions = create_close_regions(regions)
             # check length of regions
-            total_region_length = sum([region[2] - region[1] for region in close_regions])
+            total_region_length = sum([region[2] - region[1] for region in regions])
             if total_region_length > genomicWindowLimit:
                 raise InvalidUsage(f"The provided collection of regions is too large ({total_region_length} bps > {genomicWindowLimit})")
             # rearrange summary stats so that its in same order as regions
@@ -2624,21 +2625,21 @@ def setbasedtest():
             summary_dataset = summary_dataset.sort_values([chrom, bp])
             ld_mat_snp_df_list = []
 
-            for i, region in enumerate(close_regions):
+            for i, region in enumerate(regions):
                 # Named like 001, 002, etc.
-                plink_outfilepath = os.path.join(MYDIR, "static", f"session_data/ld-{my_session_id}-{i+1:03}-{len(close_regions):03}")
+                plink_outfilepath = os.path.join(MYDIR, "static", f"session_data/ld-{my_session_id}-{i+1:03}-{len(regions):03}")
                 ld_mat_snps_df, ld_mat = plink_ldmat(coordinate, pops, region[0], snp_positions, plink_outfilepath, region=region)
                 np.fill_diagonal(ld_mat, np.diag(ld_mat) + LD_MAT_DIAG_CONSTANT)  # need to add diag
-                writeMat(ld_mat, os.path.join(MYDIR, 'static', f"session_data/ldmat-{my_session_id}-{i+1:03}-{len(close_regions):03}.txt"))
+                writeMat(ld_mat, os.path.join(MYDIR, 'static', f"session_data/ldmat-{my_session_id}-{i+1:03}-{len(regions):03}.txt"))
                 ld_mat_snp_df_list.append(ld_mat_snps_df)
                 
                 # we don't need to hold onto these in memory, force garbage collection after each is done being loaded
                 del ld_mat
                 gc.collect()
-            if len(close_regions) > 1:
+            if len(regions) > 1:
                 combine_lds = True
             # pass off the first of the LDs; the r script knows how to get the rest
-            ldmatrix_file = f"session_data/ldmat-{my_session_id}-001-{len(close_regions):03}.txt"
+            ldmatrix_file = f"session_data/ldmat-{my_session_id}-001-{len(regions):03}.txt"
             ldmatrix_filepath = os.path.join(MYDIR, 'static', ldmatrix_file)
             # subset to only the SNPs that survived
             ld_mat_snp_df = pd.concat(ld_mat_snp_df_list, axis=0)
@@ -2687,6 +2688,7 @@ def setbasedtest():
         SBTvalues_filepath = os.path.join(MYDIR, 'static', SBTvalues_file)
         json.dump(SBTresults, open(SBTvalues_filepath, 'w'), cls=NumpyEncoder)
 
+    data['regions'] = [f"{r[0]}:{r[1]}-{r[2]}" for r in regions]
     t2_total = datetime.now() - t1
  
     ####################################################################################################
