@@ -962,7 +962,7 @@ def validate_user_LD(ld_mat: np.matrix, old_dataset: pd.DataFrame, removed: pd.I
 
     if not (ld_mat.shape[0] == ld_mat.shape[1]):
         raise InvalidUsage(f"Provided LD matrix is not square as expected. Shape: '{ld_mat.shape}'")
-    
+
     new_dataset = old_dataset.iloc[removed]
     old_dataset_fits = (ld_mat.shape[0] == len(old_dataset))
     new_dataset_fits = (ld_mat.shape[0] == len(new_dataset))
@@ -1047,7 +1047,7 @@ def plink_ldmat(build, pop, chrom, snp_positions, outfilename, region=None):
     else:
         from_bp = str(min(snp_positions))
         to_bp = str(max(snp_positions))
-    
+
     if build.lower() in ["hg19","grch37"]:
         if os.name == 'nt':
             plinkrun = subprocess.run(args=[
@@ -1386,7 +1386,7 @@ def get_region_from_summary_stats(summary_datasets: Dict[str, pd.DataFrame], bpc
 def get_multiple_regions(regionstext: str, build: str) -> List[Tuple[int, int, int]]:
     """
     Given a string of newline-separated region texts (format: "<chrom>:<start>-<end>", 1 start, fully-closed),
-    and a coordinate build (hg19, hg38), return a list of tuples 
+    and a coordinate build (hg19, hg38), return a list of tuples
     representing the chrom, start, end of each provided region.
     """
     regionstext = regionstext.splitlines()
@@ -2354,13 +2354,13 @@ ALLOWED_SBT_EXTENSIONS = set(['txt', 'tsv', 'ld'])
 @app.route('/setbasedtest', methods=['GET', 'POST'])
 def setbasedtest():
     """
-    Route for performing a set-based test on a single set of summary statistics 
+    Route for performing a set-based test on a single set of summary statistics
     (ideally with a user-provided LD matrix, however we use PLINK with 1000 Genome pops if none is provided).
 
-    Users should only provide one dataset. However, multiple positions across chromosomes can be specified, 
+    Users should only provide one dataset. However, multiple positions across chromosomes can be specified,
     and thus a sparse LD will be provided/created.
 
-    Summary stats file should be uploaded in .txt or .tsv format. 
+    Summary stats file should be uploaded in .txt or .tsv format.
     LD should be uploaded (optional) with .ld format.
     """
     if request.method == 'GET':
@@ -2395,7 +2395,7 @@ def setbasedtest():
             ldmat_filepath = filepath
         elif extension in ['tsv', 'txt']:
             summary_stats_filepath = filepath
-        
+
         # Save after we know it's a file we want
         file.save(filepath)
 
@@ -2419,6 +2419,7 @@ def setbasedtest():
 
     pops = request.form[FormID.LD_1000GENOME_POP]
     if len(pops) == 0: pops = 'EUR'
+    if ldmat_filepath != "": pops = 'None; user provided LD'
 
     regionstext = request.form[FormID.LOCUS_MULTIPLE]
     regions = get_multiple_regions(regionstext, coordinate)
@@ -2532,8 +2533,8 @@ def setbasedtest():
                     raise InvalidUsage(RscriptRun.stdout, status_code=410)
                 SSdf = pd.read_csv(SSresult_path, sep='\t', encoding='utf-8')
 
-                first_stages.append(SSdf['first_stages'].tolist())
-                first_stage_p.append(SSdf['first_stage_p'].tolist())
+                first_stages.extend(SSdf['first_stages'].tolist())
+                first_stage_p.extend(SSdf['first_stage_p'].tolist())
 
         else:
             # PLINK LD and run all separate tests in this block
@@ -2552,7 +2553,7 @@ def setbasedtest():
                 ld_mat_positions = [int(snp.split(":")[1]) for snp in ld_mat_snps]
                 writeList(ld_mat_snps, os.path.join(MYDIR, 'static', f'session_data/ldmat_snps-{my_session_id}-{i+1:03}-{len(regions):03}.txt'))
                 writeList(ld_mat_positions, os.path.join(MYDIR, 'static', f'session_data/ldmat_positions-{my_session_id}-{i+1:03}-{len(regions):03}.txt'))
-                sep_PvaluesMat = np.matrix([summary_dataset[P]])
+                sep_PvaluesMat = np.matrix([summary_dataset[p]])
                 sep_pmat_indices = [i for i, e in enumerate(snp_positions) if e in ld_mat_positions]
                 sep_PvaluesMat = sep_PvaluesMat[:, sep_pmat_indices]
 
@@ -2576,8 +2577,8 @@ def setbasedtest():
                     raise InvalidUsage(RscriptRun.stdout, status_code=410)
                 SSdf = pd.read_csv(SSresult_path, sep='\t', encoding='utf-8')
 
-                first_stages.append(SSdf['first_stages'].tolist())
-                first_stage_p.append(SSdf['first_stage_p'].tolist())
+                first_stages.extend(SSdf['first_stages'].tolist())
+                first_stage_p.extend(SSdf['first_stage_p'].tolist())
 
                 # clear memory, next iteration
                 del ld_mat
@@ -2598,10 +2599,18 @@ def setbasedtest():
         SBTvalues_filepath = os.path.join(MYDIR, 'static', SBTvalues_file)
         json.dump(SBTresults, open(SBTvalues_filepath, 'w'), cls=NumpyEncoder)
     else:
+        # One big test
+        regions = create_close_regions(regions)
+        # check length of regions
+        total_region_length = sum([region[2] - region[1] for region in regions])
+        if total_region_length > genomicWindowLimit:
+            raise InvalidUsage(f"The provided collection of regions is too large ({total_region_length} bps > {genomicWindowLimit})")
         if ldmat_filepath != "":
             # User provided their own LD matrix
             ld_mat = pd.read_csv(ldmat_filepath, sep="\t", encoding='utf-8', header=None)
             ld_mat = np.matrix(ld_mat)
+
+            # TODO: SUBSET LD TO REGIONS PROVIDED
 
             validate_user_LD(ld_mat, old_summary_dataset, removed)
             ld_new_index = summary_dataset.index.get_level_values(0).to_numpy()
@@ -2612,14 +2621,7 @@ def setbasedtest():
             ldmatrix_file = f'session_data/ldmat-{my_session_id}.txt'
             ldmatrix_filepath = os.path.join(MYDIR, 'static', ldmatrix_file)
             writeMat(ld_mat, ldmatrix_filepath)
-            data['regions'] = 
         else:
-            # One big test, one big LD in the end
-            regions = create_close_regions(regions)
-            # check length of regions
-            total_region_length = sum([region[2] - region[1] for region in regions])
-            if total_region_length > genomicWindowLimit:
-                raise InvalidUsage(f"The provided collection of regions is too large ({total_region_length} bps > {genomicWindowLimit})")
             # rearrange summary stats so that its in same order as regions
             # really just means sorting by chromosome, and then by position
             summary_dataset = summary_dataset.sort_values([chrom, bp])
@@ -2632,7 +2634,7 @@ def setbasedtest():
                 np.fill_diagonal(ld_mat, np.diag(ld_mat) + LD_MAT_DIAG_CONSTANT)  # need to add diag
                 writeMat(ld_mat, os.path.join(MYDIR, 'static', f"session_data/ldmat-{my_session_id}-{i+1:03}-{len(regions):03}.txt"))
                 ld_mat_snp_df_list.append(ld_mat_snps_df)
-                
+
                 # we don't need to hold onto these in memory, force garbage collection after each is done being loaded
                 del ld_mat
                 gc.collect()
@@ -2688,9 +2690,9 @@ def setbasedtest():
         SBTvalues_filepath = os.path.join(MYDIR, 'static', SBTvalues_file)
         json.dump(SBTresults, open(SBTvalues_filepath, 'w'), cls=NumpyEncoder)
 
-    data['regions'] = [f"{r[0]}:{r[1]}-{r[2]}" for r in regions]
+    data['regions'] = ["{}:{:,}-{:,}".format(r[0], r[1], r[2]) for r in regions]
     t2_total = datetime.now() - t1
- 
+
     ####################################################################################################
     # Indicate that the request was a success
     data.update(SBTresults)
