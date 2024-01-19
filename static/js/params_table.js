@@ -43,14 +43,7 @@ function buildParamsTable(data, sessionid, type = "default") {
   } else if (type === "set-based-test") {
     table_data = [
       ["Session ID", sessionid],
-      ["Chromosome", data["chrom"]],
-      ["Start position", data["startbp"]],
-      ["End position", data["endbp"]],
       ["Build", data["coordinate"]],
-      [
-        `Number of unique SNPs in ${data["chrom"]}:${data["startbp"]}-${data["endbp"]}`,
-        data["total_unique_snps"],
-      ],
       ["LD Population", data["ld_populations"]],
       ["First stage -log10(SS P-value) threshold", data["set_based_p"]],
       ["Total set-based tests performed", data["first_stages"].length],
@@ -59,9 +52,13 @@ function buildParamsTable(data, sessionid, type = "default") {
         data["first_stages"].filter((v) => Boolean(v)).length,
       ],
       [
-        "Number of user-provided secondary datasets",
-        data["secondary_dataset_titles"].length,
+        "Number of regions",
+        data["regions"].length,
       ],
+      [
+        "Multiple tests?",
+        data["multiple_tests"] ? "Yes" : "No",
+      ]
     ];
   } else {
     // Shouldn't get here
