@@ -2495,7 +2495,7 @@ def setbasedtest():
                 sep_ldmatrix_file = f"session_data/ldmat-{my_session_id}-{i+1:03}-{len(regions):03}.txt"
                 sep_ldmatrix_filepath = os.path.join(MYDIR, 'static', sep_ldmatrix_file)
                 sep_summary_dataset = summary_dataset[mask]
-                sep_ld_mat = ld_mat[mask, mask]
+                sep_ld_mat = ld_mat[mask][:, mask]
                 writeMat(sep_ld_mat, sep_ldmatrix_filepath)
                 # subset dataset to SNPs in LD
                 sep_PvaluesMat = np.matrix([sep_summary_dataset[P]])
@@ -2587,7 +2587,7 @@ def setbasedtest():
         json.dump(SBTresults, open(SBTvalues_filepath, 'w'), cls=NumpyEncoder)
     else:
         # One big test
-        regions = create_close_regions(regions)
+        # regions = create_close_regions(regions)
         # check length of regions
         total_region_length = sum([region[2] - region[1] for region in regions])
         if total_region_length > genomicWindowLimit:
@@ -2597,11 +2597,15 @@ def setbasedtest():
             ld_mat = pd.read_csv(ldmat_filepath, sep="\t", encoding='utf-8', header=None)
             ld_mat = np.matrix(ld_mat)
 
-            # TODO: SUBSET LD TO REGIONS PROVIDED
+            region_masks = [(summary_dataset[chrom] == r[0]) & (summary_dataset[bp] >= r[1]) & (summary_dataset[bp] <= r[2]) for r in regions]
+            mask = region_masks[0]
+            if len(region_masks) > 1:
+                for i in range(1, len(region_masks)):
+                    mask = mask | region_masks[i]
+            summary_dataset = summary_dataset[mask]
+            ld_mat = ld_mat[mask][:, mask]
 
             validate_user_LD(ld_mat, old_summary_dataset, removed)
-            ld_new_index = summary_dataset.index.get_level_values(0).to_numpy()
-            ld_mat = ld_mat[ld_new_index,ld_new_index]
             ld_mat_snps = [f"chr{_chrom}:{_pos}" for (_chrom, _pos) in list(zip(summary_dataset[chrom], summary_dataset[bp]))]
 
             np.fill_diagonal(ld_mat, np.diag(ld_mat) + LD_MAT_DIAG_CONSTANT)
@@ -2609,9 +2613,6 @@ def setbasedtest():
             ldmatrix_filepath = os.path.join(MYDIR, 'static', ldmatrix_file)
             writeMat(ld_mat, ldmatrix_filepath)
         else:
-            # rearrange summary stats so that its in same order as regions
-            # really just means sorting by chromosome, and then by position
-            summary_dataset = summary_dataset.sort_values([chrom, bp])
             ld_mat_snp_df_list = []
 
             for i, region in enumerate(regions):
