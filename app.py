@@ -962,6 +962,8 @@ def validate_user_LD(ld_mat: np.matrix, old_dataset: pd.DataFrame, removed: pd.I
 
     if not (ld_mat.shape[0] == ld_mat.shape[1]):
         raise InvalidUsage(f"Provided LD matrix is not square as expected. Shape: '{ld_mat.shape}'")
+    if len(removed) == 0:
+        return True
 
     new_dataset = old_dataset.iloc[removed]
     old_dataset_fits = (ld_mat.shape[0] == len(old_dataset))
@@ -969,7 +971,7 @@ def validate_user_LD(ld_mat: np.matrix, old_dataset: pd.DataFrame, removed: pd.I
 
     if not new_dataset_fits:
         if old_dataset_fits:
-            raise InvalidUsage(f"Provided LD matrix was the correct size before cleaning, but after cleaning dataset. Please recreate your LD with the following rows in your dataset removed: '{list(removed)}'")
+            raise InvalidUsage(f"Provided LD matrix was the correct size before cleaning, but not after cleaning dataset. Please recreate your LD with the following rows in your dataset removed: '{list(removed)}'")
         else:
             raise InvalidUsage(f"Provided LD matrix is not the correct size before or after cleaning step. LD Shape: '{ld_mat.shape}', Original dataset length: '{len(old_dataset)}', cleaned dataset length: '{len(new_dataset)}', rows removed in cleaning step: '{list(removed)}'")
 
