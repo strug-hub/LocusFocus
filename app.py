@@ -2707,8 +2707,7 @@ def setbasedtest():
         f.write('-----------------------------------------------------------\n')
         f.write(f'Total time: {t2_total}\n')
 
-    return redirect(url_for("prev_session_input", old_session_id=my_session_id))
-    # return render_template("plot.html", sessionfile = sessionfile, sessionid = my_session_id, metadata_file = metadatafile)
+    return render_template("plot.html", sessionfile = sessionfile, sessionid = my_session_id, metadata_file = metadatafile)
 
 
 @app.route('/downloaddata/<my_session_id>')
