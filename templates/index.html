@@ -2,9 +2,7 @@
 <html lang="en">
 
 <head>
-  <!-- Google tag (gtag.js) -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-LCN3CN42ZL"></script>
-  <script src="{{ url_for('static', filename='js/ga/google_analytics.js') }}"></script>
+  {% include "lib/google-analytics.html" %}
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
@@ -27,7 +25,7 @@
   <!-- JQuery -->
   <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
   <!-- JQuery-UI -->
-  <script type="text/javascript" src="{{ url_for('static', filename='js/jquery-ui.js') }}"></script>
+  <script type="text/javascript" src="{{ url_for('static', filename='js/lib/jquery-ui.js') }}"></script>
   <!-- Bootstrap core CSS -->
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
     integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
@@ -41,9 +39,29 @@
 </head>
 
 <body>
+  {% include "components/navigation-bar.html" %}
   <div class="container">
-    <div class="row" id="myjumbotron"></div>
-    <div class="row" id="navigation-bar"></div>
+    <div class="row" id="myjumbotron">
+      {% include "components/myjumbotron.html" %}
+    </div>
+    <div class="row">
+      <div class="col-md-12 borderit clearfix">
+        <a
+          href="/previous_session"
+          role="button"
+          class="btn btn-primary btn-lg waves-effect waves-light"
+        >
+          Session ID
+        </a>
+        <a
+          href="/session_id/example-output"
+          role="button"
+          class="btn btn-primary btn-lg waves-effect waves-light"
+        >
+          Example Output
+        </a>
+      </div>
+    </div>
     <div class="inputs-and-upload-form">
       <form method=post enctype=multipart/form-data>
         <div class="row">
@@ -86,13 +104,13 @@
                       href="https://locusfocus.readthedocs.io/en/latest/quick_start.html#formatting-custom-secondary-datasets">documentation</a>
                     on how to generate the HTML file.</li>
                   <li>You may use the <a
-                      href="https://github.com/naim-panjwani/LocusFocus/blob/master/merge_and_convert_to_html.py">merge_and_convert_to_html.py</a>
+                      href="https://github.com/strug-hub/LocusFocus/blob/master/merge_and_convert_to_html.py">merge_and_convert_to_html.py</a>
                     script,
                     or <a
-                      href="https://github.com/naim-panjwani/LocusFocus/blob/master/merge_and_convert_to_html_coloc2.py">merge_and_convert_to_html_coloc2.py</a>.
+                      href="https://github.com/strug-hub/LocusFocus/blob/master/merge_and_convert_to_html_coloc2.py">merge_and_convert_to_html_coloc2.py</a>.
                   </li>
                   <li>You may use provided <a
-                      href="https://github.com/naim-panjwani/LocusFocus/tree/master/data/sample_datasets">sample
+                      href="https://github.com/strug-hub/LocusFocus/tree/master/data/sample_datasets">sample
                       datasets</a> as a guide to formatting your files.</li>
                 </ul>
               </ul>
@@ -100,26 +118,38 @@
             </div>
             </p>
 
-
-
             <div class="row">
-              <div class="col-md-3" id="snp"></div>
+              <div class="col-md-3" id="snp">
+                {% include "components/form/snp-col.html" %}
+              </div>
             </div>
             <div class="row">
               <div class="col-md-6">
-                <input type="checkbox" id="markerCheckbox" name="markerCheckbox" onclick="inferVariant(this)"><label
+                <input type="checkbox" id="markerCheckbox" name="markerCheckbox" onclick="inferVariant(this)" />
+                <label
                   for="markerCheckbox" style="margin: 0px; padding: 10px;  height:42px" data-toggle="tooltip"
                   data-html="true"
                   title="<p>If checked, the variant ID will be used to infer the chromosome, position, reference and alternate alleles using dbSNP151.</p>
-              <p>This option is <em>not</em> recommended due to multi-mapping of some rsid's and ambiguity for multi-allelic rsid variants.</p>""> Use marker ID column to infer variant position and alleles</label>
-            </div>
+                    <p>This option is <em>not</em> recommended due to multi-mapping of some rsid's and ambiguity for multi-allelic rsid variants.</p>""
+                >
+                  Use marker ID column to infer variant position and alleles
+                </label>
+              </div>
           </div>
           <div class="row" id="variantInputs">
-                  <div class="col-md-3" id="chrom"></div>
-                  <div class="col-md-3" id="pos"></div>
-                  <div class="col-md-3" id="ref"></div>
-                  <div class="col-md-3" id="alt"></div>
-              </div>
+            <div class="col-md-3" id="chrom">
+              {% include "components/form/chrom-col.html" %}
+            </div>
+            <div class="col-md-3" id="pos">
+              {% include "components/form/pos-col.html" %}
+            </div>
+            <div class="col-md-3" id="ref">
+              {% include "components/form/ref-col.html" %}
+            </div>
+            <div class="col-md-3" id="alt">
+              {% include "components/form/alt-col.html" %}
+            </div>
+          </div>
 
 
               <hr>
@@ -277,24 +307,21 @@
 
   <!-- JS -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/5.9.1/d3.js"></script>
-
   <script src="{{ url_for('static', filename='js/app.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/navigation-bar.js') }}"></script>
   <script src="{{ url_for('static', filename='js/inputChecker.js') }}"></script>
   <!-- Bootstrap tooltips -->
   <script type="text/javascript"
     src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.4/umd/popper.min.js"></script>
-  <script type="text/javascript" src="{{ url_for('static', filename='js/tooltip.min.js') }}"></script>
+  <script type="text/javascript" src="{{ url_for('static', filename='js/lib/tooltip.min.js') }}"></script>
   <!-- Bootstrap core JavaScript -->
   <script type="text/javascript"
     src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.3.1/js/bootstrap.min.js"></script>
   <!-- MDB core JavaScript -->
   <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mdbootstrap/4.7.4/js/mdb.min.js"></script>
   <!-- DataTables -->
-  <script type="text/javascript" src="{{ url_for('static', filename='js/jquery.dataTables.min.js') }}"></script>
+  <script type="text/javascript" src="{{ url_for('static', filename='js/lib/jquery.dataTables.min.js') }}"></script>
   <!-- Multiselect -->
-  <script src="{{ url_for('static', filename='js/bootstrap-multiselect.js') }}"></script>
-
+  <script src="{{ url_for('static', filename='js/lib/bootstrap-multiselect.js') }}"></script>
 </body>
 
 </html>

@@ -19,9 +19,9 @@ Version History
 - v1.0 alpha (released Dec. 5, 2019)
    - Enabled ability to upload secondary datasets as a merged HTML file in addition to any selected GTEx tissues
 - v1.0.1 alpha (released Dec. 18, 2019)
-   - Added ability to transpose table and adjust plot figure drawing parameters  
+   - Added ability to transpose table and adjust plot figure drawing parameters
 - v1.1.0 alpha (released Apr. 1, 2020)
-   - Internal change to calculate the Simple Sum using an R script instead of Python. 
+   - Internal change to calculate the Simple Sum using an R script instead of Python.
    - This change enables the use of the app in Windows as the rpy2 package is no longer a requirement
 - v1.3.0 alpha (released Jul. 31, 2020)
    - Addition of hg38 coordinate support
@@ -65,8 +65,8 @@ Datasets
 
 - Human reference: hg19 (GRCh37.p13) and hg38 (GRCh38.p7)
 - `GTEx: versions 7 (hg19) and 8 (hg38) <https://gtexportal.org/home/>`_
-- GENCODE: `version 19 (hg19) <https://github.com/naim-panjwani/LocusFocus/blob/master/data/collapsed_gencode_v19_hg19.gz>`_ (the transcript models were collapsed into a single gene model)
-- GENCODE: `version 26 (hg38) <https://github.com/naim-panjwani/LocusFocus/blob/master/data/collapsed_gencode_v26_hg38.gz>`_ (the transcript models were collapsed into a single gene model)
+- GENCODE: `version 19 (hg19) <https://github.com/strug-hub/LocusFocus/blob/master/data/collapsed_gencode_v19_hg19.gz>`_ (the transcript models were collapsed into a single gene model)
+- GENCODE: `version 26 (hg38) <https://github.com/strug-hub/LocusFocus/blob/master/data/collapsed_gencode_v26_hg38.gz>`_ (the transcript models were collapsed into a single gene model)
 - `1000 Genomes (phase 3) aligned to GRCh37 biallelic SNV call set  <ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/>`_
 - `1000 Genomes (phase 3) biallelic SNV call set re-aligned to GRCh38 <http://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/1000_genomes_project/release/20181203_biallelic_SNV/>`_
 - `dbSNP151 GRCh37.p13 <ftp://ftp.ncbi.nlm.nih.gov/snp/organisms/human_9606_b151_GRCh37p13>`_
@@ -76,6 +76,6 @@ Datasets
 Programs
 ******************
 
-All required programs and versions are specified in the `yml file <https://github.com/naim-panjwani/LocusFocus/blob/master/environment.yml>`_ 
-or `conda spec file <https://github.com/naim-panjwani/LocusFocus/blob/master/spec-file.txt>`_.
+All required programs and versions are specified in the `yml file <https://github.com/strug-hub/LocusFocus/blob/master/environment.yml>`_
+or `conda spec file <https://github.com/strug-hub/LocusFocus/blob/master/spec-file.txt>`_.
 

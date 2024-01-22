@@ -12,9 +12,9 @@ Up to three files may be selected and uploaded, with a maximum combined file siz
 #. .ld (optional): PLINK-generated LD matrix -- must have the same number of SNPs as primary file
 #. .html (optional): Secondary datasets to test colocalization with.
 
-  * For uploaded secondary datasets, each data table must be preceded by an <h3> title tag describing the table 
-  * You may use the `merge_and_convert_to_html.py <https://github.com/naim-panjwani/LocusFocus/blob/master/merge_and_convert_to_html.py>`_ script to ready your files for uploading  
-  * Press and hold the Ctrl/Cmd key to select multiple files  
+  * For uploaded secondary datasets, each data table must be preceded by an <h3> title tag describing the table
+  * You may use the `merge_and_convert_to_html.py <https://github.com/strug-hub/LocusFocus/blob/master/merge_and_convert_to_html.py>`_ script to ready your files for uploading
+  * Press and hold the Ctrl/Cmd key to select multiple files
 
 
 ***************************************
@@ -29,15 +29,15 @@ Selecting the human coordinate system
 
    Selecting the appropriate human genome coordinate system.
 
-Before you begin, you must choose the appropriate human coordinate system for accurate visualization of the data 
+Before you begin, you must choose the appropriate human coordinate system for accurate visualization of the data
 in the colocalization plot, accurate matching with GTEx data (if selected), and accurate matching with the
-1000 Genomes data for LD calculations (unless a custom matrix is uploaded). hg19 refers to the GRCh37 and 
-hg38 to the GRCh38. 
+1000 Genomes data for LD calculations (unless a custom matrix is uploaded). hg19 refers to the GRCh37 and
+hg38 to the GRCh38.
 
-You may ignore this step if your purpose is to simply compute the colocalization between two datasets that you 
-upload. In that case, simply ensure the secondary dataset(s) have been prepared using the 
-`merge_and_convert_to_html.py <https://github.com/naim-panjwani/LocusFocus/blob/master/merge_and_convert_to_html.py>`_ script or
-the `merge_and_convert_to_html_coloc2.py <https://github.com/naim-panjwani/LocusFocus/blob/master/merge_and_convert_to_html.py>`_ script
+You may ignore this step if your purpose is to simply compute the colocalization between two datasets that you
+upload. In that case, simply ensure the secondary dataset(s) have been prepared using the
+`merge_and_convert_to_html.py <https://github.com/strug-hub/LocusFocus/blob/master/merge_and_convert_to_html.py>`_ script or
+the `merge_and_convert_to_html_coloc2.py <https://github.com/strug-hub/LocusFocus/blob/master/merge_and_convert_to_html.py>`_ script
 if also running COLOC2.
 
 
@@ -47,11 +47,11 @@ Primary dataset input
 
 **Please note that use of the web tool requires uploading your summary statistics to a public server.**
 
-The primary dataset will usually be a genome-wide association study (GWAS) file with summary statistics. 
-You may download our `sample dataset <https://github.com/naim-panjwani/LocusFocus/blob/master/data/sample_datasets/MI_GWAS_2019_1_205500-206000kbp.tsv>`_  
+The primary dataset will usually be a genome-wide association study (GWAS) file with summary statistics.
+You may download our `sample dataset <https://github.com/strug-hub/LocusFocus/blob/master/data/sample_datasets/MI_GWAS_2019_1_205500-206000kbp.tsv>`_
 for meconium ileus around *SLC26A9* gene.
 
-A tab-delimited text file input is preferred. 
+A tab-delimited text file input is preferred.
 
 The first few lines of a sample input file are shown below.
 
@@ -75,50 +75,50 @@ The first few lines of a sample input file are shown below.
 Simple Sum Colocalization
 ===========================
 
-For the Simple Sum method, two columns are absolutely necessary: 
+For the Simple Sum method, two columns are absolutely necessary:
 
 1. **ID** - The SNP rs id or chrom_pos_ref_alt_build format (e.g. 1_205860191_A_G_b37).
-2. **P** - The association p-value 
+2. **P** - The association p-value
 
-In this case, you must check the box "Use marker ID column to infer variant position and alleles" 
-to map the provided rs ID's to the chromosomal position and alleles using dbSNP.  
+In this case, you must check the box "Use marker ID column to infer variant position and alleles"
+to map the provided rs ID's to the chromosomal position and alleles using dbSNP.
 
-Alternatively, for more accurate matching of alleles, 
+Alternatively, for more accurate matching of alleles,
 all four fields (chromosome, basepair position, reference and alternate alleles)
 may be provided in addition to the ID column field.
 
-1. **ID** - The SNP rs id or chrom_pos_ref_alt_build format (e.g. 1_205860191_A_G_b37)  
-2. **#CHROM** - The chromosome column (either “X” or “23” is acceptable)  
-3. **POS** - The basepair position (in hg19 coordinates)  
-4. **REF** - The reference allele (on the plus strand, as defined in the 1000 Genomes)  
-5. **ALT** - The alternate allele (on the plus strand, as defined in the 1000 Genomes)  
-6. **P** - The association p-value  
+1. **ID** - The SNP rs id or chrom_pos_ref_alt_build format (e.g. 1_205860191_A_G_b37)
+2. **#CHROM** - The chromosome column (either “X” or “23” is acceptable)
+3. **POS** - The basepair position (in hg19 coordinates)
+4. **REF** - The reference allele (on the plus strand, as defined in the 1000 Genomes)
+5. **ALT** - The alternate allele (on the plus strand, as defined in the 1000 Genomes)
+6. **P** - The association p-value
 
 Use the web form to change the column names as found in your file if different from the default names.
-For the example above, you would change the position column default name (POS) to *BP* and MAF to *AF*.  
+For the example above, you would change the position column default name (POS) to *BP* and MAF to *AF*.
 
 
 COLOC2 Colocalization
 ========================
 
 To run COLOC2, check the box "Add required inputs for COLOC2".
-For this option, additional fields are required, and the corresponding required fields 
+For this option, additional fields are required, and the corresponding required fields
 will be populated to allow for input of the column names if other than default:
 
-1. **BETA** - The beta of the SNP in the association analysis  
-2. **SE** - The standard error of beta  
-3. **N** - The total sample size of the study  
-4. **MAF** - The minor allele frequency  
-5. **Study type** - Select either quantitative or case-control.  
+1. **BETA** - The beta of the SNP in the association analysis
+2. **SE** - The standard error of beta
+3. **N** - The total sample size of the study
+4. **MAF** - The minor allele frequency
+5. **Study type** - Select either quantitative or case-control.
 
-For the case-control case, you are required to provide the number of cases in the study.  
+For the case-control case, you are required to provide the number of cases in the study.
 
 If you have a csv or excel file, see below on :ref:`how to convert it to a
 tab-delimited file<Formatting the primary dataset file input>`.
 
 We recommend having a dense set of SNPs for the region in order to obtain accurate results.
 If the number of SNPs in the region of interest is too small, it may not be possible to compute
-the Simple Sum p-value.  
+the Simple Sum p-value.
 
 
 Formatting the primary dataset file input
@@ -142,7 +142,7 @@ Non-default column names
 ===========================
 
 Use the web form to change the column names as found in your file if different from the default names.
-For the example above, you would change the position column default name (POS) to *BP* and MAF to *AF*.  
+For the example above, you would change the position column default name (POS) to *BP* and MAF to *AF*.
 
 .. figure:: _static/column_names.png
    :align: center
@@ -158,12 +158,12 @@ For the example above, you would change the position column default name (POS) t
 Selecting an LD matrix
 ***************************
 
-You may either: 
+You may either:
 
 * :ref:`Select the appropriate 1000 Genomes population for your study from the dropdown <Selecting a publicly available 1000 Genomes population LD matrix>`.
 * :ref:`Compute the LD matrix from your population<Computing the LD matrix from your GWAS population>`.
 
-For the most accurate colocalization statistics, we recommend uploading the LD matrix of your study. 
+For the most accurate colocalization statistics, we recommend uploading the LD matrix of your study.
 If this is unavailable, you may select the most appropriate 1000 Genomes population subset for your study.
 
 
@@ -184,38 +184,38 @@ hg19
 
 These datasets were obtained from `LocusZoom <http://locuszoom.org/>`_.
 However, for more accurate results, we suggest :ref:`computing and uploading the LD matrix
-for your GWAS study<Computing the LD matrix from your GWAS population>`. 
+for your GWAS study<Computing the LD matrix from your GWAS population>`.
 
 The 1000 Genomes population dataset `(phase 1, release 3) <ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20110521/>`_ consists of:
 
-- EUR: European population of 379 individuals  
+- EUR: European population of 379 individuals
 
-  * 85 CEU - Utah Residents (CEPH) with Northern and Western European Ancestry  
-  * 93 FIN - Finnish in Finland  
-  * 89 GBR - British in England and Scotland  
-  * 14 IBS - Iberian Population in Spain  
-  * 98 TSI - Toscani in Italia  
-
-
-- AFR: African population of 246 individuals  
-
-  * 61 ASW - Americans of African Ancestry in SW USA  
-  * 97 LWK - Luhya in Webuye, Kenya  
-  * 88 YRI - Yoruba in Ibadan, Nigeria  
+  * 85 CEU - Utah Residents (CEPH) with Northern and Western European Ancestry
+  * 93 FIN - Finnish in Finland
+  * 89 GBR - British in England and Scotland
+  * 14 IBS - Iberian Population in Spain
+  * 98 TSI - Toscani in Italia
 
 
-- ASN: Asian population of 286 individuals  
+- AFR: African population of 246 individuals
 
-  * 97 CHB - Han Chinese in Beijing, China  
-  * 100 CHS - Southern Han Chinese  
-  * 89 JPT - Japanese in Tokyo, Japan  
+  * 61 ASW - Americans of African Ancestry in SW USA
+  * 97 LWK - Luhya in Webuye, Kenya
+  * 88 YRI - Yoruba in Ibadan, Nigeria
 
 
-- AMR: Ad Mixed American population of 181 individuals  
+- ASN: Asian population of 286 individuals
 
-  * 60 CLM - Colombians from Medellin, Colombia  
-  * 66 MXL - Mexican Ancestry from Los Angeles USA  
-  * 55 PUR - Puerto Ricans from Puerto Rico  
+  * 97 CHB - Han Chinese in Beijing, China
+  * 100 CHS - Southern Han Chinese
+  * 89 JPT - Japanese in Tokyo, Japan
+
+
+- AMR: Ad Mixed American population of 181 individuals
+
+  * 60 CLM - Colombians from Medellin, Colombia
+  * 66 MXL - Mexican Ancestry from Los Angeles USA
+  * 55 PUR - Puerto Ricans from Puerto Rico
 
 
 Descriptions of the population codes can be found in the `IGSR: The International Genome Sample Resource <https://www.internationalgenome.org/category/population/>`_.
@@ -234,13 +234,13 @@ hg38
    Selecting the most appropriate 1000 Genomes population (hg38).
 
 The hg38 version of the `1000 Genomes population <https://www.internationalgenome.org/announcements/Variant-calls-from-1000-Genomes-Project-data-calling-against-GRCh38/>`_
-is computed from a fully realigned call set against GRCh38. The biallelic SNV call set is used and more details are available on the 
-`1000 Genomes Project FTP site <http://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/1000_genomes_project/release/20181203_biallelic_SNV/>`_.  
+is computed from a fully realigned call set against GRCh38. The biallelic SNV call set is used and more details are available on the
+`1000 Genomes Project FTP site <http://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/1000_genomes_project/release/20181203_biallelic_SNV/>`_.
 
 A total of 2,548 individuals are available on the 1000 Genomes, and 2,507 have been assigned a population and super-population code.
-The distribution of populations available for selection on the app are as follows:  
+The distribution of populations available for selection on the app are as follows:
 
-- EUR: European population of 502 individuals  
+- EUR: European population of 502 individuals
 
   * 99 CEU - Utah Residents (CEPH) with Northern and Western European Ancestry
   * 89 GBR - British in England and Scotland
@@ -263,7 +263,7 @@ The distribution of populations available for selection on the app are as follow
   * 107 YRI - Yoruba in Ibadan, Nigeria
 
 
-- AMR: Ad Mixed American population of 333 individuals  
+- AMR: Ad Mixed American population of 333 individuals
 
   * 92 CLM - Colombians from Medellin, Colombia
   * 64 MXL - Mexican Ancestry from Los Angeles USA
@@ -271,16 +271,16 @@ The distribution of populations available for selection on the app are as follow
   * 92 PUR - Puerto Ricans from Puerto Rico
 
 
-- EAS: East Asian population of 509 individuals  
+- EAS: East Asian population of 509 individuals
 
-  * 100 CDX - Chinese Dai in Xishuangbanna, China	
+  * 100 CDX - Chinese Dai in Xishuangbanna, China
   * 106 CHB - Han Chinese in Beijing, China
   * 99 CHS - Southern Han Chinese
   * 105 JPT - Japanese in Tokyo, Japan
   * 99 KHV - Kinh in Ho Chi Minh City, Vietnam
 
 
-- SAS: South Asian population of 492 individuals  
+- SAS: South Asian population of 492 individuals
 
   * 106 GIH - Gujarati Indian from Houston, Texas
   * 102 ITU - Indian Telugu from the UK
@@ -292,16 +292,16 @@ The distribution of populations available for selection on the app are as follow
 Computing the LD matrix from your GWAS population
 ======================================================
 
-Before you compute the LD matrix, please ensure that the number and order of SNPs matches that of the 
-original uploaded GWAS or primary dataset file. 
+Before you compute the LD matrix, please ensure that the number and order of SNPs matches that of the
+original uploaded GWAS or primary dataset file.
 
-The easiest way to compute the LD from your own population is using `PLINK <https://www.cog-genomics.org/plink/1.9/ld>`_. 
+The easiest way to compute the LD from your own population is using `PLINK <https://www.cog-genomics.org/plink/1.9/ld>`_.
 
-Assuming your GWAS dataset is in binary PLINK format (ie. bed/bim/fam fileset), 
+Assuming your GWAS dataset is in binary PLINK format (ie. bed/bim/fam fileset),
 and you have `subset the region <http://zzz.bwh.harvard.edu/plink/dataman.shtml#extract>`_,
 an example run would be:
 
-.. code-block:: console 
+.. code-block:: console
    :caption: *Example PLINK command for calculating the LD matrix*
 
    plink --bfile <plink_filename> --r2 square --make-bed --out <output_filename>
@@ -313,16 +313,16 @@ In the above command, please replace plink_filename and output_filename with app
 Secondary datasets
 ******************************************************
 
-All 48 :ref:`GTEx (v7)<Datasets>` (hg19) and 49 :ref:`GTEx (v8)<Datasets>` tissues are provided for selection as secondary datasets 
-to test colocalization with. The genes found in the coordinates 
-entered (:ref:`GENCODE v19 (hg19) or GENCODE v26 (hg38)<Datasets>`) can be chosen for colocalization testing 
-(thus, the number of secondary datasets and 
+All 48 :ref:`GTEx (v7)<Datasets>` (hg19) and 49 :ref:`GTEx (v8)<Datasets>` tissues are provided for selection as secondary datasets
+to test colocalization with. The genes found in the coordinates
+entered (:ref:`GENCODE v19 (hg19) or GENCODE v26 (hg38)<Datasets>`) can be chosen for colocalization testing
+(thus, the number of secondary datasets and
 colocalization tests performed is the number of tissues selected times the number of genes selected in the region).
 
 In addition to GTEx tissues, several user-specified datasets may be uploaded as a merged HTML file.
 For further instructions on how to :ref:`create a merged HTML file<Formatting custom secondary datasets>`, see the section below.
 
-Alternatively, you may skip selection of GTEx tissues altogether and only focus on 
+Alternatively, you may skip selection of GTEx tissues altogether and only focus on
 the colocalization tests for your uploaded secondary dataset(s). Please note that you *can* have both custom and
 GTEx datasets analyzed as secondary datasets.
 
@@ -330,11 +330,11 @@ GTEx datasets analyzed as secondary datasets.
 Selecting GTEx tissues as secondary datasets
 ======================================================
 
-You may select all the necessary tissues to test colocalization with your primary dataset. 
+You may select all the necessary tissues to test colocalization with your primary dataset.
 Computation times, however, increase the more tissues and genes you select, so please be selective here if possible.
 Most colocalization analyses will finish within 10-15 minutes, but a gene-rich region may take 30 minutes or longer to compute.
 
-Also note that computing a large number of Simple Sum p-values is computationally demanding for a web server, 
+Also note that computing a large number of Simple Sum p-values is computationally demanding for a web server,
 and doing so may delay or prevent others from accessing the website. In a later release, we plan to add a queue system for a better experience.
 
 
@@ -342,26 +342,26 @@ and doing so may delay or prevent others from accessing the website. In a later 
 Formatting custom secondary datasets
 ======================================================
 
-In order for LocusFocus to recognize a dataset as secondary and perform colocalization testing, 
+In order for LocusFocus to recognize a dataset as secondary and perform colocalization testing,
 you must format your dataset in HTML format.
-The HTML format allows several datasets to be merged in a single HTML file. We suggest each dataset 
+The HTML format allows several datasets to be merged in a single HTML file. We suggest each dataset
 be preceded by an <h3> tag with the description title of the dataset.
 
-We provide a `python script <https://github.com/naim-panjwani/LocusFocus/blob/master/merge_and_convert_to_html.py>`_ 
+We provide a `python script <https://github.com/strug-hub/LocusFocus/blob/master/merge_and_convert_to_html.py>`_
 to simplify the generation of the merged HTML dataset. To run both Simple Sum and COLOC2, please use the
-`merge_and_convert_to_html_coloc2.py <https://github.com/naim-panjwani/LocusFocus/blob/master/merge_and_convert_to_html.py>`_ script.
+`merge_and_convert_to_html_coloc2.py <https://github.com/strug-hub/LocusFocus/blob/master/merge_and_convert_to_html.py>`_ script.
 
 
-The first step in creating the HTML file is to create a tab-separated `descriptor file <https://github.com/naim-panjwani/LocusFocus/blob/master/data/sample_datasets/slc26a9_uk_biobank_spirometry_files_to_merge.txt>`_
-containing the list of files to be merged together (first column). The second column (tab-delimited) 
-may contain descriptions of the datasets. 
+The first step in creating the HTML file is to create a tab-separated `descriptor file <https://github.com/strug-hub/LocusFocus/blob/master/data/sample_datasets/slc26a9_uk_biobank_spirometry_files_to_merge.txt>`_
+containing the list of files to be merged together (first column). The second column (tab-delimited)
+may contain descriptions of the datasets.
 The remaining columns specify the column names for chromosome, basepair position, SNP name, P-value (in that order).
 
 For example, suppose we had three `genomewide association analyses (from Ben Neale) from the UK Biobank <https://docs.google.com/spreadsheets/d/1kvPoupSzsSFBNSztMzl04xMoSC3Kcx3CrjVf4yBmESU/edit?ts=5b5f17db#gid=227859291>`_:
 
-#. `Forced vital capacity (FVC) - 3062 <https://github.com/naim-panjwani/LocusFocus/blob/master/data/sample_datasets/3062.assoc.mod.ROI.slc26a9.tsv>`_
-#. `Forced expiratory volume in 1-second (FEV1) - 3063 <https://github.com/naim-panjwani/LocusFocus/blob/master/data/sample_datasets/3063.assoc.mod.ROI.slc26a9.tsv>`_
-#. `Peak expiratory flow (PEF) - 3064 <https://github.com/naim-panjwani/LocusFocus/blob/master/data/sample_datasets/3064.assoc.mod.ROI3.slc26a9.tsv>`_
+#. `Forced vital capacity (FVC) - 3062 <https://github.com/strug-hub/LocusFocus/blob/master/data/sample_datasets/3062.assoc.mod.ROI.slc26a9.tsv>`_
+#. `Forced expiratory volume in 1-second (FEV1) - 3063 <https://github.com/strug-hub/LocusFocus/blob/master/data/sample_datasets/3063.assoc.mod.ROI.slc26a9.tsv>`_
+#. `Peak expiratory flow (PEF) - 3064 <https://github.com/strug-hub/LocusFocus/blob/master/data/sample_datasets/3064.assoc.mod.ROI3.slc26a9.tsv>`_
 
 The first few lines for FVC look as follows:
 
@@ -386,8 +386,8 @@ The first few lines for FVC look as follows:
 
 The FEV1 and PEF phenotype association files look similar.
 
-To merge the summary statistics from these three files into a merged HTML file, we would first create a 
-`descriptor file <https://github.com/naim-panjwani/LocusFocus/blob/master/data/sample_datasets/slc26a9_uk_biobank_spirometry_files_to_merge.txt>`_ 
+To merge the summary statistics from these three files into a merged HTML file, we would first create a
+`descriptor file <https://github.com/strug-hub/LocusFocus/blob/master/data/sample_datasets/slc26a9_uk_biobank_spirometry_files_to_merge.txt>`_
 of all the files we would like to merge. See below for the case of combining these three files:
 
 .. code-block:: console
@@ -409,27 +409,27 @@ Each column (tab-separated) defines:
 6. P-value
 
 
-Note that COLOC2 assumes an eQTL dataset as secondary input, and the 
-`merge_and_convert_to_html_coloc2.py script <https://github.com/naim-panjwani/LocusFocus/blob/master/merge_and_convert_to_html_coloc2.py>`_ 
+Note that COLOC2 assumes an eQTL dataset as secondary input, and the
+`merge_and_convert_to_html_coloc2.py script <https://github.com/strug-hub/LocusFocus/blob/master/merge_and_convert_to_html_coloc2.py>`_
 must be used, which requires the same inputs as above, plus the following:
 
-7. Beta  
-8. Standard error  
-9. Number of samples  
-10. A1 (minor) or alternate allele  
-11. A2 (major) or reference allele  
-12. Minor allele frequency (MAF)  
-13. Probe ID  
+7. Beta
+8. Standard error
+9. Number of samples
+10. A1 (minor) or alternate allele
+11. A2 (major) or reference allele
+12. Minor allele frequency (MAF)
+13. Probe ID
 
-You may refer to the 
-`github page <https://github.com/naim-panjwani/LocusFocus/blob/master/data/sample_datasets/>`_ 
-for more examples of datasets, where a  
-`sample descriptor file <https://github.com/naim-panjwani/LocusFocus/blob/master/data/sample_datasets/slc26a9_uk_biobank_spirometry_files_to_merge_coloc2.txt>`_ 
-and `sample command <https://github.com/naim-panjwani/LocusFocus/blob/master/data/sample_datasets/merge_command.sh>`_ 
-are provided for guidance to build a secondary dataset to also run COLOC2 colocalization.  
+You may refer to the
+`github page <https://github.com/strug-hub/LocusFocus/blob/master/data/sample_datasets/>`_
+for more examples of datasets, where a
+`sample descriptor file <https://github.com/strug-hub/LocusFocus/blob/master/data/sample_datasets/slc26a9_uk_biobank_spirometry_files_to_merge_coloc2.txt>`_
+and `sample command <https://github.com/strug-hub/LocusFocus/blob/master/data/sample_datasets/merge_command.sh>`_
+are provided for guidance to build a secondary dataset to also run COLOC2 colocalization.
 
-While running COLOC2 is possible, we proceed below with the simpler example without COLOC2. 
-The steps to also include COLOC2, however, are similar.  
+While running COLOC2 is possible, we proceed below with the simpler example without COLOC2.
+The steps to also include COLOC2, however, are similar.
 
 
 Then, to generate the merged html file while subsetting the region we may issue the command as follows:
@@ -465,8 +465,8 @@ A description of the positional arguments may be issued with the -h or --help ar
       -h, --help         show this help message and exit
 
 
-The above command will generate the merged 
-`slc26a9_uk_biobank_spirometry_merged.html <https://github.com/naim-panjwani/LocusFocus/blob/master/data/sample_datasets/slc26a9_uk_biobank_spirometry_merged.html>`_, 
+The above command will generate the merged
+`slc26a9_uk_biobank_spirometry_merged.html <https://github.com/strug-hub/LocusFocus/blob/master/data/sample_datasets/slc26a9_uk_biobank_spirometry_merged.html>`_,
 file which can be used with LocusFocus.
 
 
@@ -474,13 +474,13 @@ file which can be used with LocusFocus.
 Some important points to consider
 ******************************************************
 
-- Please note that your GWAS and secondary datasets must be subset in order to reduce the file size for uploading purposes (current combined limit is 100 MB). 
-- You must also enter the genomic location you are interested in the *HG19 Coordinates* field. The format must be *chromosome:start-end*, where *start* is the starting basepair position and *end* is the ending basepair position. 
-- The region size entered in *Coordinates* field cannot be larger than 2 MBbp. 
-- If the SNP column has multiple rsid's separated by semicolon, the first rsid will be used. 
-- The SNP rs id is not used for determining the presence of the SNP in the 1000 Genomes population for the LD calculation; the chromosome and position columns determine this. If the chromosome:position combination is found in the 1000 Genomes, then the pairwise LD will be calculated for that particular SNP. 
-- The LD matrix is calculated for chromosome:position SNPs available in both GWAS input and the selected 1000 Genomes population datasets. 
-- Only overlapping SNPs are used for the Simple Sum calculations, and only overlapping SNPs with the primary dataset are plotted. 
-- A region within +/- 0.1 Mbp is selected around the top SNP to compute the Simple Sum p-value. This area is shaded gray in the first plot. This is done for each gene found within +/- 1 Mbp of the top SNP for all the tissues selected. 
-- It is important to have a dense set of genotyped SNPs to get an accurate assessment of the Simple Sum p-value calculation. 
+- Please note that your GWAS and secondary datasets must be subset in order to reduce the file size for uploading purposes (current combined limit is 100 MB).
+- You must also enter the genomic location you are interested in the *HG19 Coordinates* field. The format must be *chromosome:start-end*, where *start* is the starting basepair position and *end* is the ending basepair position.
+- The region size entered in *Coordinates* field cannot be larger than 2 MBbp.
+- If the SNP column has multiple rsid's separated by semicolon, the first rsid will be used.
+- The SNP rs id is not used for determining the presence of the SNP in the 1000 Genomes population for the LD calculation; the chromosome and position columns determine this. If the chromosome:position combination is found in the 1000 Genomes, then the pairwise LD will be calculated for that particular SNP.
+- The LD matrix is calculated for chromosome:position SNPs available in both GWAS input and the selected 1000 Genomes population datasets.
+- Only overlapping SNPs are used for the Simple Sum calculations, and only overlapping SNPs with the primary dataset are plotted.
+- A region within +/- 0.1 Mbp is selected around the top SNP to compute the Simple Sum p-value. This area is shaded gray in the first plot. This is done for each gene found within +/- 1 Mbp of the top SNP for all the tissues selected.
+- It is important to have a dense set of genotyped SNPs to get an accurate assessment of the Simple Sum p-value calculation.
 

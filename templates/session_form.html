@@ -2,9 +2,7 @@
 <html lang="en">
 
 <head>
-  <!-- Google tag (gtag.js) -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-LCN3CN42ZL"></script>
-  <script src="{{ url_for('static', filename='js/ga/google_analytics.js') }}"></script>
+  {% include "lib/google-analytics.html" %}
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
@@ -17,7 +15,7 @@
   <!-- JQuery -->
   <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
   <!-- JQuery-UI -->
-  <script type="text/javascript" src="{{ url_for('static', filename='js/jquery-ui.js') }}"></script>
+  <script type="text/javascript" src="{{ url_for('static', filename='js/lib/jquery-ui.js') }}"></script>
   <!-- Bootstrap core CSS -->
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
     integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
@@ -31,9 +29,8 @@
 </head>
 
 <body>
+  {% include "components/navigation-bar.html" %}
   <div class="container">
-    <div class="row" id="myjumbotron"></div>
-    <div class="row" id="navigation-bar"></div>
     <div class="row">
       <div class="col-md-12 borderit">
         <div class="col-md-8">
@@ -43,7 +40,7 @@
             <p>
               For example:
             <ul>
-              <li>0d074aff-76f4-42ab-87ef-5e2fa34b04e8 (SLC26A9)</li>
+              <li>example-output (SLC26A9)</li>
               <li>447742a9-dc16-42cd-86dc-db388ec37283 (ATP12A)</li>
             </ul>
             </p>
@@ -58,8 +55,6 @@
 
   <!-- JS -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/5.9.1/d3.js"></script>
-  <script src="{{ url_for('static', filename='js/navigation-bar.js') }}"></script>
-
   <!-- <script src="{{ url_for('static', filename='js/app.js') }}"></script> -->
   <!-- Bootstrap tooltips -->
   <script type="text/javascript"
@@ -70,9 +65,9 @@
   <!-- MDB core JavaScript -->
   <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mdbootstrap/4.7.4/js/mdb.min.js"></script>
   <!-- DataTables -->
-  <script type="text/javascript" src="{{ url_for('static', filename='js/jquery.dataTables.min.js') }}"></script>
+  <script type="text/javascript" src="{{ url_for('static', filename='js/lib/jquery.dataTables.min.js') }}"></script>
   <!-- Multiselect -->
-  <script src="{{ url_for('static', filename='js/bootstrap-multiselect.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/lib/bootstrap-multiselect.js') }}"></script>
 </body>
 
 </html>

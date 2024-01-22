@@ -60,153 +60,6 @@ function coordinateChange(newCoordinate) {
   }
 }
 
-// helper functions:
-function askChromInput(chromColDiv) {
-  chromColDiv.html("");
-  chromColDiv
-    .append("label")
-    .attr("for", "chrom")
-    .attr("data-toggle", "tooltip")
-    .attr(
-      "title",
-      "Header text corresponding to the chromosome column in your txt/tsv file (primary dataset)"
-    )
-    .text("Chromosome Column Name:");
-  chromColDiv
-    .append("input")
-    .attr("class", "form-control")
-    .attr("name", "chrom-col")
-    .attr("type", "text")
-    .attr("value", "#CHROM")
-    .attr("onfocus", "this.value=''")
-    .attr("data-toggle", "tooltip")
-    .attr(
-      "title",
-      "Enter the header text corresponding to the chromosome column in your txt/tsv file (primary dataset)"
-    );
-}
-function askPosInput(posColDiv) {
-  posColDiv.html("");
-  posColDiv
-    .append("label")
-    .attr("for", "position")
-    .attr("data-toggle", "tooltip")
-    .attr(
-      "title",
-      "Header text corresponding to the basepair coordinate position column in your txt/tsv file (primary dataset)"
-    )
-    .text("Position Column Name:");
-  posColDiv
-    .append("input")
-    .attr("class", "form-control")
-    .attr("name", "pos-col")
-    .attr("type", "text")
-    .attr("value", "POS")
-    .attr("onfocus", "this.value=''")
-    .attr("data-toggle", "tooltip")
-    .attr(
-      "title",
-      "Enter the header text corresponding to the basepair coordinate position column in your txt/tsv file (primary dataset)"
-    );
-}
-function askRefInput(refColDiv) {
-  refColDiv.html("");
-  refColDiv
-    .append("label")
-    .attr("for", "ref")
-    .attr("data-toggle", "tooltip")
-    .attr(
-      "title",
-      "Header text corresponding to the reference allele column in your txt/tsv file (primary dataset)"
-    )
-    .text("Reference Allele Column Name:");
-  refColDiv
-    .append("input")
-    .attr("class", "form-control")
-    .attr("name", "ref-col")
-    .attr("type", "text")
-    .attr("value", "REF")
-    .attr("onfocus", "this.value=''")
-    .attr("data-toggle", "tooltip")
-    .attr(
-      "title",
-      "Enter the header text corresponding to the reference allele column in your txt/tsv file (primary dataset)"
-    );
-}
-function askAltInput(altColDiv) {
-  altColDiv.html("");
-  altColDiv
-    .append("label")
-    .attr("for", "alt")
-    .attr("data-toggle", "tooltip")
-    .attr(
-      "title",
-      "Header text corresponding to the alternate allele column in your txt/tsv file (primary dataset)"
-    )
-    .text("Alternate Allele Column Name:");
-  altColDiv
-    .append("input")
-    .attr("class", "form-control")
-    .attr("name", "alt-col")
-    .attr("type", "text")
-    .attr("value", "ALT")
-    .attr("onfocus", "this.value=''")
-    .attr("data-toggle", "tooltip")
-    .attr(
-      "title",
-      "Enter the header text corresponding to the alternate allele column in your txt/tsv file (primary dataset)"
-    );
-}
-function askSNPInput(markerColDiv) {
-  markerColDiv.html("");
-  markerColDiv
-    .append("label")
-    .attr("for", "markerColname")
-    .attr("data-html", "true")
-    .attr("data-toggle", "tooltip")
-    .attr(
-      "title",
-      "<p>Header text corresponding to the variant name column in your txt/tsv file (primary dataset).</p><p>Accepted formats: rs7512462, 1_205899595_T_C_b37.</p>"
-    )
-    .text("Marker Column Name:");
-  markerColDiv
-    .append("input")
-    .attr("class", "form-control")
-    .attr("name", "snp-col")
-    .attr("type", "text")
-    .attr("value", "ID")
-    .attr("onfocus", "this.value=''")
-    .attr("data-toggle", "tooltip")
-    .attr("data-html", "true")
-    .attr(
-      "title",
-      "<p>Enter the header text corresponding to the variant ID column in your txt/tsv file (primary dataset).</p><p>Accepted formats: rs7512462, 1_205899595_T_C_b37</p>"
-    );
-}
-function addVariantInputs() {
-  variantInputsDiv.html("");
-  var chromColDiv = variantInputsDiv
-    .append("div")
-    .attr("class", "col-md-3")
-    .attr("id", "chrom");
-  var posColDiv = variantInputsDiv
-    .append("div")
-    .attr("class", "col-md-3")
-    .attr("id", "pos");
-  var refColDiv = variantInputsDiv
-    .append("div")
-    .attr("class", "col-md-3")
-    .attr("id", "ref");
-  var altColDiv = variantInputsDiv
-    .append("div")
-    .attr("class", "col-md-3")
-    .attr("id", "alt");
-  askChromInput(chromColDiv);
-  askPosInput(posColDiv);
-  askRefInput(refColDiv);
-  askAltInput(altColDiv);
-}
-
 function askBetaInput(betaColDiv) {
   betaColDiv.html("");
   betaColDiv
@@ -431,9 +284,11 @@ function askColocInputs() {
 
 function inferVariant(snpbox) {
   if (snpbox.checked) {
-    variantInputsDiv.html("");
+    $("#variantInputs").hide();
+    ["#chrom-col", "#pos-col", "#ref-col", "#alt-col"].forEach((id) => $(id).prop("disabled", true));
   } else {
-    addVariantInputs();
+    $("#variantInputs").show();
+    ["#chrom-col", "#pos-col", "#ref-col", "#alt-col"].forEach((id) => $(id).prop("disabled", false));
   }
   // re-initialize popover and tooltip
   $(function () {
@@ -567,11 +422,11 @@ function init() {
   checkDB();
   setInterval(checkDB, 5 * 60_000);
 
-  askSNPInput(markerColDiv);
-  askChromInput(chromColDiv);
-  askPosInput(posColDiv);
-  askRefInput(refColDiv);
-  askAltInput(altColDiv);
+  // // askSNPInput(markerColDiv);
+  // askChromInput(chromColDiv);
+  // askPosInput(posColDiv);
+  // askRefInput(refColDiv);
+  // askAltInput(altColDiv);
 
   statsDiv.html("");
   var pvalueColDiv = statsDiv

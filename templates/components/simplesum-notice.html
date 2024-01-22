@@ -1,0 +1,26 @@
+<div class="alert alert-dismissible alert-info">
+    <button type="button" class="close" data-dismiss="alert">
+      &times;
+    </button>
+    <p>
+      <strong
+        >-1 values correspond to gene-tissue pairs with no eQTL data
+        (likely due to little or no expression)</strong
+      >
+    </p>
+    <p>
+      <strong
+        >-2 values correspond to gene-tissue pairs that did not pass the
+        Bonferroni-corrected first stage testing for signficance among
+        the secondary datasets chosen</strong
+      >
+    </p>
+    <p>
+      <strong
+        >-3 values correspond to gene-tissue pairs where the Simple Sum
+        P-value computation failed, likely due to insufficient
+        SNPs</strong
+      >
+    </p>
+    {% include "components/first-stage-significance-notice.html" %}
+  </div>
