@@ -2405,18 +2405,6 @@ def setbasedtest():
     my_session_id = uuid.uuid4()
     coordinate = request.form[FormID.COORDINATE]
 
-    # Set-based P override:
-    setbasedP = request.form[FormID.SET_BASED_P]
-    if setbasedP=='':
-        setbasedP = 'default'
-    else:
-        try:
-            setbasedP = float(setbasedP)
-            if setbasedP < 0 or setbasedP > 1:
-                raise InvalidUsage('Set-based p-value threshold given is not between 0 and 1')
-        except:
-            raise InvalidUsage('Invalid value provided for the set-based p-value threshold. Value must be numeric between 0 and 1.')
-
     pops = request.form[FormID.LD_1000GENOME_POP]
     if len(pops) == 0: pops = 'EUR'
     if ldmat_filepath != "": pops = 'None; user provided LD'
@@ -2443,7 +2431,6 @@ def setbasedtest():
 
     data = {}
 
-    data['set_based_p'] = setbasedP
     data['coordinate'] = coordinate
     data['sessionid'] = str(my_session_id)
     data['ld_populations'] = pops
@@ -2524,7 +2511,7 @@ def setbasedtest():
                     os.path.join(MYDIR, 'getSimpleSumStats.R'),
                     sep_Pvalues_filepath,
                     sep_ldmatrix_filepath,
-                    "--set_based_p", str(setbasedP),
+                    "--set_based_p", "default",
                     "--outfilename", SSresult_path,
                     "--first_stage_only"
                 ]
@@ -2568,7 +2555,7 @@ def setbasedtest():
                     os.path.join(MYDIR, 'getSimpleSumStats.R'),
                     sep_Pvalues_filepath,
                     sep_ldmatrix_filepath,
-                    "--set_based_p", str(setbasedP),
+                    "--set_based_p", "default",
                     "--outfilename", SSresult_path,
                     "--first_stage_only"
                 ]
@@ -2664,7 +2651,7 @@ def setbasedtest():
             Rscript_code_path,
             Pvalues_filepath,
             ldmatrix_filepath,
-            '--set_based_p', str(setbasedP),
+            '--set_based_p', "default",
             '--outfilename', SSresult_path,
             "--first_stage_only"
             ]

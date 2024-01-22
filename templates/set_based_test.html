@@ -50,8 +50,7 @@
         <div class="row">
           <p>
             Upload a summary statistics dataset (eg. GWAS) to perform a simple set-based test.
-            Results will include the P-value from the test, as well as whether it passed or failed
-            based on the P-value threshold.
+            Results will include the P-value from the test.
           </p>
           <p>
             You may provide your own LD matrix, so long as it is the same length as your provided dataset.
@@ -181,20 +180,6 @@
             <div class="col-md-6">
               <select id="LD-populations" name="LD-populations">
               </select>
-            </div>
-          </div>
-        </div> <!-- row closing div -->
-
-        <div class="row">
-          <div class="col-md-12 borderit">
-            <div class="col-md-8">
-              <label for="setbasedP" id="set-based-P-label" data-toggle="tooltip" data-html="true" title="<p>Set-based Bonferroni p-value threshold for your test to pass.</p>
-            <p>Enter a value if you would like to override the default threshold.</p>">Stage one set-based p-value
-                threshold</label>
-              <input class="form-control" id="setbasedP" name="setbasedP" type="text"
-                placeholder="default: 0.05" data-toggle="tooltip"
-                data-html="true" title="<p>Set-based Bonferroni p-value threshold for your test to pass.</p>
-            <p>Enter a value if you would like to override the default threshold.</p>">
             </div>
           </div>
         </div> <!-- row closing div -->

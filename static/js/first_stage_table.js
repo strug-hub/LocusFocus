@@ -14,7 +14,6 @@ function buildFirstStageTable(sessionData) {
             descriptionHeader = "Test Region";
             testResultData = sessionData["regions"].map((regiontext, i) => [
                 regiontext,
-                sessionData["first_stages"][i] ? "Yes" : "No",
                 sessionData["first_stage_Pvalues"][i],
             ])
         } else {
@@ -24,7 +23,6 @@ function buildFirstStageTable(sessionData) {
             // list of lists
             testResultData = [[
                 sessionData["dataset_title"],
-                sessionData["first_stages"][0] ? "Yes" : "No",
                 sessionData["first_stage_Pvalues"][0],
             ]];
         }        
@@ -32,14 +30,12 @@ function buildFirstStageTable(sessionData) {
         let titleKey = "secondary_dataset_titles";
         testResultData = sessionData[titleKey].map((title, i) => [
             title,
-            sessionData["first_stages"][i] ? "Yes" : "No",
             sessionData["first_stage_Pvalues"][i],
         ]);
     }
 
     const columns = [
         { title: descriptionHeader },
-        { title: "Set-based test passed?" },
         { title: "Set-based test P-value" },
     ];
 
