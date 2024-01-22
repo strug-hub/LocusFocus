@@ -45,12 +45,7 @@ function buildParamsTable(data, sessionid, type = "default") {
       ["Session ID", sessionid],
       ["Build", data["coordinate"]],
       ["LD Population", data["ld_populations"]],
-      ["First stage -log10(SS P-value) threshold", data["set_based_p"]],
       ["Total set-based tests performed", data["first_stages"].length],
-      [
-        "Total set-based tests passed",
-        data["first_stages"].filter((v) => Boolean(v)).length,
-      ],
       [
         "Number of regions",
         data["regions"].length,
