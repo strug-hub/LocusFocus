@@ -15,6 +15,9 @@ if (length(new.packages) > 0) install.packages(new.packages, repos = "http://cra
 library(argparser, quietly = TRUE)
 library(CompQuadForm, quietly = TRUE)
 library(data.table, quietly = TRUE)
+library(stringr, quietly = TRUE)
+library(Matrix, quietly = TRUE)
+library(zeallot, quietly = TRUE)
 
 ######
 # Parse arguments
@@ -38,6 +41,7 @@ p <- add_argument(p, "--set_based_p", default = NULL, help = paste0(
 ))
 p <- add_argument(p, "--outfilename", default = "SSPvalues.txt", help = "Output filename")
 p <- add_argument(p, "--first_stage_only", flag = TRUE, help = "Whether to only perform and record first-stage set-based tests on both primary and secondary datasets.")
+p <- add_argument(p, "--combine_lds", flag = TRUE, help = "Whether to combine LDs into one large sparse matrix.")
 argv <- parse_args(p)
 P_values_filename <- argv$P_values_filename
 ld_matrix_filename <- argv$ld_matrix_filename
@@ -45,6 +49,7 @@ set_based_p <- argv$set_based_p
 if (as.character(set_based_p) == "default") set_based_p <- NULL
 outfilename <- argv$outfilename
 first_stage_only <- argv$first_stage_only
+combine_lds <- argv$combine_lds
 
 # test
 # id <- "f4f9f7ac-64ea-4cd3-9c15-887eabd38a02"
@@ -166,6 +171,50 @@ simple_sum_p <- function(P_gwas, P_eqtl, ld.mat, cut, m, meth = "davies") {
   return(pv)
 }
 
+drop_NA_from_LD <- function(P_mat, ld_mat) {
+  if (!all(is.na(ld_mat))) {
+    i <- 1
+    while (any(is.na(ld_mat)) & i <= nrow(ld_mat)) {
+      ldNA <- which(is.na(ld_mat[i, ]))
+      if (!all(is.na(ldNA))) {
+        ld_mat <- ld_mat[-ldNA, -ldNA]
+        P_mat <- P_mat[, -ldNA, drop = FALSE]
+      }
+      i <- i + 1
+    }
+    return(P_mat, ld_mat)
+  } else {
+    stop("LD matrix has all missing values")
+  }
+}
+
+# Given a filename string, read all LD matrices and return a sparse, block diagonal matrix that combines all of them
+# Filename string must be of the following format: `"ldmat-{UUID}-001-{end_index}.ld"`
+# `{UUID}`: Unique identifier
+# `{end_index}`: Total number of LDs; 3 digits with leading zeros
+read_bdiag_LD <- function(ld_first_filename) {
+  ld_filename_regex_pattern <- "^(ldmat-.+-)([0-9]{3})-([0-9]{3})\\.txt$"
+
+  matches <- str_match(ld_first_filename, ld_filename_regex_pattern)
+  ld_prefix <- matches[2]
+  start_index <- as.numeric(matches[3])
+  end_index <- as.numeric(matches[4])
+  ldmat_ <- fread(ld_first_filename, header = FALSE, stringsAsFactors = FALSE, na.strings = c("NaN", "nan", "NA", "-1"), sep = "\t")
+  ldmat_ <- as.matrix(ldmat_)
+
+  for (i in (start_index + 1):end_index) {
+    if (i > end_index) {
+      break
+    }
+    # load next LD and add it to our sparse matrix
+    ld_filename <- sprintf("%s%03d-%03d.txt", ld_prefix, i, end_index)
+    ldmat_next <- fread(ld_filename, header = FALSE, stringsAsFactors = FALSE, na.strings = c("NaN", "nan", "NA", "-1"), sep = "\t")
+    ldmat_next <- as.matrix(ldmat_next)
+    ldmat_ <- bdiag(ldmat_, ldmat_next)
+  }
+  return(ldmat_)
+}
+
 ############
 # MAIN
 ############
@@ -179,7 +228,7 @@ simple_sum_p <- function(P_gwas, P_eqtl, ld.mat, cut, m, meth = "davies") {
 ### Load data
 
 Pmat <- fread(P_values_filename, header = FALSE, stringsAsFactors = FALSE, na.strings = c("NaN", "nan", "NA", "-1"), sep = "\t")
-ldmat <- fread(ld_matrix_filename, header = FALSE, stringsAsFactors = FALSE, na.strings = c("NaN", "nan", "NA", "-1"), sep = "\t")
+# READ ldmat later
 # filename = 'testdata/Pvalues.txt'
 # Pmat <- fread(filename, header=F, stringsAsFactors=F, na.strings=c("NaN","nan","NA","-1"), sep="\t")
 # filename = 'testdata/ldmat.txt'
@@ -193,22 +242,6 @@ first_stages <- NULL
 first_stage_p <- NULL
 
 Pmat <- as.matrix(Pmat)
-ldmat <- as.matrix(ldmat)
-
-# Remove any NA variants due to no LD:
-if (!all(is.na(ldmat))) {
-  i <- 1
-  while (any(is.na(ldmat)) & i <= nrow(ldmat)) {
-    ldNA <- which(is.na(ldmat[i, ]))
-    if (!all(is.na(ldNA))) {
-      ldmat <- ldmat[-ldNA, -ldNA]
-      Pmat <- Pmat[, -ldNA, drop = FALSE]
-    }
-    i <- i + 1
-  }
-} else {
-  stop("LD matrix has all missing values")
-}
 
 if (nrow(Pmat) < 1) {
   stop("No secondary dataset P-values provided")
@@ -218,6 +251,12 @@ if (first_stage_only) {
   # only care about set based test result & P value
   # treat all lines in Pmat as if they came from .html
   num_lines <- nrow(Pmat)
+  if (combine_lds) {
+    ldmat <- read_bdiag_LD(ld_matrix_filename)
+  } else {
+    ldmat <- fread(ld_matrix_filename, header = FALSE, stringsAsFactors = FALSE, na.strings = c("NaN", "nan", "NA", "-1"), sep = "\t")
+    ldmat <- as.matrix(ldmat)
+  }
   for (i in 1:num_lines) {
     P_mat_i <- Pmat[i, ]
     ld_mat_i <- ldmat
@@ -255,6 +294,10 @@ if (first_stage_only) {
   }
   result <- data.frame(first_stages = first_stages, first_stage_p = first_stage_p)
 } else {
+  ldmat <- fread(ld_matrix_filename, header = FALSE, stringsAsFactors = FALSE, na.strings = c("NaN", "nan", "NA", "-1"), sep = "\t")
+  ldmat <- as.matrix(ldmat)
+  c(Pmat, ldmat) %<-% drop_NA_from_LD(Pmat, ldmat)
+
   # Normal simple sum here
   P_gwas <- Pmat[1, ]
   P_eqtl <- matrix(Pmat[2:nrow(Pmat), ], nrow = nrow(Pmat) - 1, ncol = ncol(Pmat))
@@ -291,9 +334,8 @@ if (first_stage_only) {
 
     # do pretest (set_based_test)
     t <- try({
-      set_based_test_result <- set_based_test(P_eqtl_i, ld_mat_i, num_genes) # [1] is TRUE/FALSE, [2] is p value
-      set_based_test_passed <- set_based_test_result[[1]]
-      set_based_test_p <- set_based_test_result[[2]]
+      # unpack list
+      c(set_based_test_passed, set_based_test_p) %<-% set_based_test(P_eqtl_i, ld_mat_i, num_genes) # [1] is TRUE/FALSE, [2] is p value
       if (isTRUE(set_based_test_passed)) {
         # if(TRUE) {
         P <- simple_sum_p(P_gwas = P_gwas_i, P_eqtl = P_eqtl_i, ld.mat = ld_mat_i, cut = 0, m = snp_count, meth = "davies")

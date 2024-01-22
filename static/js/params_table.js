@@ -1,110 +1,86 @@
-function buildParamsTable(data, sessionid) {
-    var tableselect = d3.select('#params-table');
+const START = 0;
+const END = 1;
 
-    // Column headers
-    header = tableselect.append('thead').append('tr');
-    header
-        .append('th')
-        .attr('class', 'th-sm')
-        .text('Field');
-    header
-        .append('th')
-        .attr('class', 'th-sm')
-        .text('Value');
+function buildParamsTable(data, sessionid, type = "default") {
+  let table_data = [];
+  if (type === "default") {
+    table_data = [
+      ["Session ID", sessionid],
+      ["Lead SNP", data["lead_snp"]],
+      ["Chromosome", data["chrom"]],
+      ["Start position", data["startbp"]],
+      ["End position", data["endbp"]],
+      ["Build", data["coordinate"]],
+      ["Infer variants", data["inferVariant"]],
+      [
+        `Number of SNPs in ${data["chrom"]}:${data["startbp"]}-${data["endbp"]}`,
+        data["snps"].length,
+      ],
+      ["LD Population", data["ld_populations"]],
+      ["GTEx version", data["gtex_version"]],
+      ["Number of GTEx tissues selected", data["gtex_tissues"].length],
+      [
+        "Number of GTEx genes selected",
+        data["gtex_genes"] !== undefined
+          ? data["gtex_genes"].length
+          : undefined,
+      ],
+      ["SS region", data["SS_region"]],
+      [
+        `Number of SNPs in ${data["chrom"]}:${data["SS_region"][START]}-${data["SS_region"][END]}`,
+        data["num_SS_snps"],
+      ],
+      ["First stage -log10(SS P-value) threshold", data["set_based_p"]],
+      ["Many SNPs not matching GTEx SNPs", data["snp_warning"]],
+      ["SNPs matching threshold level", data["thresh"]],
+      ["Number of SNPs matching with GTEx", data["numGTExMatches"]],
+      [
+        "Number of user-provided secondary datasets",
+        data["secondary_dataset_titles"].length,
+      ],
+      ["Run COLOC2", data["runcoloc2"]],
+    ];
+  } else if (type === "set-based-test") {
+    table_data = [
+      ["Session ID", sessionid],
+      ["Build", data["coordinate"]],
+      ["LD Population", data["ld_populations"]],
+      ["Total set-based tests performed", data["first_stages"].length],
+      [
+        "Number of regions",
+        data["regions"].length,
+      ],
+      [
+        "Multiple tests?",
+        data["multiple_tests"] ? "Yes" : "No",
+      ]
+    ];
+  } else {
+    // Shouldn't get here
+    throw Error(`Unexpected params table type: ${type}`);
+  }
 
-    chrom = data['chrom']
-    startbp = data['startbp'];
-    endbp = data['endbp'];
-    SS_start = data['SS_region'][0];
-    SS_end = data['SS_region'][1];
-
-    // Table body:
-    tbody = tableselect.append('tbody');
-    var row = tbody.append('tr');
-    row.append('td').text('Session ID');
-    row.append('td').text(sessionid);
-    var row = tbody.append('tr');
-    row.append('td').text('Lead SNP');
-    row.append('td').text(data['lead_snp']);
-    var row = tbody.append('tr');
-    row.append('td').text('Chromosome');
-    row.append('td').text(chrom);
-    var row = tbody.append('tr');
-    row.append('td').text('Start position');
-    row.append('td').text(startbp);
-    var row = tbody.append('tr');
-    row.append('td').text('End position');
-    row.append('td').text(endbp);
-    var row = tbody.append('tr');
-    row.append('td').text('Build');
-    row.append('td').text(data['coordinate']);
-    var row = tbody.append('tr');
-    row.append('td').text('Infer variants');
-    row.append('td').text(data['inferVariant']);
-    var row = tbody.append('tr');
-    row.append('td').text(`Number of SNPs in ${chrom}:${startbp}-${endbp}`);
-    row.append('td').text(data['snps'].length);
-    var row = tbody.append('tr');
-    row.append('td').text('LD Population');
-    row.append('td').text(data['ld_populations']);
-    var row = tbody.append('tr');
-    row.append('td').text('GTEx version');
-    row.append('td').text(data['gtex_version']);
-    var row = tbody.append('tr');
-    row.append('td').text('Number of GTEx tissues selected');
-    row.append('td').text(data['gtex_tissues'].length);
-    gtexgenes = data['gtex_genes'];
-    if (typeof gtexgenes !== 'undefined') {
-        var row = tbody.append('tr');
-        row.append('td').text('Number of GTEx genes selected');
-        row.append('td').text(data['gtex_genes'].length);
-    }
-    var row = tbody.append('tr');
-    row.append('td').text('SS region');
-    row.append('td').text(data['SS_region']);
-    var row = tbody.append('tr');
-    row.append('td').text(`Number of SNPs in ${chrom}:${SS_start}-${SS_end}`);
-    row.append('td').text(data['num_SS_snps']);
-    var row = tbody.append('tr');
-    row.append('td').text('First stage -log10(SS P-value) threshold');
-    row.append('td').text(data['set_based_p']);
-    var row = tbody.append('tr');
-    row.append('td').text('Many SNPs not matching GTEx SNPs');
-    row.append('td').text(data['snp_warning']);
-    var row = tbody.append('tr');
-    row.append('td').text('SNPs matching threshold level');
-    row.append('td').text(data['thresh']);
-    var row = tbody.append('tr');
-    row.append('td').text('Number of SNPs matching with GTEx');
-    row.append('td').text(data['numGTExMatches']);
-    var row = tbody.append('tr');
-    row.append('td').text('Number of user-provided secondary datasets');
-    row.append('td').text(data['secondary_dataset_titles'].length);
-    var row = tbody.append('tr');
-    row.append('td').text('Run COLOC2');
-    row.append('td').text(data['runcoloc2']);
-
-
-
-
-
-    // Add DataTables functionality:
-    paramsTable = $(document).ready(function () {
-        $('#params-table').DataTable({
-            dom: 'Bfrtipl',
-            buttons: [
-                'copy',
-                {
-                    extend: 'csv',
-                    filename: 'parameters_table'
-                },
-                {
-                    extend: 'excel',
-                    filename: 'parameters_table',
-                    messageTop: 'Input parameters'
-                }
-            ]
-        });
+  // Add DataTables functionality:
+  paramsTable = $(document).ready(function () {
+    $("#params-table").DataTable({
+      dom: "Bfrtipl",
+      data: table_data,
+      columns: [
+        { title: "Field" },
+        { title: "Value" },
+      ],
+      buttons: [
+        "copy",
+        {
+          extend: "csv",
+          filename: "parameters_table",
+        },
+        {
+          extend: "excel",
+          filename: "parameters_table",
+          messageTop: "Input parameters",
+        },
+      ],
     });
+  });
 }
-

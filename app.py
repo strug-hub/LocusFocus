@@ -13,7 +13,8 @@ import pysam
 import mysecrets
 import glob
 import tarfile
-from typing import Dict
+from typing import Dict, Tuple, List
+import gc
 
 from flask import Flask, request, redirect, url_for, jsonify, render_template, flash, send_file, Markup
 from werkzeug.utils import secure_filename
@@ -26,10 +27,11 @@ from pymongo.errors import ConnectionFailure
 
 from pprint import pprint
 import htmltableparser
+from numpy_encoder import NumpyEncoder
 
 #import getSimpleSumStats
 
-genomicWindowLimit = 2000000
+genomicWindowLimit = 2_000_000
 one_sided_SS_window_size = 100000 # (100 kb on either side of the lead SNP)
 fileSizeLimit = 500 * 1024 * 1024 # in Bytes
 
@@ -39,7 +41,6 @@ APP_STATIC = os.path.join(MYDIR, 'static')
 ##################
 # Default settings
 ##################
-
 class FormID():
     """
     Constants for referencing the HTML "id" values of various form elements in LocusFocus
@@ -60,6 +61,8 @@ class FormID():
     COORDINATE = "coordinate"
     SET_BASED_P = "setbasedP"
     LD_1000GENOME_POP = "LD-populations"
+    LOCUS_MULTIPLE = "multi-region"
+    SEPARATE_TESTS = "separate-test-checkbox"
 
     def __repr__(self):
         return self.value
@@ -103,7 +106,7 @@ COLUMN_NAMES: Dict[str, str] = {
     FormID.BETA_COL: "Beta",
     FormID.STDERR_COL: "Stderr",
     FormID.NUMSAMPLES_COL: "Number of samples",
-    FormID.MAF_COL: "MAF"
+    FormID.MAF_COL: "MAF",
 }
 
 ################
@@ -205,6 +208,27 @@ def parseRegionText(regiontext, build):
     else:
         return chrom, startbp, endbp
 
+
+def parseSNP(snp_text):
+    """
+    Extract chrom, position from string of format "chr{chrom}:{position}".
+    """
+    snp_text = snp_text.strip().replace(' ','').replace(',','').replace('chr','')
+    chrom = snp_text.split(':')[0].lower().replace('chr','').upper()
+    pos = snp_text.split(':')[1]
+    if chrom in ['X','x'] or chrom == '23':
+        chrom = 23
+        position = int(pos)
+    else:
+        chrom = int(chrom)
+        position = int(pos)
+    if chrom < 1 or chrom > 23:
+        # TODO: Internal server error
+        raise InvalidUsage('Chromosome input must be between 1 and 23', status_code=500)
+    else:
+        return chrom, position
+
+
 def allowed_file(filenames):
     if type(filenames) == type('str'):
         return '.' in filenames and filenames.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -213,10 +237,12 @@ def allowed_file(filenames):
             return False
     return True
 
+
 def writeList(alist, filename):
     with open(filename, 'w') as f:
         for item in alist:
             f.write("%s\n" % item)
+
 
 def writeMat(aMat, filename):
     aMat = np.matrix(aMat)
@@ -771,7 +797,7 @@ def handle_file_upload(request):
     return None
 
 
-def get_gwas_column_names(request, gwas_data, runcoloc2=False):
+def get_gwas_column_names_and_validate(request, gwas_data, runcoloc2=False, setbasedtest=False):
     """
     Read and verify the GWAS column name fields; return list of column names.
     Also validate the data types in each column, raising InvalidUsage if something is amiss.
@@ -791,14 +817,12 @@ def get_gwas_column_names(request, gwas_data, runcoloc2=False):
     else:
         chromcol = verify_gwas_col(FormID.CHROM_COL, request, gwas_data.columns)
         poscol = verify_gwas_col(FormID.POS_COL, request, gwas_data.columns)
-        refcol = verify_gwas_col(FormID.REF_COL, request, gwas_data.columns)
-        altcol = verify_gwas_col(FormID.ALT_COL, request, gwas_data.columns)
         snpcol = request.form[FormID.SNP_COL] # optional input in this case
         if snpcol != '':
             snpcol = verify_gwas_col(FormID.SNP_COL, request, gwas_data.columns)
-            column_names = [ chromcol, poscol, snpcol, refcol, altcol ]
+            column_names = [ chromcol, poscol, snpcol ]
         else:
-            column_names = [ chromcol, poscol, refcol, altcol ]
+            column_names = [ chromcol, poscol ]
             #print('No SNP ID column provided')
         # Check whether data types are ok:
         if not all(isinstance(x, int) for x in Xto23(list(gwas_data[chromcol]))):
@@ -815,11 +839,18 @@ def get_gwas_column_names(request, gwas_data, runcoloc2=False):
     column_dict.update({
         FormID.CHROM_COL: chromcol,
         FormID.POS_COL: poscol,
-        FormID.REF_COL: refcol,
-        FormID.ALT_COL: altcol,
         FormID.SNP_COL: snpcol,
         FormID.P_COL: pcol
     })
+
+    if not setbasedtest:
+        refcol = verify_gwas_col(FormID.REF_COL, request, gwas_data.columns)
+        altcol = verify_gwas_col(FormID.ALT_COL, request, gwas_data.columns)
+        column_names.extend([ refcol, altcol ])
+        column_dict.update({
+            FormID.REF_COL: refcol,
+            FormID.ALT_COL: altcol
+        })
 
     if runcoloc2:
         #print('User would like COLOC2 results')
@@ -904,16 +935,72 @@ def standardize_gwas_variant_ids(column_dict, gwas_data, regionstr: str, coordin
     return gwas_data, column_dict
 
 
-def clean_summary_datasets(summary_datasets: Dict[str, dict], snp_column: str, chrom_column: str):
-    new_summary_datasets = {}
-    for key, dataset in summary_datasets.items():
+def clean_summary_datasets(summary_datasets, snp_column: str, chrom_column: str) -> Tuple[List[pd.DataFrame], List[pd.Index]]:
+    """
+    Clean a list of summary datasets before returning a list of new datasets and a list of removed indexes for each.
+    Null rows are removed, duplicate SNPs are removed
+    """
+    new_summary_datasets = []
+    removed_rows = []
+
+    for dataset in summary_datasets:
         dataset = pd.DataFrame(dataset)
-        dataset = dataset.dropna()  # remove null rows
-        dataset = dataset[dataset[chrom_column] != "."]
-        dataset = dataset.drop_duplicates(subset=snp_column)  # remove duplicate SNPs
-        dataset = dataset.set_index(pd.MultiIndex.from_arrays([dataset.index, dataset[snp_column]], names=["int_index", "snp_index"]))
-        new_summary_datasets[key] = dataset
-    return new_summary_datasets
+        new_dataset = dataset.dropna()  # remove null rows
+        new_dataset = new_dataset[new_dataset[chrom_column] != "."]
+        new_dataset = new_dataset.drop_duplicates(subset=snp_column)  # remove duplicate SNPs
+        mask = dataset.index.isin(new_dataset.index)
+        removed = dataset[~mask].index
+        new_summary_datasets.append(new_dataset)
+        removed_rows.append(removed)
+
+    return new_summary_datasets, removed_rows
+
+
+def validate_user_LD(ld_mat: np.matrix, old_dataset: pd.DataFrame, removed: pd.Index):
+    if not len(ld_mat.shape) == 2:
+        raise InvalidUsage(f"Provided LD matrix is not 2 dimensional. Shape: '{ld_mat.shape}'")
+
+    if not (ld_mat.shape[0] == ld_mat.shape[1]):
+        raise InvalidUsage(f"Provided LD matrix is not square as expected. Shape: '{ld_mat.shape}'")
+
+    new_dataset = old_dataset.iloc[removed]
+    old_dataset_fits = (ld_mat.shape[0] == len(old_dataset))
+    new_dataset_fits = (ld_mat.shape[0] == len(new_dataset))
+
+    if not new_dataset_fits:
+        if old_dataset_fits:
+            raise InvalidUsage(f"Provided LD matrix was the correct size before cleaning, but after cleaning dataset. Please recreate your LD with the following rows in your dataset removed: '{list(removed)}'")
+        else:
+            raise InvalidUsage(f"Provided LD matrix is not the correct size before or after cleaning step. LD Shape: '{ld_mat.shape}', Original dataset length: '{len(old_dataset)}', cleaned dataset length: '{len(new_dataset)}', rows removed in cleaning step: '{list(removed)}'")
+
+    return True
+
+
+def validate_region_size(regions: List[Tuple[int, int, int]], inferred=False):
+    """
+    Return True if the list of regions are of an appropriate size (no region is greater than the genomic window limit).
+    Otherwise, raise InvalidUsage.
+    """
+
+    regions_too_large = [r for r in regions if (r[2] - r[1]) > genomicWindowLimit]
+    if len(regions_too_large) > 0:
+        if inferred:
+            raise InvalidUsage(f"Regions inferred from the provided dataset are too large (>{genomicWindowLimit}). Please specify smaller regions in the Coordinate Regions textbox, or upload a dataset with smaller regions. Inferred regions: {regions_too_large}")
+        raise InvalidUsage(f"Provided regions are too large (>{genomicWindowLimit}). Please reduce the size of regions on following regions: {regions_too_large}")
+    return True
+
+
+def infer_regions(dataset: pd.DataFrame, bp_column: str, chrom_column: str):
+    """
+    Given a summary dataset, create a list of regions within that dataset.
+    A region is created for each chromosome present in the dataset.
+    """
+    regions = []
+    for chromosome in dataset[chrom_column].unique().tolist():
+        minbp = dataset[bp_column].min()
+        maxbp = dataset[bp_column].max()
+        regions.append((chromosome, minbp, maxbp))
+    return regions
 
 
 ####################################
@@ -948,20 +1035,27 @@ def resolve_plink_filepath(build, pop, chrom):
         raise InvalidUsage(f'{str(build)} is not a recognized genome build')
     return plink_filepath
 
-def plink_ldmat(build, pop, chrom, snp_positions, outfilename):
+def plink_ldmat(build, pop, chrom, snp_positions, outfilename, region=None):
     plink_filepath = resolve_plink_filepath(build, pop, chrom)
     # make snps file to extract:
     snps = [f"chr{str(int(chrom))}:{str(int(position))}" for position in snp_positions]
     writeList(snps, outfilename + "_snps.txt")
     #plink_path = subprocess.run(args=["which","plink"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
+    if region is not None:
+        from_bp = str(region[1])
+        to_bp = str(region[2])
+    else:
+        from_bp = str(min(snp_positions))
+        to_bp = str(max(snp_positions))
+
     if build.lower() in ["hg19","grch37"]:
         if os.name == 'nt':
             plinkrun = subprocess.run(args=[
                 "./plink.exe", '--bfile', plink_filepath
                 , "--chr", str(chrom)
                 , "--extract", outfilename + "_snps.txt"
-                , "--from-bp", str(min(snp_positions))
-                , "--to-bp", str(max(snp_positions))
+                , "--from-bp", from_bp
+                , "--to-bp", to_bp
                 , "--r2", "square"
                 , "--make-bed"
                 , "--threads", "1"
@@ -972,8 +1066,8 @@ def plink_ldmat(build, pop, chrom, snp_positions, outfilename):
                 "./plink", '--bfile', plink_filepath
                 , "--chr", str(chrom)
                 , "--extract", outfilename + "_snps.txt"
-                , "--from-bp", str(min(snp_positions))
-                , "--to-bp", str(max(snp_positions))
+                , "--from-bp", from_bp
+                , "--to-bp", to_bp
                 , "--r2", "square"
                 , "--make-bed"
                 , "--threads", "1"
@@ -987,8 +1081,8 @@ def plink_ldmat(build, pop, chrom, snp_positions, outfilename):
                 , "--keep", popfile # this is the difference in running GRCh38
                 , "--chr", str(chrom)
                 , "--extract", outfilename + "_snps.txt"
-                , "--from-bp", str(min(snp_positions))
-                , "--to-bp", str(max(snp_positions))
+                , "--from-bp", from_bp
+                , "--to-bp", to_bp
                 , "--r2", "square"
                 , "--make-bed"
                 , "--threads", "1"
@@ -1000,8 +1094,8 @@ def plink_ldmat(build, pop, chrom, snp_positions, outfilename):
                 , "--keep", popfile # this is the difference in running GRCh38
                 , "--chr", str(chrom)
                 , "--extract", outfilename + "_snps.txt"
-                , "--from-bp", str(min(snp_positions))
-                , "--to-bp", str(max(snp_positions))
+                , "--from-bp", from_bp
+                , "--to-bp", to_bp
                 , "--r2", "square"
                 , "--make-bed"
                 , "--threads", "1"
@@ -1011,9 +1105,10 @@ def plink_ldmat(build, pop, chrom, snp_positions, outfilename):
         raise InvalidUsage(f'{str(build)} is not a recognized genome build')
     if plinkrun.returncode != 0:
         raise InvalidUsage(plinkrun.stdout.decode('utf-8'), status_code=410)
-    ld_snps = list(pd.read_csv(outfilename + ".bim", sep="\t", header=None).iloc[:,1])
+    ld_snps_df = pd.read_csv(outfilename + ".bim", sep="\t", header=None)
     ldmat = np.matrix(pd.read_csv(outfilename + ".ld", sep="\t", header=None))
-    return ld_snps, ldmat
+    return ld_snps_df, ldmat
+
 
 def plink_ld_pairwise(build, lead_snp_position, pop, chrom, snp_positions, snp_pvalues, outfilename):
     # positions must be in hg19 coordinates
@@ -1287,6 +1382,75 @@ def get_region_from_summary_stats(summary_datasets: Dict[str, pd.DataFrame], bpc
 
     return chrom, minbp, maxbp
 
+
+def get_multiple_regions(regionstext: str, build: str) -> List[Tuple[int, int, int]]:
+    """
+    Given a string of newline-separated region texts (format: "<chrom>:<start>-<end>", 1 start, fully-closed),
+    and a coordinate build (hg19, hg38), return a list of tuples
+    representing the chrom, start, end of each provided region.
+    """
+    regionstext = regionstext.splitlines()
+    regions = []
+    for regiontext in regionstext:
+        chrom, start, end = parseRegionText(regiontext, build)
+        regions.append((chrom, start, end))
+    return regions
+
+
+def create_close_regions(regions: List[Tuple[int, int, int]], threshold=int(1e6)):
+    """
+    Given a list of regions, return a new list (length <= old list) of regions
+    where each region is far enough apart from each other (>1Mb apart, or different chrom).
+
+    In other terms, given a list of regions, create a list of regions that are sufficiently
+    far enough to have insignificant LD between them. This is useful for creating multiple
+    LD matrices using PLINK. If two regions are <=1Mb from each other or overlapping, they are
+    combined into one region.
+
+    Prerequisites:
+    - region[0] is valid chromosome number, for each region in regions
+    - 0 < region[1] <= region[2], for each region in regions
+    - regions are allowed to overlap
+    """
+    # Split by chromosome
+    chrom_buckets: Dict[int, List[Tuple[int, int, int]]] = dict()
+    for region in regions:
+        if chrom_buckets.get(region[0], None) == None:
+            chrom_buckets[region[0]] = [region]
+        else:
+            chrom_buckets[region[0]].append(region)
+
+    # For each chromosome, find close regions
+    for chrom, bucket in chrom_buckets.items():
+        if len(bucket) == 1:
+            # only one region, no combining necessary
+            continue
+        new_bucket = []
+        bucket.sort(key=lambda x: x[1]) # sort by start
+        i = 1
+        start = bucket[0][1]
+        end = bucket[0][2]
+        while i < len(bucket):
+            if bucket[i][1] - end < threshold or (bucket[i][1] <= end and bucket[i][2] >= start):
+                # close enough to be combined, or overlapping
+                end = max(bucket[i][2], end)
+            else:
+                # too far, make a new region
+                new_bucket.append((chrom, start, end))
+                start = bucket[i][1]
+                end = bucket[i][2]
+
+            # Last region in the bucket
+            if i == len(bucket) - 1:
+                new_bucket.append((chrom, start, end))
+                break
+        chrom_buckets[chrom] = new_bucket
+
+    close_regions = []
+    for bucket in chrom_buckets.values():
+        close_regions.extend(bucket)
+    return close_regions
+
 #####################################
 # API Routes
 #####################################
@@ -1388,21 +1552,30 @@ def prev_session():
         if old_session_id != '':
             my_session_id = old_session_id
             sessionfile =  f'session_data/form_data-{my_session_id}.json'
+            SBTsessionfile = f'session_data/form_data_setbasedtest-{my_session_id}.json'
             genes_sessionfile = f'session_data/genes_data-{my_session_id}.json'
             SSPvalues_file = f'session_data/SSPvalues-{my_session_id}.json'
             coloc2_file = f'session_data/coloc2result-{my_session_id}.json'
+            metadatafile = f'session_data/metadata-{my_session_id}.json' # don't check if this exists; new addition
             sessionfilepath = os.path.join(MYDIR, 'static', sessionfile)
             genes_sessionfilepath = os.path.join(MYDIR, 'static', genes_sessionfile)
             SSPvalues_filepath = os.path.join(MYDIR, 'static', SSPvalues_file)
             coloc2_filepath = os.path.join(MYDIR, 'static', coloc2_file)
+            SBTsessionfilepath = os.path.join(MYDIR, 'static', SBTsessionfile)
         else: # blank input
             raise InvalidUsage('Invalid input')
         # print(f'Session filepath: {sessionfilepath} is {str(os.path.isfile(sessionfilepath))}')
         # print(f'Genes filepath: {genes_sessionfilepath} is {str(os.path.isfile(genes_sessionfilepath))}')
         # print(f'SSPvalues filepath: {SSPvalues_filepath} is {str(os.path.isfile(SSPvalues_filepath))}')
-        if not (os.path.isfile(sessionfilepath) and os.path.isfile(genes_sessionfilepath) and os.path.isfile(SSPvalues_filepath) and os.path.isfile(coloc2_filepath)):
-            raise InvalidUsage(f'Could not locate session {my_session_id}')
-        return render_template("plot.html", sessionfile = sessionfile, genesfile = genes_sessionfile, SSPvalues_file = SSPvalues_file, coloc2_file = coloc2_file, sessionid = my_session_id)
+        if (os.path.isfile(SBTsessionfilepath)):
+            # set based test results
+            return render_template("plot.html", sessionfile = SBTsessionfile, sessionid = my_session_id, metadata_file = metadatafile)
+        if (os.path.isfile(sessionfilepath) and os.path.isfile(genes_sessionfilepath) and os.path.isfile(SSPvalues_filepath) and os.path.isfile(coloc2_filepath)):
+            # regular results
+            return render_template("plot.html", sessionfile = sessionfile, genesfile = genes_sessionfile, SSPvalues_file = SSPvalues_file, coloc2_file = coloc2_file, sessionid = my_session_id, metadata_file = metadatafile)
+
+        raise InvalidUsage(f'Could not locate session {my_session_id}')
+
     return render_template('session_form.html')
 
 @app.route("/session_id/<old_session_id>")
@@ -1410,21 +1583,29 @@ def prev_session_input(old_session_id):
     if old_session_id != '':
         my_session_id = old_session_id
         sessionfile =  f'session_data/form_data-{my_session_id}.json'
+        SBTsessionfile = f'session_data/form_data_setbasedtest-{my_session_id}.json'
         genes_sessionfile = f'session_data/genes_data-{my_session_id}.json'
         SSPvalues_file = f'session_data/SSPvalues-{my_session_id}.json'
         coloc2_file = f'session_data/coloc2result-{my_session_id}.json'
+        metadatafile = f'session_data/metadata-{my_session_id}.json' # don't check if this exists; new addition
         sessionfilepath = os.path.join(MYDIR, 'static', sessionfile)
         genes_sessionfilepath = os.path.join(MYDIR, 'static', genes_sessionfile)
         SSPvalues_filepath = os.path.join(MYDIR, 'static', SSPvalues_file)
         coloc2_filepath = os.path.join(MYDIR, 'static', coloc2_file)
+        SBTsessionfilepath = os.path.join(MYDIR, 'static', SBTsessionfile)
     else: # blank input
         raise InvalidUsage('Invalid input')
     # print(f'Session filepath: {sessionfilepath} is {str(os.path.isfile(sessionfilepath))}')
     # print(f'Genes filepath: {genes_sessionfilepath} is {str(os.path.isfile(genes_sessionfilepath))}')
     # print(f'SSPvalues filepath: {SSPvalues_filepath} is {str(os.path.isfile(SSPvalues_filepath))}')
-    if not (os.path.isfile(sessionfilepath) and os.path.isfile(genes_sessionfilepath) and os.path.isfile(SSPvalues_filepath) and os.path.isfile(coloc2_filepath)):
-        raise InvalidUsage(f'Could not locate session {my_session_id}')
-    return render_template("plot.html", sessionfile = sessionfile, genesfile = genes_sessionfile, SSPvalues_file = SSPvalues_file, coloc2_file = coloc2_file, sessionid = my_session_id)
+    if (os.path.isfile(SBTsessionfilepath)):
+        # set based test results
+        return render_template("plot.html", sessionfile = SBTsessionfile, sessionid = my_session_id, metadata_file = metadatafile)
+    if (os.path.isfile(sessionfilepath) and os.path.isfile(genes_sessionfilepath) and os.path.isfile(SSPvalues_filepath) and os.path.isfile(coloc2_filepath)):
+        # regular results
+        return render_template("plot.html", sessionfile = sessionfile, genesfile = genes_sessionfile, SSPvalues_file = SSPvalues_file, coloc2_file = coloc2_file, sessionid = my_session_id, metadata_file = metadatafile)
+
+    raise InvalidUsage(f'Could not locate session {my_session_id}')
 
 
 @app.route("/update/<session_id>/<newgene>")
@@ -1561,7 +1742,7 @@ def index():
         gwas_data = read_gwasfile(gwas_filepath)
 
         runcoloc2 = request.form.get('coloc2check')
-        gwas_data, column_names, column_dict, infer_variant = get_gwas_column_names(request, gwas_data, runcoloc2)
+        gwas_data, column_names, column_dict, infer_variant = get_gwas_column_names_and_validate(request, gwas_data, runcoloc2)
         gwas_data, column_dict, infer_variant = subset_gwas_data_to_entered_columns(request, gwas_data, column_names, column_dict, infer_variant)
 
         # TODO: Replace these everywhere, or use something other than a dictionary?
@@ -1689,12 +1870,14 @@ def index():
             "gwas_filepath": gwas_filepath or "",
             "ldmat_filepath": ldmat_filepath or "",
             "html_filepath": html_filepath or "",
-            "session_id": str(my_session_id)
+            "session_id": str(my_session_id),
+            "type": "default",
         })
 
-        metadatafilepath = os.path.join(MYDIR, 'static', f'session_data/metadata-{my_session_id}.json')
-        with open(metadatafilepath, 'w') as metadatafile:
-            json.dump(metadata, metadatafile)
+        metadatafile = f'session_data/metadata-{my_session_id}.json'
+        metadatafilepath = os.path.join(MYDIR, 'static', metadatafile)
+        with open(metadatafilepath, 'w') as f:
+            json.dump(metadata, f)
 
         data = {}
         data['snps'] = snp_list
@@ -1993,7 +2176,8 @@ def index():
             ld_mat = ld_mat[SS_indices ][:,SS_indices]
         else:
             #print('Extracting LD matrix')
-            ld_mat_snps, ld_mat = plink_ldmat(coordinate, pops, chrom, SS_positions, plink_outfilepath)
+            ld_mat_snps_df, ld_mat = plink_ldmat(coordinate, pops, chrom, SS_positions, plink_outfilepath)
+            ld_mat_snps = list(ld_mat_snps_df.iloc[:, 1])
             ld_mat_positions = [int(snp.split(":")[1]) for snp in ld_mat_snps]
         np.fill_diagonal(ld_mat, np.diag(ld_mat) + LD_MAT_DIAG_CONSTANT)
         ldmat_time = datetime.now() - t1
@@ -2074,6 +2258,9 @@ def index():
         SSPvalues_filepath = os.path.join(MYDIR, 'static', SSPvalues_file)
         json.dump(SSPvalues_dict, open(SSPvalues_filepath, 'w'))
         SS_time = datetime.now() - t1
+
+        data['first_stages'] = first_stages
+        data['first_stage_Pvalues'] = first_stage_p
 
         ####################################################################################################
         coloc2_time = 0
@@ -2158,12 +2345,24 @@ def index():
             if coloc2_time != 0: f.write(f'Time for COLOC2 run: {coloc2_time}\n')
             f.write(f'Total time: {t2_total}\n')
 
-        return render_template("plot.html", sessionfile = sessionfile, genesfile = genes_sessionfile, SSPvalues_file = SSPvalues_file, coloc2_file = coloc2_file, sessionid = my_session_id)
+        return render_template("plot.html", sessionfile = sessionfile, genesfile = genes_sessionfile, SSPvalues_file = SSPvalues_file, coloc2_file = coloc2_file, sessionid = my_session_id, metadata_file = metadatafile)
     return render_template("index.html")
 
 
+ALLOWED_SBT_EXTENSIONS = set(['txt', 'tsv', 'ld'])
+
 @app.route('/setbasedtest', methods=['GET', 'POST'])
 def setbasedtest():
+    """
+    Route for performing a set-based test on a single set of summary statistics
+    (ideally with a user-provided LD matrix, however we use PLINK with 1000 Genome pops if none is provided).
+
+    Users should only provide one dataset. However, multiple positions across chromosomes can be specified,
+    and thus a sparse LD will be provided/created.
+
+    Summary stats file should be uploaded in .txt or .tsv format.
+    LD should be uploaded (optional) with .ld format.
+    """
     if request.method == 'GET':
         return render_template("set_based_test.html")
 
@@ -2175,219 +2374,314 @@ def setbasedtest():
     # classify_files, modified
     ldmat_filepath = ''
     summary_stats_filepath = ''
-    summary_stats_extension = ''
     uploaded_extensions = []
     for file in files:
         filename = secure_filename(file.filename)
         filepath = os.path.join(MYDIR, app.config['UPLOAD_FOLDER'], filename)
         # classify_files, modified
         extension = filename.split('.')[-1]
-        # Users can upload up to 1 LD, and must upload 1 summary stats file (.txt, .tsv, .csv, .html)
+        # Users can upload up to 1 LD, and must upload 1 summary stats file (.txt, .tsv)
         if len(uploaded_extensions) >= 2:
             raise InvalidUsage(f"Too many files uploaded. Expecting maximum of 2 files", status_code=410)
         if extension not in uploaded_extensions:
-            if (extension == 'ld') or (extension in ['html', 'tsv', 'txt'] and summary_stats_filepath == ''):
+            if extension in ALLOWED_SBT_EXTENSIONS:
                 uploaded_extensions.append(extension)
             else:
                 raise InvalidUsage(f"Unexpected file extension: {filename}", status_code=410)
         else:
-            raise InvalidUsage('Please upload 2 different file types as described', status_code=410)
+            raise InvalidUsage('Please upload at most 2 different file types as described', status_code=410)
 
         if extension == 'ld':
-            ldmat_filepath = os.path.join(MYDIR, app.config['UPLOAD_FOLDER'], filename)
-        elif extension in ['html', 'tsv', 'txt']:
-            summary_stats_filepath = os.path.join(MYDIR, app.config['UPLOAD_FOLDER'], filename)
-            summary_stats_extension = extension
-        # Save after we know it's a file we want
+            ldmat_filepath = filepath
+        elif extension in ['tsv', 'txt']:
+            summary_stats_filepath = filepath
 
+        # Save after we know it's a file we want
         file.save(filepath)
+
     if summary_stats_filepath == '':
-        raise InvalidUsage(f"Missing summary stats file. Please upload one of (.txt, .tsv, .html)", status_code=410)
+        raise InvalidUsage(f"Missing summary stats file. Please upload one of (.txt, .tsv)", status_code=410)
 
     my_session_id = uuid.uuid4()
     coordinate = request.form[FormID.COORDINATE]
 
-    # Set-based P override:
-    setbasedP = request.form[FormID.SET_BASED_P]
-    if setbasedP=='':
-        setbasedP = 'default'
-    else:
-        try:
-            setbasedP = float(setbasedP)
-            if setbasedP < 0 or setbasedP > 1:
-                raise InvalidUsage('Set-based p-value threshold given is not between 0 and 1')
-        except:
-            raise InvalidUsage('Invalid value provided for the set-based p-value threshold. Value must be numeric between 0 and 1.')
-
     pops = request.form[FormID.LD_1000GENOME_POP]
     if len(pops) == 0: pops = 'EUR'
+    if ldmat_filepath != "": pops = 'None; user provided LD'
 
+    regionstext = request.form[FormID.LOCUS_MULTIPLE]
+    regions = get_multiple_regions(regionstext, coordinate)
 
-    # TODO: implement in the future
-    use_dataset_union = False
+    # separate tests is only a valid option if no LD is provided
+    user_wants_separate_tests = request.form.get(FormID.SEPARATE_TESTS) != None and ldmat_filepath == ""
+
+    metadata = {}
+    metadata.update({
+        "datetime": datetime.now().isoformat(),
+        "summary_stats_filepath": summary_stats_filepath or "",
+        "ldmat_filepath": ldmat_filepath or "",
+        "session_id": str(my_session_id),
+        "type": "set-based-test",
+    })
+
+    metadatafile = f'session_data/metadata-{my_session_id}.json'
+    metadatafilepath = os.path.join(MYDIR, 'static', metadatafile)
+    with open(metadatafilepath, 'w') as f:
+        json.dump(metadata, f)
 
     data = {}
 
-    data['set_based_p'] = setbasedP
+    data['coordinate'] = coordinate
+    data['sessionid'] = str(my_session_id)
+    data['ld_populations'] = pops
 
     #######################################################
     # Loading datasets uploaded
     #######################################################
 
-    # If non-html is provided, this will contain only 1 dataset with default title
-    # 'summary_stats_<session_id>'
-    summary_datasets = {}
-    table_titles = []
-    if summary_stats_extension == 'html':
-        # One or more datasets, presumably all related or in the same region
-        with open(summary_stats_filepath, encoding='utf-8', errors='replace') as f:
-            html = f.read()
-            if (not html.startswith('<h3>')) and (not html.startswith('<html>')) and (not html.startswith('<table>') and (not html.startswith('<!DOCTYPE html>'))):
-                raise InvalidUsage('Secondary dataset(s) provided are not formatted correctly. Please use the merge_and_convert_to_html.py script for formatting.', status_code=410)
-        soup = bs(html, 'lxml')
-        table_titles = soup.find_all('h3')
-        table_titles = [x.text for x in table_titles]
-        tables = soup.find_all('table')
-        hp = htmltableparser.HTMLTableParser()
-        for i in range(len(tables)):
-            try:
-                table = hp.parse_html_table(tables[i])
-                summary_datasets[table_titles[i]] = table.fillna(-1).to_dict(orient='records')
-            except:
-                summary_datasets[table_titles[i]] = []
-        data['dataset_titles'] = table_titles
-        data['dataset_colnames'] = [CHROM, BP, SNP, P]
-        data.update(summary_datasets)
-    elif summary_stats_extension in ['tsv', 'txt']:
-        gwas_data = read_gwasfile(summary_stats_filepath, sep='\t')
-        gwas_data, column_names, column_dict, infer_variant = get_gwas_column_names(request, gwas_data)
-        gwas_data, column_dict, infer_variant = subset_gwas_data_to_entered_columns(request, gwas_data, column_names, column_dict, infer_variant)
+    # one dataset
+    gwas_data = read_gwasfile(summary_stats_filepath, sep='\t')
+    gwas_data, column_names, column_dict, infer_variant = get_gwas_column_names_and_validate(request, gwas_data, setbasedtest=True)
+    gwas_data, column_dict, infer_variant = subset_gwas_data_to_entered_columns(request, gwas_data, column_names, column_dict, infer_variant)
 
-        # subset to only relevant columns (CHROM, BP, SNP, P)
-        title = os.path.basename(summary_stats_filepath)
-        data['dataset_titles'] = [title]
-        data['dataset_colnames'] = [column_dict[key] for key in [
-            FormID.CHROM_COL,
-            FormID.POS_COL,
-            FormID.SNP_COL,
-            FormID.P_COL
-        ]]
-        column_names = data['dataset_colnames']
-        gwas_data = gwas_data[ column_names ]
-        summary_datasets[title] = gwas_data.to_dict(orient='records')
+    # subset to only relevant columns (CHROM, BP, SNP, P)
+    title = os.path.basename(summary_stats_filepath)
+    data['dataset_title'] = title
+    data['dataset_colnames'] = [column_dict[key] for key in [
+        FormID.CHROM_COL,
+        FormID.POS_COL,
+        FormID.SNP_COL,
+        FormID.P_COL
+    ]]
+    column_names = data['dataset_colnames']
+    gwas_data = gwas_data[ column_names ]
+    summary_dataset = gwas_data
 
     # keep track of column names
     chrom, bp, snp, p = data['dataset_colnames']
+    chromosomes = summary_dataset[chrom].unique().tolist()
+    snp_positions = summary_dataset[bp].tolist()
 
-    # Get LD:
-    if ldmat_filepath != "":
-        ld_mat = pd.read_csv(ldmat_filepath, sep="\t", encoding='utf-8', header=None)
-        ld_mat = np.matrix(ld_mat)
-        if not len(ld_mat.shape) == 2:
-            raise InvalidUsage(f"Provided LD matrix is not 2 dimensional. Shape: '{ld_mat.shape}'", status_code=410)
+    old_summary_dataset = summary_dataset
+    _summary_dataset, _removed = clean_summary_datasets([summary_dataset], snp, chrom)
+    summary_dataset = _summary_dataset[0]
+    removed = _removed[0]
+    if regions == []:
+        regions = infer_regions(summary_dataset, bp, chrom)
+        validate_region_size(regions, inferred=True)
 
-        if not (ld_mat.shape[0] == ld_mat.shape[1]):
-            raise InvalidUsage(f"Provided LD matrix is not square as expected. Shape: '{ld_mat.shape}'", status_code=410)
+    combine_lds = False
 
-        # find dataset whose length is same as LD
-        model_dataset_key = None
-        for title, dataset in summary_datasets.items():
-            if len(dataset) == ld_mat.shape[0]:
-                model_dataset_key = title
-                break
-        if model_dataset_key is None:
-            raise InvalidUsage(f"Provided LD matrix length does not match length of any provided datasets. LD length: '{ld_mat.shape[0]}', Dataset lengths: '{[(title, len(dataset)) for title, dataset in summary_datasets.items()]}'", status_code=410)
+    data.update({
+        "chroms": chromosomes,
+        "snp_positions": snp_positions,  # snps we end up using in LD generation
+        "total_used_snps": len(snp_positions)
+    })
 
-        summary_datasets = clean_summary_datasets(summary_datasets, snp, chrom)
-        # TODO: Finish handling user-provided LD matrix
-        if len(summary_datasets) > 1:
-            if use_dataset_union:
-                pass
-            else:
-                pass
+    if user_wants_separate_tests:
+        # for separate tests, we run all the tests and collect results immediately to save memory
+        first_stages = []
+        first_stage_p = []
+        if ldmat_filepath != "":
+            ld_mat = pd.read_csv(ldmat_filepath, sep="\t", encoding='utf-8', header=None)
+            ld_mat = np.matrix(ld_mat)
+            validate_user_LD(ld_mat, old_summary_dataset, removed)
+            np.fill_diagonal(ld_mat, np.diag(ld_mat) + LD_MAT_DIAG_CONSTANT)
+
+            # run all the tests
+            for i, region in enumerate(regions):
+                # for each region, subset dataset and LD accordingly before test
+                mask = (summary_dataset[chrom] == region[0]) & (summary_dataset[bp] >= region[1]) & (summary_dataset[bp] <= region[2])
+                sep_ldmatrix_file = f"session_data/ldmat-{my_session_id}-{i+1:03}-{len(regions):03}.txt"
+                sep_ldmatrix_filepath = os.path.join(MYDIR, 'static', sep_ldmatrix_file)
+                sep_summary_dataset = summary_dataset[mask]
+                sep_ld_mat = ld_mat[mask][:, mask]
+                writeMat(sep_ld_mat, sep_ldmatrix_filepath)
+                # subset dataset to SNPs in LD
+                sep_PvaluesMat = np.matrix([sep_summary_dataset[P]])
+
+                sep_Pvalues_file = f"session_data/Pvalues-{my_session_id}-{i+1:03}-{len(regions):03}.txt"
+                sep_Pvalues_filepath = os.path.join(MYDIR, 'static', sep_Pvalues_file)
+                writeMat(sep_PvaluesMat, sep_Pvalues_filepath)
+
+                # run test
+                SSresult_path = os.path.join(MYDIR, 'static', f'session_data/SSPvalues-{my_session_id}-{i+1:03}-{len(regions):03}.txt')
+                Rscript_args = [
+                    'Rscript',
+                    os.path.join(MYDIR, 'getSimpleSumStats.R'),
+                    sep_Pvalues_filepath,
+                    sep_ldmatrix_filepath,
+                    "--set_based_p", "default",
+                    "--outfilename", SSresult_path,
+                    "--first_stage_only"
+                ]
+                RscriptRun = subprocess.run(args=Rscript_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
+                if RscriptRun.returncode != 0:
+                    raise InvalidUsage(RscriptRun.stdout, status_code=410)
+                SSdf = pd.read_csv(SSresult_path, sep='\t', encoding='utf-8')
+
+                first_stages.extend(SSdf['first_stages'].tolist())
+                first_stage_p.extend(SSdf['first_stage_p'].tolist())
+
         else:
-            pass
+            # PLINK LD and run all separate tests in this block
+            validate_region_size(regions)
 
+            for i, region in enumerate(regions):
+                # generate LD
+                plink_outfilepath = os.path.join(MYDIR, "static", f"session_data/ld-{my_session_id}-{i+1:03}-{len(regions):03}")
+                ld_mat_snps_df, ld_mat = plink_ldmat(coordinate, pops, region[0], snp_positions, plink_outfilepath, region=region)
+                ld_mat_snps = list(ld_mat_snps_df.iloc[:, 1])
+                np.fill_diagonal(ld_mat, np.diag(ld_mat) + LD_MAT_DIAG_CONSTANT)  # need to add diag
+                sep_ldmatrix_file = f"session_data/ldmat-{my_session_id}-{i+1:03}-{len(regions):03}.txt"
+                sep_ldmatrix_filepath = os.path.join(MYDIR, 'static', sep_ldmatrix_file)
+                writeMat(ld_mat, sep_ldmatrix_filepath)
+                # subset dataset to SNPs in LD
+                ld_mat_positions = [int(snp.split(":")[1]) for snp in ld_mat_snps]
+                writeList(ld_mat_snps, os.path.join(MYDIR, 'static', f'session_data/ldmat_snps-{my_session_id}-{i+1:03}-{len(regions):03}.txt'))
+                writeList(ld_mat_positions, os.path.join(MYDIR, 'static', f'session_data/ldmat_positions-{my_session_id}-{i+1:03}-{len(regions):03}.txt'))
+                sep_PvaluesMat = np.matrix([summary_dataset[p]])
+                sep_pmat_indices = [i for i, e in enumerate(snp_positions) if e in ld_mat_positions]
+                sep_PvaluesMat = sep_PvaluesMat[:, sep_pmat_indices]
+
+                sep_Pvalues_file = f"session_data/Pvalues-{my_session_id}-{i+1:03}-{len(regions):03}.txt"
+                sep_Pvalues_filepath = os.path.join(MYDIR, 'static', sep_Pvalues_file)
+                writeMat(sep_PvaluesMat, sep_Pvalues_filepath)
+
+                # run test
+                SSresult_path = os.path.join(MYDIR, 'static', f'session_data/SSPvalues-{my_session_id}-{i+1:03}-{len(regions):03}.txt')
+                Rscript_args = [
+                    'Rscript',
+                    os.path.join(MYDIR, 'getSimpleSumStats.R'),
+                    sep_Pvalues_filepath,
+                    sep_ldmatrix_filepath,
+                    "--set_based_p", "default",
+                    "--outfilename", SSresult_path,
+                    "--first_stage_only"
+                ]
+                RscriptRun = subprocess.run(args=Rscript_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
+                if RscriptRun.returncode != 0:
+                    raise InvalidUsage(RscriptRun.stdout, status_code=410)
+                SSdf = pd.read_csv(SSresult_path, sep='\t', encoding='utf-8')
+
+                first_stages.extend(SSdf['first_stages'].tolist())
+                first_stage_p.extend(SSdf['first_stage_p'].tolist())
+
+                # clear memory, next iteration
+                del ld_mat
+                del ld_mat_snps
+                del ld_mat_snps_df
+                gc.collect()
+
+        # collect results
+        data['first_stages'] = first_stages
+        data['first_stage_Pvalues'] = first_stage_p
+        data['multiple_tests'] = True
+        SBTresults = {
+            'first_stages': first_stages
+            ,'first_stage_Pvalues': first_stage_p
+            ,'multiple_tests': True
+        }
+        SBTvalues_file = f'session_data/SBTvalues_setbasedtest-{my_session_id}.json'
+        SBTvalues_filepath = os.path.join(MYDIR, 'static', SBTvalues_file)
+        json.dump(SBTresults, open(SBTvalues_filepath, 'w'), cls=NumpyEncoder)
     else:
-        summary_datasets = clean_summary_datasets(summary_datasets, snp, chrom)
-        if len(summary_datasets) > 1:
-            if use_dataset_union:
-                # TODO: calculate union of dataset SNPs to create ld_mat
-                # for now, this doesn't happen
-                pass
-            else:
-                # use intersection of dataset SNPs to create LD
-                first_dataset = iter(summary_datasets.values()).__next__()
-                intersection_idx = first_dataset.index.get_level_values("snp_index")  # only contains SNPs
+        # One big test
+        # regions = create_close_regions(regions)
+        # check length of regions
+        total_region_length = sum([region[2] - region[1] for region in regions])
+        if total_region_length > genomicWindowLimit:
+            raise InvalidUsage(f"The provided collection of regions is too large ({total_region_length} bps > {genomicWindowLimit})")
+        if ldmat_filepath != "":
+            # User provided their own LD matrix
+            ld_mat = pd.read_csv(ldmat_filepath, sep="\t", encoding='utf-8', header=None)
+            ld_mat = np.matrix(ld_mat)
 
-                # get intersection of SNP values only, ignore formatting
-                for dataset in summary_datasets.values():
-                    intersection_idx = intersection_idx.intersection(dataset.index.get_level_values("snp_index"))
+            region_masks = [(summary_dataset[chrom] == r[0]) & (summary_dataset[bp] >= r[1]) & (summary_dataset[bp] <= r[2]) for r in regions]
+            mask = region_masks[0]
+            if len(region_masks) > 1:
+                for i in range(1, len(region_masks)):
+                    mask = mask | region_masks[i]
+            summary_dataset = summary_dataset[mask]
+            ld_mat = ld_mat[mask][:, mask]
 
-                for key, dataset in summary_datasets.items():
-                    summary_datasets[key] = dataset.loc[dataset.index.get_level_values("snp_index").isin(intersection_idx.values)]
+            validate_user_LD(ld_mat, old_summary_dataset, removed)
+            ld_mat_snps = [f"chr{_chrom}:{_pos}" for (_chrom, _pos) in list(zip(summary_dataset[chrom], summary_dataset[bp]))]
 
-                chromosome, start, end = get_region_from_summary_stats(summary_datasets, bp, chrom)
-                first_dataset = iter(summary_datasets.values()).__next__()
-                snp_positions = list(first_dataset[bp]) # all datasets are now intersected, so they all have the same SNPs
-                if len(snp_positions) == 0:
-                    raise InvalidUsage("Unable to compute LD matrix using intersection strategy; There are 0 SNPs shared by all provided datasets.", status_code=410)
-                plink_outfilepath = os.path.join(MYDIR, "static", f"session_data/ld-{my_session_id}")
-                ld_mat_snps, ld_mat = plink_ldmat(coordinate, pops, chromosome, snp_positions, plink_outfilepath)
-                # ld_mat_positions = [int(snp.split(":")[1]) for snp in ld_mat_snps]
-
+            np.fill_diagonal(ld_mat, np.diag(ld_mat) + LD_MAT_DIAG_CONSTANT)
+            ldmatrix_file = f'session_data/ldmat-{my_session_id}.txt'
+            ldmatrix_filepath = os.path.join(MYDIR, 'static', ldmatrix_file)
+            writeMat(ld_mat, ldmatrix_filepath)
         else:
-            # only one dataset
-            chromosome, _, _ = get_region_from_summary_stats(summary_datasets, bp, chrom)
-            dataset = iter(summary_datasets.values()).__next__()
-            snp_positions = list(dataset[bp])
-            plink_outfilepath = os.path.join(MYDIR, "static", f"session_data/ld-{my_session_id}")
-            ld_mat_snps, ld_mat = plink_ldmat(coordinate, pops, chromosome, snp_positions, plink_outfilepath)
-            # ld_mat_positions = [int(snp.split(":")[1]) for snp in ld_mat_snps]
+            # rearrange summary stats so that its in same order as regions
+            # really just means sorting by chromosome, and then by position
+            summary_dataset = summary_dataset.sort_values([chrom, bp])
+            ld_mat_snp_df_list = []
 
-    PvaluesMat = [dataset[P] for dataset in summary_datasets.values()]
+            for i, region in enumerate(regions):
+                # Named like 001, 002, etc.
+                plink_outfilepath = os.path.join(MYDIR, "static", f"session_data/ld-{my_session_id}-{i+1:03}-{len(regions):03}")
+                ld_mat_snps_df, ld_mat = plink_ldmat(coordinate, pops, region[0], snp_positions, plink_outfilepath, region=region)
+                np.fill_diagonal(ld_mat, np.diag(ld_mat) + LD_MAT_DIAG_CONSTANT)  # need to add diag
+                writeMat(ld_mat, os.path.join(MYDIR, 'static', f"session_data/ldmat-{my_session_id}-{i+1:03}-{len(regions):03}.txt"))
+                ld_mat_snp_df_list.append(ld_mat_snps_df)
 
-    np.fill_diagonal(ld_mat, np.diag(ld_mat) + LD_MAT_DIAG_CONSTANT)
+                # we don't need to hold onto these in memory, force garbage collection after each is done being loaded
+                del ld_mat
+                gc.collect()
+            if len(regions) > 1:
+                combine_lds = True
+            # pass off the first of the LDs; the r script knows how to get the rest
+            ldmatrix_file = f"session_data/ldmat-{my_session_id}-001-{len(regions):03}.txt"
+            ldmatrix_filepath = os.path.join(MYDIR, 'static', ldmatrix_file)
+            # subset to only the SNPs that survived
+            ld_mat_snp_df = pd.concat(ld_mat_snp_df_list, axis=0)
+            merged = summary_dataset.merge(ld_mat_snp_df, left_on=[chrom, bp], right_on=[0, 3], how='left', indicator=True)
+            ld_mask = (merged['_merge'] != 'right_only')
+            summary_dataset = summary_dataset.loc[ld_mask]
 
-    PvaluesMat = np.matrix(PvaluesMat)
-    # 7. Write the p-values and LD matrix into session_data
-    Pvalues_file = f'session_data/Pvalues-{my_session_id}.txt'
-    ldmatrix_file = f'session_data/ldmat-{my_session_id}.txt'
-    Pvalues_filepath = os.path.join(MYDIR, 'static', Pvalues_file)
-    ldmatrix_filepath = os.path.join(MYDIR, 'static', ldmatrix_file)
-    writeMat(PvaluesMat, Pvalues_filepath)
-    writeMat(ld_mat, ldmatrix_filepath)
+        PvaluesMat = [summary_dataset[p]]
+        PvaluesMat = np.matrix(PvaluesMat)
+        # 7. Write the p-values and LD matrix into session_data
+        Pvalues_file = f'session_data/Pvalues-{my_session_id}.txt'
+        Pvalues_filepath = os.path.join(MYDIR, 'static', Pvalues_file)
+        writeMat(PvaluesMat, Pvalues_filepath)
 
-    Rscript_code_path = os.path.join(MYDIR, 'getSimpleSumStats.R')
-    # Rscript_path = subprocess.run(args=["which","Rscript"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
-    SSresult_path = os.path.join(MYDIR, 'static', f'session_data/SSPvalues_setbasedtest-{my_session_id}.txt')
-    Rscript_args = [
-        'Rscript',
-        Rscript_code_path,
-        Pvalues_filepath,
-        ldmatrix_filepath,
-        '--set_based_p', str(setbasedP),
-        '--outfilename', SSresult_path,
-        "--first_stage_only"
-        ]
+        Rscript_code_path = os.path.join(MYDIR, 'getSimpleSumStats.R')
+        # Rscript_path = subprocess.run(args=["which","Rscript"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
+        SSresult_path = os.path.join(MYDIR, 'static', f'session_data/SSPvalues_setbasedtest-{my_session_id}.txt')
+        Rscript_args = [
+            'Rscript',
+            Rscript_code_path,
+            Pvalues_filepath,
+            ldmatrix_filepath,
+            '--set_based_p', "default",
+            '--outfilename', SSresult_path,
+            "--first_stage_only"
+            ]
+        if combine_lds:
+            Rscript_args.append("--combine_lds")
 
-    RscriptRun = subprocess.run(args=Rscript_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
-    if RscriptRun.returncode != 0:
-        raise InvalidUsage(RscriptRun.stdout, status_code=410)
-    SSdf = pd.read_csv(SSresult_path, sep='\t', encoding='utf-8')
+        RscriptRun = subprocess.run(args=Rscript_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
+        if RscriptRun.returncode != 0:
+            print(f"R Script failed: {Rscript_args}")
+            raise InvalidUsage(RscriptRun.stdout, status_code=410)
+        SSdf = pd.read_csv(SSresult_path, sep='\t', encoding='utf-8')
 
-    first_stages = SSdf['first_stages'].tolist()
-    first_stage_p = SSdf['first_stage_p'].tolist()
+        first_stages = SSdf['first_stages'].tolist()
+        first_stage_p = SSdf['first_stage_p'].tolist()
 
-    # Set Based Test
-    SBTresults = {
-        'Secondary_dataset_titles': table_titles
-        ,'First_stages': first_stages
-        ,'First_stage_Pvalues': first_stage_p
-    }
-    SBTvalues_file = f'session_data/SBTvalues_setbasedtest-{my_session_id}.json'
-    SBTvalues_filepath = os.path.join(MYDIR, 'static', SBTvalues_file)
-    json.dump(SBTresults, open(SBTvalues_filepath, 'w'))
+        # Set Based Test
+        SBTresults = {
+            'first_stages': first_stages
+            ,'first_stage_Pvalues': first_stage_p
+            ,'multiple_tests': False
+        }
+        SBTvalues_file = f'session_data/SBTvalues_setbasedtest-{my_session_id}.json'
+        SBTvalues_filepath = os.path.join(MYDIR, 'static', SBTvalues_file)
+        json.dump(SBTresults, open(SBTvalues_filepath, 'w'), cls=NumpyEncoder)
+
+    data['regions'] = ["{}:{:,}-{:,}".format(r[0], r[1], r[2]) for r in regions]
     t2_total = datetime.now() - t1
 
     ####################################################################################################
@@ -2399,7 +2693,7 @@ def setbasedtest():
     # Save data in JSON format for plotting
     sessionfile = f'session_data/form_data_setbasedtest-{my_session_id}.json'
     sessionfilepath = os.path.join(MYDIR, 'static', sessionfile)
-    json.dump(data, open(sessionfilepath, 'w'))
+    json.dump(data, open(sessionfilepath, 'w'), cls=NumpyEncoder)
 
     ####################################################################################################
 
@@ -2411,8 +2705,8 @@ def setbasedtest():
         f.write('-----------------------------------------------------------\n')
         f.write(f'Total time: {t2_total}\n')
 
-
-    return jsonify(data)
+    return redirect(url_for("prev_session_input", old_session_id=my_session_id))
+    # return render_template("plot.html", sessionfile = sessionfile, sessionid = my_session_id, metadata_file = metadatafile)
 
 
 @app.route('/downloaddata/<my_session_id>')
@@ -2451,5 +2745,5 @@ def hello_world():
 
 
 if __name__ == "__main__":
-    app.run()
+    app.run(debug=True, port=5000, host="0.0.0.0")
 

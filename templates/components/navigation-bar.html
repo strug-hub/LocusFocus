@@ -1,0 +1,105 @@
+<!--Navbar-->
+<nav class="navbar navbar-expand-lg navbar-dark primary-color mb-4">
+
+  <!-- Navbar brand -->
+  <a class="navbar-brand" href="/">LocusFocus</a>
+
+  <!-- Collapse button -->
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#basicExampleNav"
+    aria-controls="basicExampleNav" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+
+  <!-- Collapsible content -->
+  <div class="collapse navbar-collapse" id="basicExampleNav">
+
+    <!-- Links -->
+    <ul class="navbar-nav mr-auto">
+      <li class="nav-item">
+        <a class="nav-link" href="/">Colocalization</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="/setbasedtest">Set-based Test</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="https://svatalog.research.sickkids.ca/">GWAS SVatalog</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="https://locusfocus.readthedocs.io">Documentation</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" data-toggle="modal" data-target="#contactModal">Contact Us</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="https://mailchi.mp/752ab1c4d516/locusfocus">Subscribe</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" data-toggle="modal" data-target="#citeModal">Citation</a>
+      </li>
+    </ul>
+
+    <ul class="navbar-nav ml-auto">
+      <li class="nav-item">
+        <span class="text-light">v1.6.0</span>
+      </li>
+    </ul>
+  </div>
+  <!-- Collapsible content -->
+
+</nav>
+<div id="citeModal" class="modal fade" role="dialog">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h4 class="modal-title">
+          LocusFocus: Web-based colocalization for the annotation and
+          functional follow-up of GWAS
+        </h4>
+        <button type="button" class="close" data-dismiss="modal">×</button>
+      </div>
+      <div class="modal-body">
+        <p>Authors:</p>
+        <p>
+          Naim Panjwani, Fan Wang, Scott Mastromatteo, Allen Bao, Cheng Wang,
+          Gengming He, Jiafen Gong, Johanna M. Rommens, Lei Sun, Lisa J. Strug
+        </p>
+      </div>
+      <div class="modal-footer">
+        <p>
+          <a href="https://doi.org/10.1371/journal.pcbi.1008336"
+            >PLoS Comput Biol 2020 16(10): e1008336.</a
+          >
+        </p>
+        <button
+          type="button"
+          class="btn btn-default waves-effect waves-light"
+          data-dismiss="modal"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="contactModal" class="modal fade" role="dialog">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h4 class="modal-title">
+          Contact Us
+        </h4>
+        <button type="button" class="close" data-dismiss="modal">×</button>
+      </div>
+      <div class="modal-body">
+        <p>
+          <h5>GWAS SVatalog</h5>
+          Shalvi Chirmade <a href="mailto:shalvi.chirmade@sickkids.ca">shalvi.chirmade@sickkids.ca</a>
+        </p>
+        <p>
+          <h5>LocusFocus</h5>
+          Mackenzie Frew <a href="mailto:mackenzie.frew@sickkids.ca">mackenzie.frew@sickkids.ca</a>
+        </p>
+      </div>
+    </div>
+  </div>
+</div>

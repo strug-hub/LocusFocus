@@ -38,3 +38,50 @@ function checkNumSamplesInput(numsamples) {
         errordiv.text("Must be integer")
     }
 }
+
+/**
+ * Determine if two regions overlap. 
+ * Assume proper format (chrom:start-end).
+ * 
+ * @param {string} regiontextA 
+ * @param {string} regiontextB 
+ */
+function regionIsOverlapping(regiontextA, regiontextB) {
+    let [chromA, startA, endA] = regiontextA.split(":").flatMap((s) => s.split("-"));
+    let [chromB, startB, endB] = regiontextB.split(":").flatMap((s) => s.split("-"));
+    if (chromA !== chromB) return false;
+    
+    startA = Number(startA);
+    endA = Number(endA);
+    startB = Number(startB);
+    endB = Number(endB);
+
+    return startA <= endB && startB <= endA;
+}
+
+/**
+ * Validate input format for multiple region inputs.
+ * No overlaps, no negative BP positions, and no unusual chromosome values.
+ */
+async function checkMultipleRegionsInput() {
+    let regiontext = $("#multi-region").val();
+    let errordiv = $("#multi-region-error");
+    errordiv.text("");
+    let build = d3.select("#coordinate").property("value");
+    let regions = regiontext.trim().split("\n").filter(r => r !== "");
+    if (regions.length === 0) return;
+    let errors = [];
+
+    for (let i = 0; i < regions.length; i++) {
+        let region = regions[i];
+        if (region === "") continue;
+        let response = await d3.json(`/regionCheck/${build}/${region}`);
+        let message = response['response'];
+        if (message !== "OK") {
+            errors.push(`Line ${i+1} ("${region}"): ${message}`);
+        }    
+    }
+
+
+    errordiv.text(errors.join("\n<br />\n"));
+}
