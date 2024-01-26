@@ -16,7 +16,7 @@ import tarfile
 from typing import Dict, Tuple, List
 import gc
 
-from flask import Flask, request, redirect, url_for, jsonify, render_template, flash, send_file, Markup
+from flask import Flask, request, jsonify, render_template, send_file, Markup, g
 from werkzeug.utils import secure_filename
 from flask_sitemap import Sitemap
 from flask_uploads import UploadSet, configure_uploads, DATA
@@ -2414,8 +2414,7 @@ def setbasedtest():
     regionstext = request.form[FormID.LOCUS_MULTIPLE]
     regions = get_multiple_regions(regionstext, coordinate)
 
-    # separate tests is only a valid option if no LD is provided
-    user_wants_separate_tests = request.form.get(FormID.SEPARATE_TESTS) != None and ldmat_filepath == ""
+    user_wants_separate_tests = request.form.get(FormID.SEPARATE_TESTS) != None
 
     metadata = {}
     metadata.update({
