@@ -10,7 +10,7 @@ Results will include the P-value from the test, as well as whether it passed or 
 You may provide your own LD matrix, so long as it is the same length as your provided dataset. 
 If no LD matrix is provided, LocusFocus will generate one for you given your dataset and a selected population from the 1000 Genomes datasets. 
 
-The set-based test performed can be found under "Equation 2" in the `_LocusFocus Paper`. 
+The set-based test performed can be found under "Equation 2" in the `LocusFocus Paper <https://www.sciencedirect.com/science/article/pii/S0002929721004675?via%3Dihub#sec2.2>`_. 
 
 ***************************
 Specifying Multiple Regions
@@ -64,5 +64,3 @@ This will perform a separate set-based test for each region specified. No checks
 If you provide your own LD matrix, then both your dataset and LD will be subsetted to each region before performing each test.
 
 If you do not provide an LD matrix, then we generate an LD matrix for each region using your dataset and the selected 1000 Genomes population.
-
-.. _LocusFocus Paper: https://www.sciencedirect.com/science/article/pii/S0002929721004675?via%3Dihub#sec2.2
