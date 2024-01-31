@@ -28,6 +28,8 @@ and more colocalization methods may be made available in future version releases
    :caption: Table of Contents:
 
    quick_start
+   set_based_test
+   gwas_svatalog
    session_retrieval
    examples
    current_versions
