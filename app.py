@@ -1037,7 +1037,16 @@ def resolve_plink_filepath(build, pop, chrom):
         raise InvalidUsage(f'{str(build)} is not a recognized genome build')
     return plink_filepath
 
-def plink_ldmat(build, pop, chrom, snp_positions, outfilename, region=None):
+def plink_ldmat(build, pop, chrom, snp_positions, outfilename, region=None) -> Tuple[pd.DataFrame, np.matrix]:
+    """
+    Generate an LD matrix using PLINK, using the provided population `pop` and the provided region information (`chrom`, `snp_positions`).
+    If `region` is specified (format: (chrom, start, end)), then start and end will be used for region.
+    
+    Return a tuple containing:
+    - pd.DataFrame of the generated .bim file (the SNPs used in the PLINK LD calculation). 
+      https://www.cog-genomics.org/plink/1.9/formats#bim 
+    - np.matrix representing the generated LD matrix itself
+    """
     plink_filepath = resolve_plink_filepath(build, pop, chrom)
     # make snps file to extract:
     snps = [f"chr{str(int(chrom))}:{str(int(position))}" for position in snp_positions]
@@ -1108,6 +1117,7 @@ def plink_ldmat(build, pop, chrom, snp_positions, outfilename, region=None):
     if plinkrun.returncode != 0:
         raise InvalidUsage(plinkrun.stdout.decode('utf-8'), status_code=410)
     ld_snps_df = pd.read_csv(outfilename + ".bim", sep="\t", header=None)
+    # ld_snps_df.iloc[:, 0] = Xto23(list(ld_snps_df.iloc[:, 0]))  TODO: Is this safe?
     ldmat = np.matrix(pd.read_csv(outfilename + ".ld", sep="\t", header=None))
     return ld_snps_df, ldmat
 
@@ -1452,6 +1462,15 @@ def create_close_regions(regions: List[Tuple[int, int, int]], threshold=int(1e6)
     for bucket in chrom_buckets.values():
         close_regions.extend(bucket)
     return close_regions
+
+
+def get_snps_in_region(dataset: pd.DataFrame, region: Tuple[int, int, int], chrom_col, bp_col):
+    """
+    Given a region with format (chrom, start, end), return a new DataFrame of the SNPs within the region from your dataset.
+    """
+    region_mask = (dataset[chrom_col] == region[0]) & (dataset[bp_col] >= region[1]) & (dataset[bp_col] <= region[2])
+    return dataset[region_mask]
+
 
 #####################################
 # API Routes
@@ -2460,8 +2479,6 @@ def setbasedtest():
 
     # keep track of column names
     chrom, bp, snp, p = data['dataset_colnames']
-    chromosomes = summary_dataset[chrom].unique().tolist()
-    snp_positions = summary_dataset[bp].tolist()
 
     old_summary_dataset = summary_dataset
     _summary_dataset, _removed = clean_summary_datasets([summary_dataset], snp, chrom)
@@ -2473,17 +2490,16 @@ def setbasedtest():
 
     combine_lds = False
 
-    data.update({
-        "chroms": chromosomes,
-        "snp_positions": snp_positions,  # snps we end up using in LD generation
-        "total_used_snps": len(snp_positions)
-    })
+    snps_used_in_test = []  # List of list of positions, one list per test; position is (chrom, bp) tuple
+
+    # TODO: need to determine used SNPs AFTER tests are performed
 
     if user_wants_separate_tests:
         # for separate tests, we run all the tests and collect results immediately to save memory
         first_stages = []
         first_stage_p = []
         if ldmat_filepath != "":
+            # - User-provided LD matrix, separate tests - 
             ld_mat = pd.read_csv(ldmat_filepath, sep="\t", encoding='utf-8', header=None)
             ld_mat = np.matrix(ld_mat)
             validate_user_LD(ld_mat, old_summary_dataset, removed)
@@ -2523,15 +2539,21 @@ def setbasedtest():
 
                 first_stages.extend(SSdf['first_stages'].tolist())
                 first_stage_p.extend(SSdf['first_stage_p'].tolist())
-
+                snps_used = list(sep_summary_dataset[[chrom, bp]].itertuples(index=False, name=None))
+                snps_used_in_test.append(snps_used)
         else:
-            # PLINK LD and run all separate tests in this block
+            # - PLINK-generated LD, separate tests -
             validate_region_size(regions)
 
             for i, region in enumerate(regions):
                 # generate LD
                 plink_outfilepath = os.path.join(MYDIR, "static", f"session_data/ld-{my_session_id}-{i+1:03}-{len(regions):03}")
-                ld_mat_snps_df, ld_mat = plink_ldmat(coordinate, pops, region[0], snp_positions, plink_outfilepath, region=region)
+
+                sep_dataset = get_snps_in_region(summary_dataset, region, chrom, bp)
+                chromosome = region[0]
+                snp_positions = list(sep_dataset[bp])
+
+                ld_mat_snps_df, ld_mat = plink_ldmat(coordinate, pops, chromosome, snp_positions, plink_outfilepath, region=region)
                 ld_mat_snps = list(ld_mat_snps_df.iloc[:, 1])
                 np.fill_diagonal(ld_mat, np.diag(ld_mat) + LD_MAT_DIAG_CONSTANT)  # need to add diag
                 sep_ldmatrix_file = f"session_data/ldmat-{my_session_id}-{i+1:03}-{len(regions):03}.txt"
@@ -2541,9 +2563,7 @@ def setbasedtest():
                 ld_mat_positions = [int(snp.split(":")[1]) for snp in ld_mat_snps]
                 writeList(ld_mat_snps, os.path.join(MYDIR, 'static', f'session_data/ldmat_snps-{my_session_id}-{i+1:03}-{len(regions):03}.txt'))
                 writeList(ld_mat_positions, os.path.join(MYDIR, 'static', f'session_data/ldmat_positions-{my_session_id}-{i+1:03}-{len(regions):03}.txt'))
-                sep_PvaluesMat = np.matrix([summary_dataset[p]])
-                sep_pmat_indices = [i for i, e in enumerate(snp_positions) if e in ld_mat_positions]
-                sep_PvaluesMat = sep_PvaluesMat[:, sep_pmat_indices]
+                sep_PvaluesMat = np.matrix([ sep_dataset[p][sep_dataset[bp].isin(ld_mat_snps_df.iloc[:, 3])] ])
 
                 sep_Pvalues_file = f"session_data/Pvalues-{my_session_id}-{i+1:03}-{len(regions):03}.txt"
                 sep_Pvalues_filepath = os.path.join(MYDIR, 'static', sep_Pvalues_file)
@@ -2567,6 +2587,7 @@ def setbasedtest():
 
                 first_stages.extend(SSdf['first_stages'].tolist())
                 first_stage_p.extend(SSdf['first_stage_p'].tolist())
+                snps_used_in_test.append(list(ld_mat_snps_df.iloc[:, [0, 3]].itertuples(index=False, name=None)))
 
                 # clear memory, next iteration
                 del ld_mat
@@ -2574,14 +2595,11 @@ def setbasedtest():
                 del ld_mat_snps_df
                 gc.collect()
 
-        # collect results
-        data['first_stages'] = first_stages
-        data['first_stage_Pvalues'] = first_stage_p
-        data['multiple_tests'] = True
         SBTresults = {
             'first_stages': first_stages
             ,'first_stage_Pvalues': first_stage_p
             ,'multiple_tests': True
+            ,'snps_used_in_test': snps_used_in_test
         }
         SBTvalues_file = f'session_data/SBTvalues_setbasedtest-{my_session_id}.json'
         SBTvalues_filepath = os.path.join(MYDIR, 'static', SBTvalues_file)
@@ -2594,7 +2612,7 @@ def setbasedtest():
         if total_region_length > genomicWindowLimit:
             raise InvalidUsage(f"The provided collection of regions is too large ({total_region_length} bps > {genomicWindowLimit})")
         if ldmat_filepath != "":
-            # User provided their own LD matrix
+            # - User-provided LD matrix, one big test -
             ld_mat = pd.read_csv(ldmat_filepath, sep="\t", encoding='utf-8', header=None)
             ld_mat = np.matrix(ld_mat)
 
@@ -2607,13 +2625,15 @@ def setbasedtest():
             ld_mat = ld_mat[mask][:, mask]
 
             validate_user_LD(ld_mat, old_summary_dataset, removed)
-            ld_mat_snps = [f"chr{_chrom}:{_pos}" for (_chrom, _pos) in list(zip(summary_dataset[chrom], summary_dataset[bp]))]
+            ld_mat_snps = [f"chr{_chrom}:{_pos}" for (_chrom, _pos) in summary_dataset[[chrom, bp]].itertuples(index=False, name=None)]
 
             np.fill_diagonal(ld_mat, np.diag(ld_mat) + LD_MAT_DIAG_CONSTANT)
             ldmatrix_file = f'session_data/ldmat-{my_session_id}.txt'
             ldmatrix_filepath = os.path.join(MYDIR, 'static', ldmatrix_file)
             writeMat(ld_mat, ldmatrix_filepath)
         else:
+            # - PLINK-generated LD matrices, one big test -
+
             # rearrange summary stats so that its in same order as regions
             # really just means sorting by chromosome, and then by position
             summary_dataset = summary_dataset.sort_values([chrom, bp])
@@ -2671,12 +2691,14 @@ def setbasedtest():
 
         first_stages = SSdf['first_stages'].tolist()
         first_stage_p = SSdf['first_stage_p'].tolist()
+        snps_used_in_test.append(list(summary_dataset[[chrom, bp]].itertuples(index=False, name=None)))
 
         # Set Based Test
         SBTresults = {
             'first_stages': first_stages
             ,'first_stage_Pvalues': first_stage_p
             ,'multiple_tests': False
+            ,'snps_used_in_test': snps_used_in_test
         }
         SBTvalues_file = f'session_data/SBTvalues_setbasedtest-{my_session_id}.json'
         SBTvalues_filepath = os.path.join(MYDIR, 'static', SBTvalues_file)
