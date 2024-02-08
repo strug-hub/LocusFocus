@@ -2484,9 +2484,12 @@ def setbasedtest():
     _summary_dataset, _removed = clean_summary_datasets([summary_dataset], snp, chrom)
     summary_dataset = _summary_dataset[0]
     removed = _removed[0]
+    regions_inferred = False
     if regions == []:
         regions = infer_regions(summary_dataset, bp, chrom)
-        validate_region_size(regions, inferred=True)
+        regions_inferred = True
+        
+    validate_region_size(regions, inferred=regions_inferred)
 
     combine_lds = False
 
@@ -2543,8 +2546,6 @@ def setbasedtest():
                 snps_used_in_test.append(snps_used)
         else:
             # - PLINK-generated LD, separate tests -
-            validate_region_size(regions)
-
             for i, region in enumerate(regions):
                 # generate LD
                 plink_outfilepath = os.path.join(MYDIR, "static", f"session_data/ld-{my_session_id}-{i+1:03}-{len(regions):03}")
@@ -2610,7 +2611,7 @@ def setbasedtest():
         # check length of regions
         total_region_length = sum([region[2] - region[1] for region in regions])
         if total_region_length > genomicWindowLimit:
-            raise InvalidUsage(f"The provided collection of regions is too large ({total_region_length} bps > {genomicWindowLimit})")
+            raise InvalidUsage(f"The combined length of provided regions is too large ({total_region_length} bps > {genomicWindowLimit}). Please specify a list of smaller or fewer regions.")
         if ldmat_filepath != "":
             # - User-provided LD matrix, one big test -
             ld_mat = pd.read_csv(ldmat_filepath, sep="\t", encoding='utf-8', header=None)
