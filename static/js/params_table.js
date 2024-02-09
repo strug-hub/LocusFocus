@@ -53,8 +53,14 @@ function buildParamsTable(data, sessionid, type = "default") {
       [
         "Multiple tests?",
         data["multiple_tests"] ? "Yes" : "No",
-      ]
+      ],
     ];
+
+    if (!!data["multiple_tests"]) {
+      data["regions"].forEach((region, i) => table_data.push([ `SNPs used in region '${region}'`, data["snps_used_in_test"][i].length ]));;
+    } else {
+      table_data.push([ "Number of SNPs used", data["snps_used_in_test"][0].length ]);
+    }
   } else {
     // Shouldn't get here
     throw Error(`Unexpected params table type: ${type}`);
