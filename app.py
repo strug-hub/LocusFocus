@@ -170,7 +170,7 @@ def parseRegionText(regiontext, build):
     if build not in ['hg19', 'hg38']:
         raise InvalidUsage(f'Unrecognized build: {build}', status_code=410)
     regiontext = regiontext.strip().replace(' ','').replace(',','').replace('chr','')
-    if not re.search("^\d+:\d+-\d+$", regiontext.replace('X','23').replace('x','23')):
+    if not re.search(r"^\d+:\d+-\d+$", regiontext.replace('X','23').replace('x','23')):
        raise InvalidUsage(f'Invalid coordinate format. {regiontext} e.g. 1:205,000,000-206,000,000', status_code=410)
     chrom = regiontext.split(':')[0].lower().replace('chr','').upper()
     pos = regiontext.split(':')[1]
@@ -504,7 +504,7 @@ def standardizeSNPs(variantlist, regiontxt, build):
                     stdvariantlist.append(rsids[variantstr][0])
             except:
                 stdvariantlist.append('.')
-        elif re.search("^\d+_\d+_[A,T,G,C]+_[A,T,C,G]+,*", variantstr.replace('X','23')):
+        elif re.search(r"^\d+_\d+_[A,T,G,C]+_[A,T,C,G]+,*", variantstr.replace('X','23')):
             strlist = variantstr.split('_')
             strlist = list(filter(None, strlist)) # remove empty strings
             try:
@@ -520,7 +520,7 @@ def standardizeSNPs(variantlist, regiontxt, build):
                     stdvariantlist.append('.')
             except:
                 raise InvalidUsage(f'Problem with variant {variant}', status_code=410)
-        elif re.search("^\d+_\d+_*[A,T,G,C]*", variantstr.replace('X','23')):
+        elif re.search(r"^\d+_\d+_*[A,T,G,C]*", variantstr.replace('X','23')):
             strlist = variantstr.split('_')
             strlist = list(filter(None, strlist)) # remove empty strings
             try:
@@ -1661,7 +1661,7 @@ def regionCheck(build, regiontext):
         message['response'] = f'Unrecognized build: {build}'
         return jsonify(message)
     regiontext = regiontext.strip().replace(' ','').replace(',','').replace('chr','')
-    if not re.search("^\d+:\d+-\d+$", regiontext.replace('X','23').replace('x','23')):
+    if not re.search(r"^\d+:\d+-\d+$", regiontext.replace('X','23').replace('x','23')):
         message['response'] = 'Invalid coordinate format. e.g. 1:205,000,000-206,000,000'
         return jsonify(message)
     chrom = regiontext.split(':')[0].lower().replace('chr','').upper()
@@ -2642,6 +2642,9 @@ def setbasedtest():
 
             for i, region in enumerate(regions):
                 # Named like 001, 002, etc.
+                sep_dataset = get_snps_in_region(summary_dataset, region, chrom, bp)
+                chromosome = region[0]
+                snp_positions = list(sep_dataset[bp])
                 plink_outfilepath = os.path.join(MYDIR, "static", f"session_data/ld-{my_session_id}-{i+1:03}-{len(regions):03}")
                 ld_mat_snps_df, ld_mat = plink_ldmat(coordinate, pops, region[0], snp_positions, plink_outfilepath, region=region)
                 np.fill_diagonal(ld_mat, np.diag(ld_mat) + LD_MAT_DIAG_CONSTANT)  # need to add diag
