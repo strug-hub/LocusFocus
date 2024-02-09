@@ -104,3 +104,9 @@ table.dataTable thead .sorting_desc_disabled:after,
 table.dataTable thead .sorting_desc_disabled:before {
 bottom: .5em;
 }
+
+.snp_modal_button {
+  cursor: pointer;
+  text-decoration: underline;
+  color: blue;
+}
