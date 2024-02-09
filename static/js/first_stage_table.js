@@ -42,7 +42,16 @@ function _buildSetBasedTestTable(sessionData) {
     ];
 
     if (multipleTestsRequested) {
-        columns.push({ title: "Number of SNPs used" });
+        columns.push({ 
+            title: "Number of SNPs used", 
+            // className: "snp_modal_button", 
+            createdCell: (cell, cellData, rowData, rowIndex, colIndex) => {
+                $(cell)
+                .addClass("snp_modal_button")
+                .attr("data-toggle", "modal")
+                .attr("data-target", `#snp_modal_${rowIndex}`);
+            }
+        });
     }
 
     $(document).ready(() => {
@@ -64,8 +73,59 @@ function _buildSetBasedTestTable(sessionData) {
             ],
         });
 
-        if (multipleTestsRequested) {}
+        if (multipleTestsRequested) {
+            sessionData["regions"].forEach((region, i) => {
+                _createSNPModal(i, region, positions[i]);
+            })
+        }
     });
+}
+
+function _createSNPModal(i, region, positions) {
+    // create a modal with a datatable inside it
+    // there's so many parts that it's just easier to write it as a string...
+    const modal = $.parseHTML(
+`
+<div class="modal fade" id="snp_modal_${i}" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content>
+      <div class="modal-header">
+        <h4 class="modal-title" id="snp_modal_${i}_title">SNPs used in region '${region}'</h4>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">×</span>
+        </button>
+      </div>
+      <div class="modal-body" id="snp_modal_${i}_body>
+        <table id="snp_modal_${i}_table">
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+`);
+    $('body').append(modal);
+    const modalData = positions;
+    $(`#snp_modal_${i}_table`).DataTable({
+        dom: "Bfrtipl",
+        data: modalData,
+        columns: [
+            { title: "Chromosome" },
+            { title: "Basepair Position" }
+        ],
+        buttons: [
+        "copy",
+        {
+            extend: "csv",
+            filename: "SNPs_used_in_set_based_test",
+        },
+        {
+            extend: "excel",
+            filename: "SNPs_used_in_set_based_test",
+            messageTop: "SNPs used in set based test of Dataset region(s)",
+        },
+        ],
+    });
+    // TODO: Insert the modal somewhere in the page, add DataTable inside with all the positions
 }
 
 function _buildColocalizationFirstStageTable(sessionData) {
