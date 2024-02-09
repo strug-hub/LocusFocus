@@ -87,16 +87,20 @@ function _createSNPModal(i, region, positions) {
     const modal = $.parseHTML(
 `
 <div class="modal fade" id="snp_modal_${i}" tabindex="-1" role="dialog" aria-hidden="true">
-  <div class="modal-dialog" role="document">
-    <div class="modal-content>
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
       <div class="modal-header">
-        <h4 class="modal-title" id="snp_modal_${i}_title">SNPs used in region '${region}'</h4>
+        <h4 class="modal-title" id="snp_modal_${i}_title">SNPs used in region ${region}</h4>
         <button type="button" class="close" data-dismiss="modal" aria-label="Close">
           <span aria-hidden="true">×</span>
         </button>
       </div>
-      <div class="modal-body" id="snp_modal_${i}_body>
-        <table id="snp_modal_${i}_table">
+      <div class="modal-body" id="snp_modal_${i}_body">
+        <table id="snp_modal_${i}_table"
+        class="table table-striped table-bordered table-condensed table-sm sortable"
+        cellspacing="0"
+        width="90%"
+        >
         </table>
       </div>
     </div>
