@@ -33,16 +33,14 @@ function _buildSetBasedTestTable(sessionData) {
         testResultData = [[
             sessionData["dataset_title"],
             sessionData["first_stage_Pvalues"][0],
+            positions[0].length,
         ]];
     }
 
     let columns = [
         { title: descriptionHeader },
         { title: "Set-based test P-value" },
-    ];
-
-    if (multipleTestsRequested) {
-        columns.push({ 
+        { 
             title: "Number of SNPs used", 
             // className: "snp_modal_button", 
             createdCell: (cell, cellData, rowData, rowIndex, colIndex) => {
@@ -51,8 +49,8 @@ function _buildSetBasedTestTable(sessionData) {
                 .attr("data-toggle", "modal")
                 .attr("data-target", `#snp_modal_${rowIndex}`);
             }
-        });
-    }
+        }
+    ];
 
     $(document).ready(() => {
         $("#set-based-test-table").DataTable({
@@ -77,20 +75,24 @@ function _buildSetBasedTestTable(sessionData) {
             sessionData["regions"].forEach((region, i) => {
                 _createSNPModal(i, region, positions[i]);
             })
+        } else {
+            _createSNPModal(0, sessionData["dataset_title"], positions[0]);
         }
     });
 }
 
-function _createSNPModal(i, region, positions) {
+function _createSNPModal(i, regiontext, positions) {
     // create a modal with a datatable inside it
     // there's so many parts that it's just easier to write it as a string...
+    const modalTitle = `SNPs used for ${regiontext}`;
+
     const modal = $.parseHTML(
 `
 <div class="modal fade" id="snp_modal_${i}" tabindex="-1" role="dialog" aria-hidden="true">
   <div class="modal-dialog modal-lg" role="document">
     <div class="modal-content">
       <div class="modal-header">
-        <h4 class="modal-title" id="snp_modal_${i}_title">SNPs used in region ${region}</h4>
+        <h4 class="modal-title" id="snp_modal_${i}_title">${modalTitle}</h4>
         <button type="button" class="close" data-dismiss="modal" aria-label="Close">
           <span aria-hidden="true">×</span>
         </button>
@@ -120,16 +122,15 @@ function _createSNPModal(i, region, positions) {
         "copy",
         {
             extend: "csv",
-            filename: "SNPs_used_in_set_based_test",
+            filename: `SNPs_used_in_set_based_test_${regiontext}`,
         },
         {
             extend: "excel",
-            filename: "SNPs_used_in_set_based_test",
+            filename: `SNPs_used_in_set_based_test_${regiontext}`,
             messageTop: "SNPs used in set based test of Dataset region(s)",
         },
         ],
     });
-    // TODO: Insert the modal somewhere in the page, add DataTable inside with all the positions
 }
 
 function _buildColocalizationFirstStageTable(sessionData) {
