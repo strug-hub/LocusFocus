@@ -186,7 +186,7 @@ drop_NA_from_LD <- function(P_mat, ld_mat) {
       }
       i <- i + 1
     }
-    return(P_mat, ld_mat)
+    return(list(P_mat=P_mat, ld_mat=ld_mat))
   } else {
     stop("LD matrix has all missing values")
   }
