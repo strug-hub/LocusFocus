@@ -21,6 +21,7 @@ from werkzeug.utils import secure_filename
 from flask_sitemap import Sitemap
 from flask_uploads import UploadSet, configure_uploads, DATA
 from flask_talisman import Talisman
+from dotenv import load_dotenv
 
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
@@ -37,6 +38,8 @@ fileSizeLimit = 500 * 1024 * 1024 # in Bytes
 
 MYDIR = os.path.dirname(__file__)
 APP_STATIC = os.path.join(MYDIR, 'static')
+
+load_dotenv(MYDIR)
 
 ##################
 # Default settings
@@ -2771,5 +2774,5 @@ def hello_world():
 
 
 if __name__ == "__main__":
-    app.run(debug=False, port=5000, host="0.0.0.0")
+    app.run(port=5000, host="0.0.0.0")
 
