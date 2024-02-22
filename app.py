@@ -15,6 +15,8 @@ import glob
 import tarfile
 from typing import Dict, Tuple, List
 import gc
+import logging
+from logging.handlers import SMTPHandler
 
 from flask import Flask, request, jsonify, render_template, send_file, Markup, g
 from werkzeug.utils import secure_filename
@@ -2774,5 +2776,13 @@ def hello_world():
 
 
 if __name__ == "__main__":
+    ADMINS = ["mackenzie.frew@sickkids.ca"]
+    if not app.debug:
+        mail_handler = SMTPHandler(mailhost=('localhost',25),
+                           fromaddr='locusfocus.mailer@research.sickkids.ca',
+                           toaddrs=ADMINS, subject='[LocusFocus] Application Error Report')
+        mail_handler.setLevel(logging.ERROR)
+        app.logger.addHandler(mail_handler)
+
     app.run(port=5000, host="0.0.0.0")
 
