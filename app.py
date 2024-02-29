@@ -1064,61 +1064,38 @@ def plink_ldmat(build, pop, chrom, snp_positions, outfilename, region=None) -> T
         from_bp = str(min(snp_positions))
         to_bp = str(max(snp_positions))
 
-    if build.lower() in ["hg19","grch37"]:
-        if os.name == 'nt':
-            plinkrun = subprocess.run(args=[
-                "./plink.exe", '--bfile', plink_filepath
-                , "--chr", str(chrom)
-                , "--extract", outfilename + "_snps.txt"
-                , "--from-bp", from_bp
-                , "--to-bp", to_bp
-                , "--r2", "square"
-                , "--make-bed"
-                , "--threads", "1"
-                , "--out", outfilename
-                ], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        else:
-            plinkrun = subprocess.run(args=[
-                "./plink", '--bfile', plink_filepath
-                , "--chr", str(chrom)
-                , "--extract", outfilename + "_snps.txt"
-                , "--from-bp", from_bp
-                , "--to-bp", to_bp
-                , "--r2", "square"
-                , "--make-bed"
-                , "--threads", "1"
-                , "--out", outfilename
-                ], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    elif build.lower() in ["hg38","grch38"]:
+    plink_binary = "./plink"
+    if os.name == 'nt':
+        plink_binary = "./plink.exe"
+
+    plink_args = [
+        plink_binary, 
+        '--bfile', plink_filepath,
+        "--chr", str(chrom),
+        "--extract", outfilename + "_snps.txt",
+        "--from-bp", from_bp,
+        "--to-bp", to_bp,
+        "--r2", "square",
+        "--make-bed",
+        "--threads", "1",
+        "--out", outfilename
+    ]
+
+    if build.lower() in ["hg38", "grch38"]:
         popfile = os.path.join(MYDIR, 'data', '1000Genomes_GRCh38', str(pop)+'.txt')
-        if os.name == 'nt':
-            plinkrun = subprocess.run(args=[
-                "./plink.exe", '--bfile', plink_filepath
-                , "--keep", popfile # this is the difference in running GRCh38
-                , "--chr", str(chrom)
-                , "--extract", outfilename + "_snps.txt"
-                , "--from-bp", from_bp
-                , "--to-bp", to_bp
-                , "--r2", "square"
-                , "--make-bed"
-                , "--threads", "1"
-                , "--out", outfilename
-                ], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        else:
-            plinkrun = subprocess.run(args=[
-                "./plink", '--bfile', plink_filepath
-                , "--keep", popfile # this is the difference in running GRCh38
-                , "--chr", str(chrom)
-                , "--extract", outfilename + "_snps.txt"
-                , "--from-bp", from_bp
-                , "--to-bp", to_bp
-                , "--r2", "square"
-                , "--make-bed"
-                , "--threads", "1"
-                , "--out", outfilename
-                ], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    else:
+        plink_args.extend(["--keep", popfile])
+        if str(chrom).lower() in ["x", "23"]:
+            # Special case; use female sample data only for chrX
+            plink_args.append("--keep-females")
+    elif build.lower() not in ["hg19", "grch37"]:
         raise InvalidUsage(f'{str(build)} is not a recognized genome build')
+
+    plinkrun = subprocess.run(
+        args=plink_args,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT
+    )
+
     if plinkrun.returncode != 0:
         raise InvalidUsage(plinkrun.stdout.decode('utf-8'), status_code=410)
     ld_snps_df = pd.read_csv(outfilename + ".bim", sep="\t", header=None)
@@ -1154,77 +1131,40 @@ def plink_ld_pairwise(build, lead_snp_position, pop, chrom, snp_positions, snp_p
     #print('Lead SNP in use: ' + lead_snp)
 
     #plink_path = subprocess.run(args=["which","plink"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
-    if build.lower() in ["hg19","grch37"]:
-        if os.name == 'nt':
-            plinkrun = subprocess.run(args=[
-                "./plink.exe", '--bfile', plink_filepath
-                , "--chr", str(chrom)
-                , "--extract", outfilename + "_snps.txt"
-                , "--from-bp", str(min(snp_positions))
-                , "--to-bp", str(max(snp_positions))
-                , "--ld-snp", f"chr{str(int(chrom))}:{str(int(lead_snp_position))}"
-                , "--r2"
-                , "--ld-window-r2", "0"
-                , "--ld-window", "999999"
-                , "--ld-window-kb", "200000"
-                , "--make-bed"
-                , "--threads", "1"
-                , "--out", outfilename
-                ], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        else:
-            plinkrun = subprocess.run(args=[
-                "./plink", '--bfile', plink_filepath
-                , "--chr", str(chrom)
-                , "--extract", outfilename + "_snps.txt"
-                , "--from-bp", str(min(snp_positions))
-                , "--to-bp", str(max(snp_positions))
-                , "--ld-snp", f"chr{str(int(chrom))}:{str(int(lead_snp_position))}"
-                , "--r2"
-                , "--ld-window-r2", "0"
-                , "--ld-window", "999999"
-                , "--ld-window-kb", "200000"
-                , "--make-bed"
-                , "--threads", "1"
-                , "--out", outfilename
-                ], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    elif build.lower() in ["hg38","grch38"]:
+
+    plink_binary = "./plink"
+    if os.name == "nt":
+        plink_binary = "./plink.exe"
+
+    plink_args = [
+        plink_binary,
+        '--bfile', plink_filepath,
+        "--chr", str(chrom),
+        "--extract", outfilename + "_snps.txt",
+        "--from-bp", str(min(snp_positions)),
+        "--to-bp", str(max(snp_positions)),
+        "--ld-snp", f"chr{str(int(chrom))}:{str(int(lead_snp_position))}",
+        "--r2",
+        "--ld-window-r2", "0",
+        "--ld-window", "999999",
+        "--ld-window-kb", "200000",
+        "--make-bed",
+        "--threads", "1",
+        "--out", outfilename
+    ]
+
+    if build.lower() in ["hg38","grch38"]:
         popfile = os.path.join(MYDIR, 'data', '1000Genomes_GRCh38', str(pop)+'.txt')
-        if os.name == 'nt':
-            plinkrun = subprocess.run(args=[
-                "./plink.exe", '--bfile', plink_filepath
-                , "--keep", popfile # this is the difference in running GRCh38
-                , "--chr", str(chrom)
-                , "--extract", outfilename + "_snps.txt"
-                , "--from-bp", str(min(snp_positions))
-                , "--to-bp", str(max(snp_positions))
-                , "--ld-snp", f"chr{str(int(chrom))}:{str(int(lead_snp_position))}"
-                , "--r2"
-                , "--ld-window-r2", "0"
-                , "--ld-window", "999999"
-                , "--ld-window-kb", "200000"
-                , "--make-bed"
-                , "--threads", "1"
-                , "--out", outfilename
-                ], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        else:
-            plinkrun = subprocess.run(args=[
-                "./plink", '--bfile', plink_filepath
-                , "--keep", popfile # this is the difference in running GRCh38
-                , "--chr", str(chrom)
-                , "--extract", outfilename + "_snps.txt"
-                , "--from-bp", str(min(snp_positions))
-                , "--to-bp", str(max(snp_positions))
-                , "--ld-snp", f"chr{str(int(chrom))}:{str(int(lead_snp_position))}"
-                , "--r2"
-                , "--ld-window-r2", "0"
-                , "--ld-window", "999999"
-                , "--ld-window-kb", "200000"
-                , "--make-bed"
-                , "--threads", "1"
-                , "--out", outfilename
-                ], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    else:
+        plink_args.extend(["--keep", popfile])
+        if str(chrom).lower() in ["x", "23"]:
+            # Special case; use female sample data only for chrX
+            plink_args.append("--keep-females")
+
+    elif build.lower not in ["hg19","grch37"]:
         raise InvalidUsage(f'{str(build)} is not a recognized genome build')
+
+    plinkrun = subprocess.run(plink_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
     if plinkrun.returncode != 0:
         raise InvalidUsage(plinkrun.stdout.decode('utf-8'), status_code=410)
     ld_results = pd.read_csv(outfilename + ".ld", delim_whitespace=True)
@@ -2779,8 +2719,10 @@ if __name__ == "__main__":
     ADMINS = ["mackenzie.frew@sickkids.ca"]
     if not app.debug:
         mail_handler = SMTPHandler(mailhost=('localhost',25),
-                           fromaddr='locusfocus.mailer@research.sickkids.ca',
-                           toaddrs=ADMINS, subject='[LocusFocus] Application Error Report')
+                           fromaddr='locusfocus@research.sickkids.ca',
+                           toaddrs=ADMINS, 
+                           subject='[LocusFocus] Application Error Report',
+                           credentials=("locusfocus", os.environ.get("SMTP_PASSWORD", "")))
         mail_handler.setLevel(logging.ERROR)
         app.logger.addHandler(mail_handler)
 
