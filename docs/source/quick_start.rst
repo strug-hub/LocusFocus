@@ -166,6 +166,8 @@ You may either:
 For the most accurate colocalization statistics, we recommend uploading the LD matrix of your study.
 If this is unavailable, you may select the most appropriate 1000 Genomes population subset for your study.
 
+**Note:** for X chromosome datasets in hg38 coordinates, LocusFocus will only select female samples from the selected 1000 Genomes population.
+This is to account for an issue with LD calculation with PLINK in this specific case.
 
 Selecting a publicly available 1000 Genomes population LD matrix
 ===================================================================
