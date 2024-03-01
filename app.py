@@ -709,7 +709,7 @@ def addVariantID(gwas_data, chromcol, poscol, refcol, altcol, build = "hg19"):
         ref = reflist[i]
         alt = altlist[i]
         varlist.append('_'.join([str(chrom),str(pos),ref,alt,buildstr]))
-    gwas_data[DEFAULT_FORM_VALUE_DICT[FormID.SNP_COL]] = varlist
+    gwas_data.loc[:, DEFAULT_FORM_VALUE_DICT[FormID.SNP_COL]] = varlist
     return gwas_data
 
 
