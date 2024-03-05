@@ -1082,11 +1082,14 @@ def plink_ldmat(build, pop, chrom, snp_positions, outfilename, region=None) -> T
     ]
 
     if build.lower() in ["hg38", "grch38"]:
-        popfile = os.path.join(MYDIR, 'data', '1000Genomes_GRCh38', str(pop)+'.txt')
-        plink_args.extend(["--keep", popfile])
         if str(chrom).lower() in ["x", "23"]:
-            # Special case; use female sample data only for chrX
-            plink_args.extend(["--keep", "chrX_female.fam"])
+            # special case, females only
+            pop_filename = f"{pop}_female.txt"
+        else:
+            pop_filename = f"{pop}.txt"
+        popfile = os.path.join(MYDIR, 'data', '1000Genomes_GRCh38', pop_filename)
+        plink_args.extend(["--keep", popfile])
+
     elif build.lower() not in ["hg19", "grch37"]:
         raise InvalidUsage(f'{str(build)} is not a recognized genome build')
 
@@ -1154,11 +1157,13 @@ def plink_ld_pairwise(build, lead_snp_position, pop, chrom, snp_positions, snp_p
     ]
 
     if build.lower() in ["hg38","grch38"]:
-        popfile = os.path.join(MYDIR, 'data', '1000Genomes_GRCh38', str(pop)+'.txt')
-        plink_args.extend(["--keep", popfile])
         if str(chrom).lower() in ["x", "23"]:
-            # Special case; use female sample data only for chrX
-            plink_args.extend(["--keep", "chrX_female.fam"])
+            # special case, use females only
+            pop_filename = f"{pop}_female.txt"
+        else:
+            pop_filename = f"{pop}.txt"
+        popfile = os.path.join(MYDIR, 'data', '1000Genomes_GRCh38', pop_filename)
+        plink_args.extend(["--keep", popfile])
 
     elif build.lower not in ["hg19","grch37"]:
         raise InvalidUsage(f'{str(build)} is not a recognized genome build')
