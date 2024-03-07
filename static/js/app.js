@@ -412,6 +412,25 @@ function handleLDPopulations() {
   }
 }
 
+function updateChrXWarning() {
+  const regionText = $("#locus").val().toLowerCase();
+  const selectedAssembly = $("#coordinate").val();
+  const uploadedFileNames = $.map($("#file-upload").prop("files"), f => f.name);
+
+  console.log(
+    `[updateChrXWarning]
+    regionText: ${regionText}
+    selectedAssembly: ${selectedAssembly}
+    uploadedFileNames: ${uploadedFileNames}`
+  );
+
+  const hideWarning = !((["x", "23", "chrx"].some(start => regionText.startsWith(start)))  // x chromosome
+                        && (selectedAssembly.toLowerCase() === "hg38")  // hg38
+                        && (uploadedFileNames.every(name => !(name.toLowerCase().endsWith(".ld")))));  // no LD provided
+
+  $("#chrX-warning").prop("hidden", hideWarning);
+}
+
 function init() {
   String.prototype.replaceAll = function (search, replacement) {
     var target = this;
@@ -519,6 +538,9 @@ function init() {
       delay: { show: 500, hide: 100 },
     });
   });
+
+  // add warning listeners
+  ["#locus", "#coordinate", "#file-upload"].forEach(id => $(id).on("change", updateChrXWarning));
 }
 
 init();
