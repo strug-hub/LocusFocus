@@ -1165,7 +1165,7 @@ def plink_ld_pairwise(build, lead_snp_position, pop, chrom, snp_positions, snp_p
         popfile = os.path.join(MYDIR, 'data', '1000Genomes_GRCh38', pop_filename)
         plink_args.extend(["--keep", popfile])
 
-    elif build.lower not in ["hg19","grch37"]:
+    elif build.lower() not in ["hg19","grch37"]:
         raise InvalidUsage(f'{str(build)} is not a recognized genome build')
 
     plinkrun = subprocess.run(plink_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -2181,7 +2181,7 @@ def index():
             ldmatrix_filepath,
             '--set_based_p', str(setbasedP),
             '--outfilename', SSresult_path
-            ]
+        ]
 
         RscriptRun = subprocess.run(args=Rscript_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
         if RscriptRun.returncode != 0:
