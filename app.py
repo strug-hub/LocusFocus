@@ -149,6 +149,7 @@ talisman = Talisman(app,
 app.config['UPLOAD_FOLDER'] = os.path.join(MYDIR, 'static/upload/')
 app.config['UPLOADED_FILES_DEST'] = os.path.join(MYDIR, 'static/upload/')
 app.config['MAX_CONTENT_LENGTH'] = fileSizeLimit
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 300
 ALLOWED_EXTENSIONS = set(['txt', 'tsv', 'ld', 'html'])
 app.config['UPLOADED_FILES_ALLOW'] = ALLOWED_EXTENSIONS
 app.secret_key = mysecrets.mysecret
