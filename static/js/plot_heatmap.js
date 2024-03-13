@@ -61,12 +61,12 @@ function plot_heatmap(
 
   let color_cutoffs = [
     [-1, "rgb(105,105,105)"], // gray
-    [0.05, "rgb(105,105,105)"],
+    [0, "rgb(105,105,105)"],
 
     // Next trying to follow LD colors
 
     // dark blue to bright red HSV gradient in 5 steps:
-    [0.05, "rgb(0, 0, 128)"], // dark blue (not significant)
+    [0, "rgb(0, 0, 128)"], // dark blue (not significant)
     [1.3, "rgb(0, 0, 128)"], // dark blue
 
     [1.3, "rgb(0, 147, 142)"], // teal (p < 0.05)
