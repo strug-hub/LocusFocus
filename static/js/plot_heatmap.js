@@ -83,8 +83,6 @@ function plot_heatmap(
   .map(([threshold, color]) => [normalize(threshold, -1, pmax), color]);
 
   color_cutoffs.push([1, color_cutoffs.slice(-1)[0][1]]);
-  
-  console.debug(color_cutoffs);
 
   let data = [
     {
