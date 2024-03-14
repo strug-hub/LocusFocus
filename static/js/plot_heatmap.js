@@ -21,6 +21,7 @@ function plot_heatmap(
   genes,
   tissues,
   SSPvalues,
+  SSPvalues_secondary,
   image_width = 1080,
   image_height = 720,
   font_size = 12
@@ -31,6 +32,7 @@ function plot_heatmap(
   // prior checks ensure that we have at least one positive -log10 SS Pvalue
   let pmax = 0;
   let newSSPvalues = copy(SSPvalues);
+  let num_datasets = 0;
   for (i = 0; i < tissues.length; i++) {
     for (j = 0; j < genes.length; j++) {
       newSSPvalues[i][j] = parseFloat(newSSPvalues[i][j]);
@@ -38,11 +40,18 @@ function plot_heatmap(
         newSSPvalues[i][j] = -1;
       } else if (newSSPvalues[i][j] === -3) {
         newSSPvalues[i] = -1;
-      } else if (newSSPvalues[i][j] > pmax) {
-        pmax = newSSPvalues[i][j];
+      } else {
+        if (newSSPvalues[i][j] > 0) {
+          num_datasets += 1;
+        }
+        if (newSSPvalues[i][j] > pmax) {
+          pmax = newSSPvalues[i][j];
+        }
       }
     }
   }
+  SSPvalues_secondary.forEach((p) => {if (p > 0) { num_datasets += 1; }});
+
   // let colorscale_exception_percentage = 0.05;
   // let new_minp =
   //   -1 *
@@ -59,6 +68,8 @@ function plot_heatmap(
   // Plotly normalizes values before applying color scale. 
   // we have to normalize in advance to know what colors should be present
 
+  let suggested_threshold = num_datasets > 0 ? -Math.log10(0.05 / num_datasets) : 1.3;
+
   let color_cutoffs = [
     [-1, "rgb(105,105,105)"], // gray
     [0, "rgb(105,105,105)"],
@@ -67,18 +78,18 @@ function plot_heatmap(
 
     // dark blue to bright red HSV gradient in 5 steps:
     [0, "rgb(0, 0, 128)"], // dark blue (not significant)
-    [1.3, "rgb(0, 0, 128)"], // dark blue
+    [suggested_threshold, "rgb(0, 0, 128)"], // dark blue
 
-    [1.3, "rgb(0, 147, 142)"], // teal (p < 0.05)
-    [5, "rgb(0, 147, 142)"],
+    [suggested_threshold, "rgb(0, 147, 142)"], // teal
+    [suggested_threshold + 1, "rgb(0, 147, 142)"],
 
-    [5, "rgb(10, 166, 0)"], // green (p < 1e-5)
-    [6, "rgb(10, 166, 0)"],
+    [suggested_threshold + 1, "rgb(10, 166, 0)"], // green
+    [suggested_threshold + 2.5, "rgb(10, 166, 0)"],
 
-    [6, "rgb(185, 167, 0)"], // yellow/orange (p < 1e-6)
-    [7.3, "rgb(185, 167, 0)"],
+    [suggested_threshold + 2.5, "rgb(185, 167, 0)"], // yellow/orange
+    [suggested_threshold + 5, "rgb(185, 167, 0)"],
 
-    [7.3, "rgb(204, 0, 24)"], // dark red (p < 5e-8)
+    [suggested_threshold + 5, "rgb(204, 0, 24)"], // dark red
   ].filter(([threshold, _]) => (threshold >= -1 && threshold <= pmax)) // remove colors that are out of bounds of data
   .map(([threshold, color]) => [normalize(threshold, -1, pmax), color]);
 
