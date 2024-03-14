@@ -97,7 +97,7 @@ function plot_heatmap(
     [suggested_threshold + 5, "rgb(204, 0, 24)"], // dark red
   ].filter(([threshold, _]) => threshold >= -1 && threshold <= pmax); // remove colors that are out of bounds of data
 
-  norm_color_cutoffs = color_cutoffs.map(([threshold, color]) => [
+  let norm_color_cutoffs = color_cutoffs.map(([threshold, color]) => [
     normalize(threshold, -1, pmax),
     color,
   ]);
