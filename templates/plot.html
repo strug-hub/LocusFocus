@@ -668,7 +668,8 @@
             plot_heatmap(
               SSResponseJson.Genes,
               SSResponseJson.Tissues,
-              SSResponseJson.SSPvalues
+              SSResponseJson.SSPvalues,
+              SSResponseJson.SSPvalues_secondary,
             );
             buildTable(
               SSResponseJson.Genes,
@@ -920,6 +921,7 @@
               SSResponse.Genes,
               SSResponse.Tissues,
               SSResponse.SSPvalues,
+              SSResponse.SSPvalues_secondary,
               widthinput,
               heightinput,
               heatmap_fontsize
