@@ -14,7 +14,7 @@ function copy(aObject) {
 }
 
 function normalize(value, min, max) {
-  return Math.abs((value - min)/(max - min));
+  return Math.abs((value - min) / (max - min));
 }
 
 function plot_heatmap(
@@ -50,7 +50,11 @@ function plot_heatmap(
       }
     }
   }
-  SSPvalues_secondary.forEach((p) => {if (p > 0) { num_datasets += 1; }});
+  SSPvalues_secondary.forEach((p) => {
+    if (p > 0) {
+      num_datasets += 1;
+    }
+  });
 
   // let colorscale_exception_percentage = 0.05;
   // let new_minp =
@@ -65,10 +69,11 @@ function plot_heatmap(
   //   }
   // }
 
-  // Plotly normalizes values before applying color scale. 
+  // Plotly normalizes values before applying color scale.
   // we have to normalize in advance to know what colors should be present
 
-  let suggested_threshold = num_datasets > 0 ? -Math.log10(0.05 / num_datasets) : 1.3;
+  let suggested_threshold =
+    num_datasets > 0 ? -Math.log10(0.05 / num_datasets) : 1.3;
 
   let color_cutoffs = [
     [-1, "rgb(105,105,105)"], // gray
@@ -90,11 +95,18 @@ function plot_heatmap(
     [suggested_threshold + 5, "rgb(185, 167, 0)"],
 
     [suggested_threshold + 5, "rgb(204, 0, 24)"], // dark red
-  ].filter(([threshold, _]) => (threshold >= -1 && threshold <= pmax)) // remove colors that are out of bounds of data
-  .map(([threshold, color]) => [normalize(threshold, -1, pmax), color]);
+  ].filter(([threshold, _]) => threshold >= -1 && threshold <= pmax); // remove colors that are out of bounds of data
 
-  color_cutoffs.push([1, color_cutoffs.slice(-1)[0][1]]);
+  norm_color_cutoffs = color_cutoffs.map(([threshold, color]) => [
+    normalize(threshold, -1, pmax),
+    color,
+  ]);
 
+  norm_color_cutoffs.push([1, color_cutoffs.slice(-1)[0][1]]);
+
+  color_cutoffs = color_cutoffs.map(
+    ([threshold, color]) => Math.round((threshold + Number.EPSILON) * 1e3) / 1e3
+  );
   let data = [
     {
       z: newSSPvalues,
@@ -107,11 +119,14 @@ function plot_heatmap(
         "Gene: %{x}" + "<br>Tissue: %{y}<br>" + `-log10(SS P-value): %{z}`,
       colorbar: {
         title: "-log10(Simple<br>Sum P-value)",
-        dtick0: 0,
-        dtick: 1,
-        autotick: false,
+        // dtick0: 0,
+        // dtick: 1,
+        // autotick: false,
+        tickmode: "array",
+        tickvals: color_cutoffs,
+        ticktext: color_cutoffs,
       },
-      colorscale: color_cutoffs,
+      colorscale: norm_color_cutoffs,
     },
   ];
   let layout = {
