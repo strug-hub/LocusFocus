@@ -1109,7 +1109,7 @@ def plink_ldmat(build, pop, chrom, snp_positions, outfilename, region=None) -> T
 
 
 def plink_ld_pairwise(build, lead_snp_position, pop, chrom, snp_positions, snp_pvalues, outfilename):
-    # positions must be in hg19 coordinates
+    # positions must be in hg19 coordinates # TODO: Why is this?
     # returns NaN for SNPs not in 1KG LD file; preserves order of input snp_positions
     plink_filepath = resolve_plink_filepath(build, pop, chrom)
     # make snps file to extract:
@@ -1121,7 +1121,7 @@ def plink_ld_pairwise(build, lead_snp_position, pop, chrom, snp_positions, snp_p
     the1kg_snps = list(pd.read_csv(plink_filepath + ".bim", sep="\t", header=None).iloc[:,1])
     new_lead_snp = lead_snp
     new_lead_snp_position = int(lead_snp_position)
-    while (new_lead_snp not in the1kg_snps) and (len(snp_positions) != 1):
+    while (new_lead_snp not in the1kg_snps) and (len(snp_positions) > 0):
         #print(new_lead_snp + ' not in 1KG ' + str(len(snp_positions)) + ' SNPs left ')
         lead_snp_index = snp_positions.index(new_lead_snp_position)
         snp_positions.remove(new_lead_snp_position)
