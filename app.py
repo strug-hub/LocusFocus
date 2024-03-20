@@ -1,5 +1,5 @@
 import json
-#import requests
+# import requests
 import pandas as pd
 import numpy as np
 import os
@@ -32,7 +32,7 @@ from pprint import pprint
 import htmltableparser
 from numpy_encoder import NumpyEncoder
 
-#import getSimpleSumStats
+# import getSimpleSumStats
 
 genomicWindowLimit = 2_000_000
 one_sided_SS_window_size = 100000 # (100 kb on either side of the lead SNP)
@@ -1047,17 +1047,17 @@ def plink_ldmat(build, pop, chrom, snp_positions, outfilename, region=None) -> T
     """
     Generate an LD matrix using PLINK, using the provided population `pop` and the provided region information (`chrom`, `snp_positions`).
     If `region` is specified (format: (chrom, start, end)), then start and end will be used for region.
-    
+
     Return a tuple containing:
-    - pd.DataFrame of the generated .bim file (the SNPs used in the PLINK LD calculation). 
-      https://www.cog-genomics.org/plink/1.9/formats#bim 
+    - pd.DataFrame of the generated .bim file (the SNPs used in the PLINK LD calculation).
+      https://www.cog-genomics.org/plink/1.9/formats#bim
     - np.matrix representing the generated LD matrix itself
     """
     plink_filepath = resolve_plink_filepath(build, pop, chrom)
     # make snps file to extract:
     snps = [f"chr{str(int(chrom))}:{str(int(position))}" for position in snp_positions]
     writeList(snps, outfilename + "_snps.txt")
-    #plink_path = subprocess.run(args=["which","plink"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
+    # plink_path = subprocess.run(args=["which","plink"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
     if region is not None:
         from_bp = str(region[1])
         to_bp = str(region[2])
@@ -1070,7 +1070,7 @@ def plink_ldmat(build, pop, chrom, snp_positions, outfilename, region=None) -> T
         plink_binary = "./plink.exe"
 
     plink_args = [
-        plink_binary, 
+        plink_binary,
         '--bfile', plink_filepath,
         "--chr", str(chrom),
         "--extract", outfilename + "_snps.txt",
@@ -1108,7 +1108,7 @@ def plink_ldmat(build, pop, chrom, snp_positions, outfilename, region=None) -> T
     return ld_snps_df, ldmat
 
 
-def plink_ld_pairwise(build, lead_snp_position, pop, chrom, snp_positions, snp_pvalues, outfilename):
+def plink_ld_pairwise(build, pop, chrom, snp_positions, snp_pvalues, outfilename):
     # positions must be in hg19 coordinates # TODO: Why is this?
     # returns NaN for SNPs not in 1KG LD file; preserves order of input snp_positions
     plink_filepath = resolve_plink_filepath(build, pop, chrom)
@@ -1117,25 +1117,30 @@ def plink_ld_pairwise(build, lead_snp_position, pop, chrom, snp_positions, snp_p
     writeList(snps, outfilename + "_snps.txt")
 
     # Ensure lead snp is also present in 1KG; if not, choose next best lead SNP
-    lead_snp = f"chr{str(int(chrom))}:{str(int(lead_snp_position))}"
-    the1kg_snps = list(pd.read_csv(plink_filepath + ".bim", sep="\t", header=None).iloc[:,1])
-    new_lead_snp = lead_snp
-    new_lead_snp_position = int(lead_snp_position)
-    while (new_lead_snp not in the1kg_snps) and (len(snp_positions) > 0):
-        #print(new_lead_snp + ' not in 1KG ' + str(len(snp_positions)) + ' SNPs left ')
-        lead_snp_index = snp_positions.index(new_lead_snp_position)
-        snp_positions.remove(new_lead_snp_position)
-        del snp_pvalues[lead_snp_index]
-        new_lead_snp_position = snp_positions[ snp_pvalues.index(min(snp_pvalues)) ]
-        new_lead_snp = f"chr{str(int(chrom))}:{str(int(new_lead_snp_position))}"
-    if len(snp_positions) == 0:
-        raise InvalidUsage('No alternative lead SNP found in the 1000 Genomes', status_code=410)
-    lead_snp = new_lead_snp
-    lead_snp_position = new_lead_snp_position
-    #print('Lead SNP in use: ' + lead_snp)
+    the1kg_snps_df = pd.read_csv(
+        plink_filepath + ".bim", sep="\t", header=None
+    )  # .iloc[:, 1]
 
-    #plink_path = subprocess.run(args=["which","plink"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
+    # Find lowest P-value position in snp_positions that is also in 1KG
+    gwas_positions_df = pd.DataFrame({"pos": snp_positions, "p": snp_pvalues})
+    # intersection
+    positions_in_1kg_df = pd.merge(
+        gwas_positions_df,
+        the1kg_snps_df,
+        how="inner",
+        left_on="pos",
+        right_on=the1kg_snps_df.columns[3],
+    )
+    if len(positions_in_1kg_df) == 0:
+        raise InvalidUsage(
+            "No alternative lead SNP found in the 1000 Genomes", status_code=410
+        )
+    new_lead_snp_row = positions_in_1kg_df[positions_in_1kg_df["p"] == positions_in_1kg_df["p"].min()]
+    new_lead_snp_position = int(new_lead_snp_row["pos"])
+    lead_snp = f"chr{str(int(chrom))}:{str(int(new_lead_snp_position))}"
 
+    # plink_path = subprocess.run(args=["which","plink"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
+    
     plink_binary = "./plink"
     if os.name == "nt":
         plink_binary = "./plink.exe"
@@ -1145,9 +1150,9 @@ def plink_ld_pairwise(build, lead_snp_position, pop, chrom, snp_positions, snp_p
         '--bfile', plink_filepath,
         "--chr", str(chrom),
         "--extract", outfilename + "_snps.txt",
-        "--from-bp", str(min(snp_positions)),
-        "--to-bp", str(max(snp_positions)),
-        "--ld-snp", f"chr{str(int(chrom))}:{str(int(lead_snp_position))}",
+        "--from-bp", str(positions_in_1kg_df["pos"].min()),
+        "--to-bp", str(positions_in_1kg_df["pos"].max()),
+        "--ld-snp", lead_snp,
         "--r2",
         "--ld-window-r2", "0",
         "--ld-window", "999999",
@@ -1656,7 +1661,6 @@ def regionCheck(build, regiontext):
     return jsonify(message)
 
 
-
 @app.route('/', methods=['GET', 'POST'])
 def index():
     data = {"success": False}
@@ -1814,7 +1818,7 @@ def index():
             t1 = datetime.now() # timing started for pairwise LD
             #print('Calculating pairwise LD using PLINK')
             #ld_df = queryLD(lead_snp, snp_list, pops, ld_type)
-            ld_df, new_lead_snp_position = plink_ld_pairwise(coordinate, lead_snp_position, pops, chrom, positions, pvals, os.path.join(MYDIR, "static", "session_data", f"ld-{my_session_id}"))
+            ld_df, new_lead_snp_position = plink_ld_pairwise(coordinate, pops, chrom, positions, pvals, os.path.join(MYDIR, "static", "session_data", f"ld-{my_session_id}"))
             if new_lead_snp_position != lead_snp_position:
                 lead_snp_position_index = list(gwas_data[poscol]).index(new_lead_snp_position)
                 lead_snp = snp_list[ lead_snp_position_index ]
@@ -2439,7 +2443,7 @@ def setbasedtest():
     if regions == []:
         regions = infer_regions(summary_dataset, bp, chrom)
         regions_inferred = True
-        
+
     validate_region_size(regions, inferred=regions_inferred)
 
     combine_lds = False
@@ -2453,7 +2457,7 @@ def setbasedtest():
         first_stages = []
         first_stage_p = []
         if ldmat_filepath != "":
-            # - User-provided LD matrix, separate tests - 
+            # - User-provided LD matrix, separate tests -
             ld_mat = pd.read_csv(ldmat_filepath, sep="\t", encoding='utf-8', header=None)
             ld_mat = np.matrix(ld_mat)
             validate_user_LD(ld_mat, old_summary_dataset, removed)
@@ -2666,7 +2670,7 @@ def setbasedtest():
     # Indicate that the request was a success
     data.update(SBTresults)
     data['success'] = True
-    #print('Loading a success')
+    # print('Loading a success')
 
     # Save data in JSON format for plotting
     sessionfile = f'session_data/form_data_setbasedtest-{my_session_id}.json'
@@ -2724,13 +2728,14 @@ def hello_world():
 if __name__ == "__main__":
     ADMINS = ["mackenzie.frew@sickkids.ca"]
     if not app.debug:
-        mail_handler = SMTPHandler(mailhost=('localhost',25),
-                           fromaddr='locusfocus@research.sickkids.ca',
-                           toaddrs=ADMINS, 
-                           subject='[LocusFocus] Application Error Report',
-                           credentials=("locusfocus", os.environ.get("SMTP_PASSWORD", "")))
+        mail_handler = SMTPHandler(
+            mailhost=("localhost", 25),
+            fromaddr="locusfocus@research.sickkids.ca",
+            toaddrs=ADMINS,
+            subject="[LocusFocus] Application Error Report",
+            credentials=("locusfocus", os.environ.get("SMTP_PASSWORD", "")),
+        )
         mail_handler.setLevel(logging.ERROR)
         app.logger.addHandler(mail_handler)
 
     app.run(port=5000, host="0.0.0.0")
-
