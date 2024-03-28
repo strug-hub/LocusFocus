@@ -2592,7 +2592,7 @@ def setbasedtest():
 
             # rearrange summary stats so that its in same order as regions
             # really just means sorting by chromosome, and then by position
-            summary_dataset = summary_dataset.sort_values([chrom, bp])
+            summary_dataset = summary_dataset.sort_values([chrom, bp]).reset_index(drop=True)
             ld_mat_snp_df_list = []
 
             for i, region in enumerate(regions):
