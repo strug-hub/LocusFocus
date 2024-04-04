@@ -1144,7 +1144,7 @@ def plink_ld_pairwise(build, pop, chrom, snp_positions, snp_pvalues, outfilename
     lead_snp = f"chr{str(int(chrom))}:{str(int(new_lead_snp_position))}"
 
     # plink_path = subprocess.run(args=["which","plink"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
-    
+
     plink_binary = "./plink"
     if os.name == "nt":
         plink_binary = "./plink.exe"
@@ -2743,3 +2743,4 @@ if __name__ == "__main__":
         app.logger.addHandler(mail_handler)
 
     app.run(port=5000, host="0.0.0.0")
+

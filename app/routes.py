@@ -752,12 +752,16 @@ def handle_file_upload(request):
     """
     Check 'files[]' and download the files if they exist.
     """
+
+    allowed_extensions = ALLOWED_EXTENSIONS
     # pulled from index route
     if 'files[]' in request.files:
         filenames = request.files.getlist('files[]')
+        if any([file.filename.rsplit(".", 1)[-1].lower() not in allowed_extensions for file in filenames]):
+            raise InvalidUsage(f"Unrecognized file format: {[file.filename for file in filenames if file.filename.rsplit('.', -1)[-1].lower() not in allowed_extensions]}")
         for file in filenames:
             filename = secure_filename(file.filename)
-            filepath = os.path.join(MYDIR, app.config['UPLOAD_FOLDER'], filename)
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(filepath)
             if not os.path.isfile(filepath):
                 request_entity_too_large(413)
@@ -1070,7 +1074,7 @@ def plink_ldmat(build, pop, chrom, snp_positions, outfilename, region=None) -> T
     return ld_snps_df, ldmat
 
 
-def plink_ld_pairwise(build, lead_snp_position, pop, chrom, snp_positions, snp_pvalues, outfilename):
+def plink_ld_pairwise(build, pop, chrom, snp_positions, snp_pvalues, outfilename):
     # positions must be in hg19 coordinates
     # returns NaN for SNPs not in 1KG LD file; preserves order of input snp_positions
     plink_filepath = resolve_plink_filepath(build, pop, chrom)
@@ -1079,25 +1083,30 @@ def plink_ld_pairwise(build, lead_snp_position, pop, chrom, snp_positions, snp_p
     writeList(snps, outfilename + "_snps.txt")
 
     # Ensure lead snp is also present in 1KG; if not, choose next best lead SNP
-    lead_snp = f"chr{str(int(chrom))}:{str(int(lead_snp_position))}"
-    the1kg_snps = list(pd.read_csv(plink_filepath + ".bim", sep="\t", header=None).iloc[:,1])
-    new_lead_snp = lead_snp
-    new_lead_snp_position = int(lead_snp_position)
-    while (new_lead_snp not in the1kg_snps) and (len(snp_positions) != 1):
-        #print(new_lead_snp + ' not in 1KG ' + str(len(snp_positions)) + ' SNPs left ')
-        lead_snp_index = snp_positions.index(new_lead_snp_position)
-        snp_positions.remove(new_lead_snp_position)
-        del snp_pvalues[lead_snp_index]
-        new_lead_snp_position = snp_positions[ snp_pvalues.index(min(snp_pvalues)) ]
-        new_lead_snp = f"chr{str(int(chrom))}:{str(int(new_lead_snp_position))}"
-    if len(snp_positions) == 0:
-        raise InvalidUsage('No alternative lead SNP found in the 1000 Genomes', status_code=410)
-    lead_snp = new_lead_snp
-    lead_snp_position = new_lead_snp_position
-    #print('Lead SNP in use: ' + lead_snp)
+    the1kg_snps_df = pd.read_csv(
+        plink_filepath + ".bim", sep="\t", header=None
+    )  # .iloc[:, 1]
 
-    #plink_path = subprocess.run(args=["which","plink"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
+    # Find lowest P-value position in snp_positions that is also in 1KG
+    gwas_positions_df = pd.DataFrame({"pos": snp_positions, "p": snp_pvalues})
+    # intersection
+    positions_in_1kg_df = pd.merge(
+        gwas_positions_df,
+        the1kg_snps_df,
+        how="inner",
+        left_on="pos",
+        right_on=the1kg_snps_df.columns[3],
+    )
+    if len(positions_in_1kg_df) == 0:
+        raise InvalidUsage(
+            "No alternative lead SNP found in the 1000 Genomes", status_code=410
+        )
+    new_lead_snp_row = positions_in_1kg_df[positions_in_1kg_df["p"] == positions_in_1kg_df["p"].min()]
+    new_lead_snp_position = int(new_lead_snp_row["pos"])
+    lead_snp = f"chr{str(int(chrom))}:{str(int(new_lead_snp_position))}"
 
+    # plink_path = subprocess.run(args=["which","plink"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
+    
     plink_binary = "./plink"
     if os.name == "nt":
         plink_binary = "./plink.exe"
@@ -1107,9 +1116,9 @@ def plink_ld_pairwise(build, lead_snp_position, pop, chrom, snp_positions, snp_p
         '--bfile', plink_filepath,
         "--chr", str(chrom),
         "--extract", outfilename + "_snps.txt",
-        "--from-bp", str(min(snp_positions)),
-        "--to-bp", str(max(snp_positions)),
-        "--ld-snp", f"chr{str(int(chrom))}:{str(int(lead_snp_position))}",
+        "--from-bp", str(positions_in_1kg_df["pos"].min()),
+        "--to-bp", str(positions_in_1kg_df["pos"].max()),
+        "--ld-snp", lead_snp,
         "--r2",
         "--ld-window-r2", "0",
         "--ld-window", "999999",
@@ -1776,7 +1785,7 @@ def index():
             t1 = datetime.now() # timing started for pairwise LD
             #print('Calculating pairwise LD using PLINK')
             #ld_df = queryLD(lead_snp, snp_list, pops, ld_type)
-            ld_df, new_lead_snp_position = plink_ld_pairwise(coordinate, lead_snp_position, pops, chrom, positions, pvals, os.path.join(MYDIR, "static", "session_data", f"ld-{my_session_id}"))
+            ld_df, new_lead_snp_position = plink_ld_pairwise(coordinate, pops, chrom, positions, pvals, os.path.join(MYDIR, "static", "session_data", f"ld-{my_session_id}"))
             if new_lead_snp_position != lead_snp_position:
                 lead_snp_position_index = list(gwas_data[poscol]).index(new_lead_snp_position)
                 lead_snp = snp_list[ lead_snp_position_index ]
@@ -2550,7 +2559,7 @@ def setbasedtest():
 
             # rearrange summary stats so that its in same order as regions
             # really just means sorting by chromosome, and then by position
-            summary_dataset = summary_dataset.sort_values([chrom, bp])
+            summary_dataset = summary_dataset.sort_values([chrom, bp]).reset_index(drop=True)
             ld_mat_snp_df_list = []
 
             for i, region in enumerate(regions):
