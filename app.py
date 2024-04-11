@@ -790,9 +790,13 @@ def handle_file_upload(request):
     """
     Check 'files[]' and download the files if they exist.
     """
+
+    allowed_extensions = ALLOWED_EXTENSIONS
     # pulled from index route
     if 'files[]' in request.files:
         filenames = request.files.getlist('files[]')
+        if any([file.filename.rsplit(".", 1)[-1].lower() not in allowed_extensions for file in filenames]):
+            raise InvalidUsage(f"Unrecognized file format: {[file.filename for file in filenames if file.filename.rsplit('.', -1)[-1].lower() not in allowed_extensions]}")
         for file in filenames:
             filename = secure_filename(file.filename)
             filepath = os.path.join(MYDIR, app.config['UPLOAD_FOLDER'], filename)
