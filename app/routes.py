@@ -37,6 +37,8 @@ fileSizeLimit = 500 * 1024 * 1024 # in Bytes
 
 MYDIR = os.path.dirname(__file__) # app directory
 APP_STATIC = os.path.join(MYDIR, 'static')
+ALLOWED_EXTENSIONS = set(['txt', 'tsv', 'ld', 'html'])
+ALLOWED_SBT_EXTENSIONS = set(['txt', 'tsv', 'ld'])
 
 ##################
 # Default settings
