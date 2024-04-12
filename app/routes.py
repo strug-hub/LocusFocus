@@ -15,9 +15,8 @@ import tarfile
 from typing import Dict, Tuple, List
 import gc
 
-from flask import request, jsonify, render_template, send_file, Markup, g, current_app as app
+from flask import request, jsonify, render_template, send_file, Markup, current_app as app
 from werkzeug.utils import secure_filename
-from dotenv import load_dotenv
 
 from pymongo.errors import ConnectionFailure
 

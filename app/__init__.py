@@ -6,13 +6,11 @@ from flask import Flask
 from flask_pymongo import PyMongo
 from flask_sitemap import Sitemap
 from flask_talisman import Talisman
-from flask_uploads import UploadSet, DATA, configure_uploads
 from .config import ProdConfig
 
 
 ext = Sitemap()
 talisman = Talisman()
-files = UploadSet("files", DATA)
 mongo = PyMongo()
 
 
@@ -28,7 +26,6 @@ def create_app(config_class=ProdConfig):
 
     ext.init_app(app)
     talisman.init_app(app, content_security_policy=app.config["CSP_POLICY"])
-    configure_uploads(app, files)
     mongo.init_app(app)
 
     with app.app_context():
