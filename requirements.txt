@@ -5,7 +5,8 @@ click==7.1.2
 dask==2021.10.0
 DateTime==4.3
 Flask==1.1.2
-Flask-Sitemap==0.3.0
+Flask-PyMongo==2.3.0
+Flask-Sitemap==0.4.0
 flask-talisman==1.1.0
 Flask-Uploads==0.2.1
 itsdangerous==1.1.0
