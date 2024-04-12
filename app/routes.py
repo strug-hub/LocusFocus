@@ -1,5 +1,5 @@
 import json
-# import requests
+#import requests
 import pandas as pd
 import numpy as np
 import os
@@ -10,38 +10,33 @@ from datetime import datetime
 from bs4 import BeautifulSoup as bs
 import re
 import pysam
-import mysecrets
 import glob
 import tarfile
 from typing import Dict, Tuple, List
 import gc
-import logging
-from logging.handlers import SMTPHandler
 
-from flask import Flask, request, jsonify, render_template, send_file, Markup, g
+from flask import request, jsonify, render_template, send_file, Markup, g, current_app as app
 from werkzeug.utils import secure_filename
-from flask_sitemap import Sitemap
-from flask_uploads import UploadSet, configure_uploads, DATA
-from flask_talisman import Talisman
 from dotenv import load_dotenv
 
-from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
 
-from pprint import pprint
 import htmltableparser
 from numpy_encoder import NumpyEncoder
 
-# import getSimpleSumStats
+from . import ext, mongo
+
+client = mongo.cx
+db = client.GTEx_V7
+
+#import getSimpleSumStats
 
 genomicWindowLimit = 2_000_000
 one_sided_SS_window_size = 100000 # (100 kb on either side of the lead SNP)
 fileSizeLimit = 500 * 1024 * 1024 # in Bytes
 
-MYDIR = os.path.dirname(__file__)
+MYDIR = os.path.dirname(__file__) # app directory
 APP_STATIC = os.path.join(MYDIR, 'static')
-
-load_dotenv(MYDIR)
 
 ##################
 # Default settings
@@ -117,54 +112,11 @@ COLUMN_NAMES: Dict[str, str] = {
 ################
 ################
 
-app = Flask(__name__)
-ext = Sitemap(app=app)
-talisman = Talisman(app,
-                    content_security_policy={
-                        'default-src': '\'self\'',
-                        'img-src': ['*', 'data:', 'https://*.google-analytics.com', 'https://*.googletagmanager.com'],
-                        'script-src': [
-                            '\'self\'',
-                            '\'unsafe-inline\'', # TODO
-                            '\'unsafe-eval\'', # TODO
-                            'https://*.googletagmanager.com',
-                            'cdnjs.cloudflare.com',
-                            'cdn.plot.ly',
-                        ],
-                        'style-src': [
-                            '\'self\'',
-                            '\'unsafe-inline\'', # TODO
-                            'use.fontawesome.com',
-                            'cdnjs.cloudflare.com',
-                            'stackpath.bootstrapcdn.com',
-                        ],
-                        'font-src': [
-                            '\'self\'',
-                            'use.fontawesome.com',
-                            'cdnjs.cloudflare.com',
-                            'stackpath.bootstrapcdn.com',
-                        ],
-                        'connect-src': ['\'self\'','https://*.google-analytics.com', 'https://*.analytics.google.com', 'https://*.googletagmanager.com']
-                    })
-app.config['UPLOAD_FOLDER'] = os.path.join(MYDIR, 'static/upload/')
-app.config['UPLOADED_FILES_DEST'] = os.path.join(MYDIR, 'static/upload/')
-app.config['MAX_CONTENT_LENGTH'] = fileSizeLimit
-app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 300
-ALLOWED_EXTENSIONS = set(['txt', 'tsv', 'ld', 'html'])
-app.config['UPLOADED_FILES_ALLOW'] = ALLOWED_EXTENSIONS
-app.secret_key = mysecrets.mysecret
-files = UploadSet('files', DATA)
-configure_uploads(app, files)
-
-collapsed_genes_df_hg19 = pd.read_csv(os.path.join(MYDIR, 'data/collapsed_gencode_v19_hg19.gz'), compression='gzip', sep='\t', encoding='utf-8')
-collapsed_genes_df_hg38 = pd.read_csv(os.path.join(MYDIR, 'data/collapsed_gencode_v26_hg38.gz'), compression='gzip', sep='\t', encoding='utf-8')
+collapsed_genes_df_hg19 = pd.read_csv(os.path.join(app.config["LF_DATA_FOLDER"], 'collapsed_gencode_v19_hg19.gz'), compression='gzip', sep='\t', encoding='utf-8')
+collapsed_genes_df_hg38 = pd.read_csv(os.path.join(app.config["LF_DATA_FOLDER"], 'collapsed_gencode_v26_hg38.gz'), compression='gzip', sep='\t', encoding='utf-8')
 
 collapsed_genes_df = collapsed_genes_df_hg19 # For now
 LD_MAT_DIAG_CONSTANT = 1e-6
-
-conn = "mongodb://localhost:27017"
-client = MongoClient(conn)
-db = client.GTEx_V7 # For now
 
 available_gtex_versions = ["V7", "V8"]
 valid_populations = ["EUR", "AFR", "EAS", "SAS", "AMR", "ASN", "NFE"]
@@ -182,7 +134,7 @@ def parseRegionText(regiontext, build):
     pos = regiontext.split(':')[1]
     startbp = pos.split('-')[0].replace(',','')
     endbp = pos.split('-')[1].replace(',','')
-    chromLengths = pd.read_csv(os.path.join(MYDIR, 'data', build + '_chrom_lengths.txt'), sep="\t", encoding='utf-8')
+    chromLengths = pd.read_csv(os.path.join(app.config["LF_DATA_FOLDER"], build + '_chrom_lengths.txt'), sep="\t", encoding='utf-8')
     chromLengths.set_index('sequence',inplace=True)
     if chrom in ['X','x'] or chrom == '23':
         chrom = 23
@@ -289,11 +241,11 @@ def classify_files(filenames):
         else:
             raise InvalidUsage('Please upload up to 3 different file types as described', status_code=410)
         if extension in ['txt', 'tsv']:
-            gwas_filepath = os.path.join(MYDIR, app.config['UPLOAD_FOLDER'], filename)
+            gwas_filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         elif extension in ['ld']:
-            ldmat_filepath = os.path.join(MYDIR, app.config['UPLOAD_FOLDER'], filename)
+            ldmat_filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         elif extension in ['html']:
-            html_filepath = os.path.join(MYDIR, app.config['UPLOAD_FOLDER'], filename)
+            html_filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     return gwas_filepath, ldmat_filepath, html_filepath
 
 
@@ -380,10 +332,10 @@ def fetchSNV(chrom, bp, ref, build):
     dbsnp_filepath = ''
     if build.lower() in ["hg38", "grch38"]:
         suffix = 'b38'
-        dbsnp_filepath = os.path.join(MYDIR, 'data', 'dbSNP151', 'GRCh38p7', 'All_20180418.vcf.gz')
+        dbsnp_filepath = os.path.join(app.config["LF_DATA_FOLDER"], 'dbSNP151', 'GRCh38p7', 'All_20180418.vcf.gz')
     else:
         suffix = 'b37'
-        dbsnp_filepath = os.path.join(MYDIR, 'data', 'dbSNP151', 'GRCh37p13', 'All_20180423.vcf.gz')
+        dbsnp_filepath = os.path.join(app.config["LF_DATA_FOLDER"], 'dbSNP151', 'GRCh37p13', 'All_20180423.vcf.gz')
 
     # Load variant info from dbSNP151
     tbx = pysam.TabixFile(dbsnp_filepath)
@@ -450,10 +402,10 @@ def standardizeSNPs(variantlist, regiontxt, build):
     suffix = 'b37'
     if build.lower() in ["hg38", "grch38"]:
         suffix = 'b38'
-        dbsnp_filepath = os.path.join(MYDIR, 'data', 'dbSNP151', 'GRCh38p7', 'All_20180418.vcf.gz')
+        dbsnp_filepath = os.path.join(app.config["LF_DATA_FOLDER"], 'dbSNP151', 'GRCh38p7', 'All_20180418.vcf.gz')
     else:
         suffix = 'b37'
-        dbsnp_filepath = os.path.join(MYDIR, 'data', 'dbSNP151', 'GRCh37p13', 'All_20180423.vcf.gz')
+        dbsnp_filepath = os.path.join(app.config["LF_DATA_FOLDER"], 'dbSNP151', 'GRCh37p13', 'All_20180423.vcf.gz')
 
 
     # Load dbSNP file
@@ -600,10 +552,10 @@ def torsid(variantlist, regiontext, build):
     suffix = 'b37'
     if build.lower() in ["hg38", "grch38"]:
         suffix = 'b38'
-        dbsnp_filepath = os.path.join(MYDIR, 'data', 'dbSNP151', 'GRCh38p7', 'All_20180418.vcf.gz')
+        dbsnp_filepath = os.path.join(app.config["LF_DATA_FOLDER"], 'dbSNP151', 'GRCh38p7', 'All_20180418.vcf.gz')
     else:
         suffix = 'b37'
-        dbsnp_filepath = os.path.join(MYDIR, 'data', 'dbSNP151', 'GRCh37p13', 'All_20180423.vcf.gz')
+        dbsnp_filepath = os.path.join(app.config["LF_DATA_FOLDER"], 'dbSNP151', 'GRCh37p13', 'All_20180423.vcf.gz')
 
 
     # Load dbSNP file
@@ -799,7 +751,7 @@ def handle_file_upload(request):
             raise InvalidUsage(f"Unrecognized file format: {[file.filename for file in filenames if file.filename.rsplit('.', -1)[-1].lower() not in allowed_extensions]}")
         for file in filenames:
             filename = secure_filename(file.filename)
-            filepath = os.path.join(MYDIR, app.config['UPLOAD_FOLDER'], filename)
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(filepath)
             if not os.path.isfile(filepath):
                 request_entity_too_large(413)
@@ -1035,14 +987,14 @@ def resolve_plink_filepath(build, pop, chrom):
     plink_filepath = ""
     if build.lower() in ["hg19","grch37"]:
         if chrom == 23:
-            plink_filepath = os.path.join(MYDIR, "data", "1000Genomes_GRCh37", pop, "chrX")
+            plink_filepath = os.path.join(app.config["LF_DATA_FOLDER"], "1000Genomes_GRCh37", pop, "chrX")
         else:
-            plink_filepath = os.path.join(MYDIR, "data", "1000Genomes_GRCh37", pop, f"chr{chrom}")
+            plink_filepath = os.path.join(app.config["LF_DATA_FOLDER"], "1000Genomes_GRCh37", pop, f"chr{chrom}")
     elif build.lower() in ["hg38","grch38"]:
         if chrom == 23:
-            plink_filepath = os.path.join(MYDIR, "data", "1000Genomes_GRCh38", "chrX")
+            plink_filepath = os.path.join(app.config["LF_DATA_FOLDER"], "1000Genomes_GRCh38", "chrX")
         else:
-            plink_filepath = os.path.join(MYDIR, "data", "1000Genomes_GRCh38", f"chr{chrom}")
+            plink_filepath = os.path.join(app.config["LF_DATA_FOLDER"], "1000Genomes_GRCh38", f"chr{chrom}")
     else:
         raise InvalidUsage(f'{str(build)} is not a recognized genome build')
     return plink_filepath
@@ -1061,7 +1013,7 @@ def plink_ldmat(build, pop, chrom, snp_positions, outfilename, region=None) -> T
     # make snps file to extract:
     snps = [f"chr{str(int(chrom))}:{str(int(position))}" for position in snp_positions]
     writeList(snps, outfilename + "_snps.txt")
-    # plink_path = subprocess.run(args=["which","plink"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
+    #plink_path = subprocess.run(args=["which","plink"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
     if region is not None:
         from_bp = str(region[1])
         to_bp = str(region[2])
@@ -1092,7 +1044,7 @@ def plink_ldmat(build, pop, chrom, snp_positions, outfilename, region=None) -> T
             pop_filename = f"{pop}_female.txt"
         else:
             pop_filename = f"{pop}.txt"
-        popfile = os.path.join(MYDIR, 'data', '1000Genomes_GRCh38', pop_filename)
+        popfile = os.path.join(app.config["LF_DATA_FOLDER"], '1000Genomes_GRCh38', pop_filename)
         plink_args.extend(["--keep", popfile])
 
     elif build.lower() not in ["hg19", "grch37"]:
@@ -1113,7 +1065,7 @@ def plink_ldmat(build, pop, chrom, snp_positions, outfilename, region=None) -> T
 
 
 def plink_ld_pairwise(build, pop, chrom, snp_positions, snp_pvalues, outfilename):
-    # positions must be in hg19 coordinates # TODO: Why is this?
+    # positions must be in hg19 coordinates
     # returns NaN for SNPs not in 1KG LD file; preserves order of input snp_positions
     plink_filepath = resolve_plink_filepath(build, pop, chrom)
     # make snps file to extract:
@@ -1144,7 +1096,7 @@ def plink_ld_pairwise(build, pop, chrom, snp_positions, snp_pvalues, outfilename
     lead_snp = f"chr{str(int(chrom))}:{str(int(new_lead_snp_position))}"
 
     # plink_path = subprocess.run(args=["which","plink"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
-    
+
     plink_binary = "./plink"
     if os.name == "nt":
         plink_binary = "./plink.exe"
@@ -1172,7 +1124,7 @@ def plink_ld_pairwise(build, pop, chrom, snp_positions, snp_pvalues, outfilename
             pop_filename = f"{pop}_female.txt"
         else:
             pop_filename = f"{pop}.txt"
-        popfile = os.path.join(MYDIR, 'data', '1000Genomes_GRCh38', pop_filename)
+        popfile = os.path.join(app.config["LF_DATA_FOLDER"], '1000Genomes_GRCh38', pop_filename)
         plink_args.extend(["--keep", popfile])
 
     elif build.lower() not in ["hg19","grch37"]:
@@ -1471,7 +1423,7 @@ def getDBStatus():
 
 @app.route("/populations")
 def get1KGPopulations():
-    populations = pd.read_csv(os.path.join(MYDIR, 'data/populations.tsv'), sep='\t')
+    populations = pd.read_csv(os.path.join(app.config["LF_DATA_FOLDER"], 'populations.tsv'), sep='\t')
     return jsonify(populations.to_dict(orient='list'))
 
 @app.route("/genenames/<build>")
@@ -1628,7 +1580,7 @@ def regionCheck(build, regiontext):
     pos = regiontext.split(':')[1]
     startbp = pos.split('-')[0].replace(',','')
     endbp = pos.split('-')[1].replace(',','')
-    chromLengths = pd.read_csv(os.path.join(MYDIR, 'data', build + '_chrom_lengths.txt'), sep="\t", encoding='utf-8')
+    chromLengths = pd.read_csv(os.path.join(app.config["LF_DATA_FOLDER"], build + '_chrom_lengths.txt'), sep="\t", encoding='utf-8')
     chromLengths.set_index('sequence',inplace=True)
     if chrom in ['X','x'] or chrom == '23':
         chrom = 23
@@ -1663,6 +1615,7 @@ def regionCheck(build, regiontext):
     else:
         return jsonify(message)
     return jsonify(message)
+
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -2357,7 +2310,7 @@ def setbasedtest():
     uploaded_extensions = []
     for file in files:
         filename = secure_filename(file.filename)
-        filepath = os.path.join(MYDIR, app.config['UPLOAD_FOLDER'], filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         # classify_files, modified
         extension = filename.split('.')[-1]
         # Users can upload up to 1 LD, and must upload 1 summary stats file (.txt, .tsv)
@@ -2674,7 +2627,7 @@ def setbasedtest():
     # Indicate that the request was a success
     data.update(SBTresults)
     data['success'] = True
-    # print('Loading a success')
+    #print('Loading a success')
 
     # Save data in JSON format for plotting
     sessionfile = f'session_data/form_data_setbasedtest-{my_session_id}.json'
@@ -2729,17 +2682,16 @@ def hello_world():
    return render_template('cftr_graph.html', svg=Markup(svg))
 
 
-if __name__ == "__main__":
-    ADMINS = ["mackenzie.frew@sickkids.ca"]
-    if not app.debug:
-        mail_handler = SMTPHandler(
-            mailhost=("localhost", 25),
-            fromaddr="locusfocus@research.sickkids.ca",
-            toaddrs=ADMINS,
-            subject="[LocusFocus] Application Error Report",
-            credentials=("locusfocus", os.environ.get("SMTP_PASSWORD", "")),
-        )
-        mail_handler.setLevel(logging.ERROR)
-        app.logger.addHandler(mail_handler)
+# if __name__ == "__main__":
+#     ADMINS = ["mackenzie.frew@sickkids.ca"]
+#     if not app.debug:
+#         mail_handler = SMTPHandler(mailhost=('localhost',25),
+#                            fromaddr='locusfocus@research.sickkids.ca',
+#                            toaddrs=ADMINS,
+#                            subject='[LocusFocus] Application Error Report',
+#                            credentials=("locusfocus", os.environ.get("SMTP_PASSWORD", "")))
+#         mail_handler.setLevel(logging.ERROR)
+#         app.logger.addHandler(mail_handler)
 
-    app.run(port=5000, host="0.0.0.0")
+#     app.run(port=5000, host="0.0.0.0")
+
