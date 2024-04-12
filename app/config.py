@@ -69,7 +69,7 @@ class DevConfig(BaseConfig):
     """
     Configuration options for development environment only.
     """
-
+    MONGO_URI = "mongodb://localhost:27017"
     pass
 
 
@@ -77,5 +77,5 @@ class ProdConfig(BaseConfig):
     """
     Configuration options for production environment only.
     """
-
+    MONGO_URI = "mongodb://localhost:27017"
     pass

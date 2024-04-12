@@ -29,7 +29,10 @@ from pprint import pprint
 import htmltableparser
 from numpy_encoder import NumpyEncoder
 
-from . import ext, talisman, files
+from . import ext, talisman, files, mongo
+
+client = mongo.cx
+db = client.GTEx_V7
 
 #import getSimpleSumStats
 
