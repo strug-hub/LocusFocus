@@ -146,3 +146,5 @@ locusfocus_env
 locusfocusR.tar.gz
 !templates/lib/
 !*set_based_test*
+app/static/session_data/
+app/static/upload/

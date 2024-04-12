@@ -18,11 +18,8 @@ import gc
 import logging
 from logging.handlers import SMTPHandler
 
-from flask import Flask, request, jsonify, render_template, send_file, Markup, g, current_app as app
+from flask import request, jsonify, render_template, send_file, Markup, g, current_app as app
 from werkzeug.utils import secure_filename
-from flask_sitemap import Sitemap
-from flask_uploads import UploadSet, configure_uploads, DATA
-from flask_talisman import Talisman
 from dotenv import load_dotenv
 
 from pymongo import MongoClient
@@ -32,16 +29,16 @@ from pprint import pprint
 import htmltableparser
 from numpy_encoder import NumpyEncoder
 
+from . import ext, talisman, files
+
 #import getSimpleSumStats
 
 genomicWindowLimit = 2_000_000
 one_sided_SS_window_size = 100000 # (100 kb on either side of the lead SNP)
 fileSizeLimit = 500 * 1024 * 1024 # in Bytes
 
-MYDIR = os.path.dirname(__file__)
+MYDIR = os.path.dirname(__file__) # app directory
 APP_STATIC = os.path.join(MYDIR, 'static')
-
-load_dotenv(MYDIR)
 
 ##################
 # Default settings
@@ -119,8 +116,8 @@ COLUMN_NAMES: Dict[str, str] = {
 
 # app.secret_key = mysecrets.mysecret
 
-collapsed_genes_df_hg19 = pd.read_csv(os.path.join(MYDIR, 'data/collapsed_gencode_v19_hg19.gz'), compression='gzip', sep='\t', encoding='utf-8')
-collapsed_genes_df_hg38 = pd.read_csv(os.path.join(MYDIR, 'data/collapsed_gencode_v26_hg38.gz'), compression='gzip', sep='\t', encoding='utf-8')
+collapsed_genes_df_hg19 = pd.read_csv(os.path.join(app.config["LF_DATA_FOLDER"], 'collapsed_gencode_v19_hg19.gz'), compression='gzip', sep='\t', encoding='utf-8')
+collapsed_genes_df_hg38 = pd.read_csv(os.path.join(app.config["LF_DATA_FOLDER"], 'collapsed_gencode_v26_hg38.gz'), compression='gzip', sep='\t', encoding='utf-8')
 
 collapsed_genes_df = collapsed_genes_df_hg19 # For now
 LD_MAT_DIAG_CONSTANT = 1e-6
@@ -144,7 +141,7 @@ def parseRegionText(regiontext, build):
     pos = regiontext.split(':')[1]
     startbp = pos.split('-')[0].replace(',','')
     endbp = pos.split('-')[1].replace(',','')
-    chromLengths = pd.read_csv(os.path.join(MYDIR, 'data', build + '_chrom_lengths.txt'), sep="\t", encoding='utf-8')
+    chromLengths = pd.read_csv(os.path.join(app.config["LF_DATA_FOLDER"], build + '_chrom_lengths.txt'), sep="\t", encoding='utf-8')
     chromLengths.set_index('sequence',inplace=True)
     if chrom in ['X','x'] or chrom == '23':
         chrom = 23
@@ -251,11 +248,11 @@ def classify_files(filenames):
         else:
             raise InvalidUsage('Please upload up to 3 different file types as described', status_code=410)
         if extension in ['txt', 'tsv']:
-            gwas_filepath = os.path.join(MYDIR, app.config['UPLOAD_FOLDER'], filename)
+            gwas_filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         elif extension in ['ld']:
-            ldmat_filepath = os.path.join(MYDIR, app.config['UPLOAD_FOLDER'], filename)
+            ldmat_filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         elif extension in ['html']:
-            html_filepath = os.path.join(MYDIR, app.config['UPLOAD_FOLDER'], filename)
+            html_filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     return gwas_filepath, ldmat_filepath, html_filepath
 
 
@@ -342,10 +339,10 @@ def fetchSNV(chrom, bp, ref, build):
     dbsnp_filepath = ''
     if build.lower() in ["hg38", "grch38"]:
         suffix = 'b38'
-        dbsnp_filepath = os.path.join(MYDIR, 'data', 'dbSNP151', 'GRCh38p7', 'All_20180418.vcf.gz')
+        dbsnp_filepath = os.path.join(app.config["LF_DATA_FOLDER"], 'dbSNP151', 'GRCh38p7', 'All_20180418.vcf.gz')
     else:
         suffix = 'b37'
-        dbsnp_filepath = os.path.join(MYDIR, 'data', 'dbSNP151', 'GRCh37p13', 'All_20180423.vcf.gz')
+        dbsnp_filepath = os.path.join(app.config["LF_DATA_FOLDER"], 'dbSNP151', 'GRCh37p13', 'All_20180423.vcf.gz')
 
     # Load variant info from dbSNP151
     tbx = pysam.TabixFile(dbsnp_filepath)
@@ -412,10 +409,10 @@ def standardizeSNPs(variantlist, regiontxt, build):
     suffix = 'b37'
     if build.lower() in ["hg38", "grch38"]:
         suffix = 'b38'
-        dbsnp_filepath = os.path.join(MYDIR, 'data', 'dbSNP151', 'GRCh38p7', 'All_20180418.vcf.gz')
+        dbsnp_filepath = os.path.join(app.config["LF_DATA_FOLDER"], 'dbSNP151', 'GRCh38p7', 'All_20180418.vcf.gz')
     else:
         suffix = 'b37'
-        dbsnp_filepath = os.path.join(MYDIR, 'data', 'dbSNP151', 'GRCh37p13', 'All_20180423.vcf.gz')
+        dbsnp_filepath = os.path.join(app.config["LF_DATA_FOLDER"], 'dbSNP151', 'GRCh37p13', 'All_20180423.vcf.gz')
 
 
     # Load dbSNP file
@@ -562,10 +559,10 @@ def torsid(variantlist, regiontext, build):
     suffix = 'b37'
     if build.lower() in ["hg38", "grch38"]:
         suffix = 'b38'
-        dbsnp_filepath = os.path.join(MYDIR, 'data', 'dbSNP151', 'GRCh38p7', 'All_20180418.vcf.gz')
+        dbsnp_filepath = os.path.join(app.config["LF_DATA_FOLDER"], 'dbSNP151', 'GRCh38p7', 'All_20180418.vcf.gz')
     else:
         suffix = 'b37'
-        dbsnp_filepath = os.path.join(MYDIR, 'data', 'dbSNP151', 'GRCh37p13', 'All_20180423.vcf.gz')
+        dbsnp_filepath = os.path.join(app.config["LF_DATA_FOLDER"], 'dbSNP151', 'GRCh37p13', 'All_20180423.vcf.gz')
 
 
     # Load dbSNP file
@@ -757,7 +754,7 @@ def handle_file_upload(request):
         filenames = request.files.getlist('files[]')
         for file in filenames:
             filename = secure_filename(file.filename)
-            filepath = os.path.join(MYDIR, app.config['UPLOAD_FOLDER'], filename)
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(filepath)
             if not os.path.isfile(filepath):
                 request_entity_too_large(413)
@@ -993,14 +990,14 @@ def resolve_plink_filepath(build, pop, chrom):
     plink_filepath = ""
     if build.lower() in ["hg19","grch37"]:
         if chrom == 23:
-            plink_filepath = os.path.join(MYDIR, "data", "1000Genomes_GRCh37", pop, "chrX")
+            plink_filepath = os.path.join(app.config["LF_DATA_FOLDER"], "1000Genomes_GRCh37", pop, "chrX")
         else:
-            plink_filepath = os.path.join(MYDIR, "data", "1000Genomes_GRCh37", pop, f"chr{chrom}")
+            plink_filepath = os.path.join(app.config["LF_DATA_FOLDER"], "1000Genomes_GRCh37", pop, f"chr{chrom}")
     elif build.lower() in ["hg38","grch38"]:
         if chrom == 23:
-            plink_filepath = os.path.join(MYDIR, "data", "1000Genomes_GRCh38", "chrX")
+            plink_filepath = os.path.join(app.config["LF_DATA_FOLDER"], "1000Genomes_GRCh38", "chrX")
         else:
-            plink_filepath = os.path.join(MYDIR, "data", "1000Genomes_GRCh38", f"chr{chrom}")
+            plink_filepath = os.path.join(app.config["LF_DATA_FOLDER"], "1000Genomes_GRCh38", f"chr{chrom}")
     else:
         raise InvalidUsage(f'{str(build)} is not a recognized genome build')
     return plink_filepath
@@ -1009,10 +1006,10 @@ def plink_ldmat(build, pop, chrom, snp_positions, outfilename, region=None) -> T
     """
     Generate an LD matrix using PLINK, using the provided population `pop` and the provided region information (`chrom`, `snp_positions`).
     If `region` is specified (format: (chrom, start, end)), then start and end will be used for region.
-    
+
     Return a tuple containing:
-    - pd.DataFrame of the generated .bim file (the SNPs used in the PLINK LD calculation). 
-      https://www.cog-genomics.org/plink/1.9/formats#bim 
+    - pd.DataFrame of the generated .bim file (the SNPs used in the PLINK LD calculation).
+      https://www.cog-genomics.org/plink/1.9/formats#bim
     - np.matrix representing the generated LD matrix itself
     """
     plink_filepath = resolve_plink_filepath(build, pop, chrom)
@@ -1032,7 +1029,7 @@ def plink_ldmat(build, pop, chrom, snp_positions, outfilename, region=None) -> T
         plink_binary = "./plink.exe"
 
     plink_args = [
-        plink_binary, 
+        plink_binary,
         '--bfile', plink_filepath,
         "--chr", str(chrom),
         "--extract", outfilename + "_snps.txt",
@@ -1050,7 +1047,7 @@ def plink_ldmat(build, pop, chrom, snp_positions, outfilename, region=None) -> T
             pop_filename = f"{pop}_female.txt"
         else:
             pop_filename = f"{pop}.txt"
-        popfile = os.path.join(MYDIR, 'data', '1000Genomes_GRCh38', pop_filename)
+        popfile = os.path.join(app.config["LF_DATA_FOLDER"], '1000Genomes_GRCh38', pop_filename)
         plink_args.extend(["--keep", popfile])
 
     elif build.lower() not in ["hg19", "grch37"]:
@@ -1125,7 +1122,7 @@ def plink_ld_pairwise(build, lead_snp_position, pop, chrom, snp_positions, snp_p
             pop_filename = f"{pop}_female.txt"
         else:
             pop_filename = f"{pop}.txt"
-        popfile = os.path.join(MYDIR, 'data', '1000Genomes_GRCh38', pop_filename)
+        popfile = os.path.join(app.config["LF_DATA_FOLDER"], '1000Genomes_GRCh38', pop_filename)
         plink_args.extend(["--keep", popfile])
 
     elif build.lower() not in ["hg19","grch37"]:
@@ -1424,7 +1421,7 @@ def getDBStatus():
 
 @app.route("/populations")
 def get1KGPopulations():
-    populations = pd.read_csv(os.path.join(MYDIR, 'data/populations.tsv'), sep='\t')
+    populations = pd.read_csv(os.path.join(app.config["LF_DATA_FOLDER"], 'populations.tsv'), sep='\t')
     return jsonify(populations.to_dict(orient='list'))
 
 @app.route("/genenames/<build>")
@@ -1581,7 +1578,7 @@ def regionCheck(build, regiontext):
     pos = regiontext.split(':')[1]
     startbp = pos.split('-')[0].replace(',','')
     endbp = pos.split('-')[1].replace(',','')
-    chromLengths = pd.read_csv(os.path.join(MYDIR, 'data', build + '_chrom_lengths.txt'), sep="\t", encoding='utf-8')
+    chromLengths = pd.read_csv(os.path.join(app.config["LF_DATA_FOLDER"], build + '_chrom_lengths.txt'), sep="\t", encoding='utf-8')
     chromLengths.set_index('sequence',inplace=True)
     if chrom in ['X','x'] or chrom == '23':
         chrom = 23
@@ -2311,7 +2308,7 @@ def setbasedtest():
     uploaded_extensions = []
     for file in files:
         filename = secure_filename(file.filename)
-        filepath = os.path.join(MYDIR, app.config['UPLOAD_FOLDER'], filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         # classify_files, modified
         extension = filename.split('.')[-1]
         # Users can upload up to 1 LD, and must upload 1 summary stats file (.txt, .tsv)
@@ -2401,7 +2398,7 @@ def setbasedtest():
     if regions == []:
         regions = infer_regions(summary_dataset, bp, chrom)
         regions_inferred = True
-        
+
     validate_region_size(regions, inferred=regions_inferred)
 
     combine_lds = False
@@ -2415,7 +2412,7 @@ def setbasedtest():
         first_stages = []
         first_stage_p = []
         if ldmat_filepath != "":
-            # - User-provided LD matrix, separate tests - 
+            # - User-provided LD matrix, separate tests -
             ld_mat = pd.read_csv(ldmat_filepath, sep="\t", encoding='utf-8', header=None)
             ld_mat = np.matrix(ld_mat)
             validate_user_LD(ld_mat, old_summary_dataset, removed)
@@ -2688,7 +2685,7 @@ def hello_world():
 #     if not app.debug:
 #         mail_handler = SMTPHandler(mailhost=('localhost',25),
 #                            fromaddr='locusfocus@research.sickkids.ca',
-#                            toaddrs=ADMINS, 
+#                            toaddrs=ADMINS,
 #                            subject='[LocusFocus] Application Error Report',
 #                            credentials=("locusfocus", os.environ.get("SMTP_PASSWORD", "")))
 #         mail_handler.setLevel(logging.ERROR)
