@@ -10,26 +10,21 @@ from datetime import datetime
 from bs4 import BeautifulSoup as bs
 import re
 import pysam
-import mysecrets
 import glob
 import tarfile
 from typing import Dict, Tuple, List
 import gc
-import logging
-from logging.handlers import SMTPHandler
 
 from flask import request, jsonify, render_template, send_file, Markup, g, current_app as app
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 
-from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
 
-from pprint import pprint
 import htmltableparser
 from numpy_encoder import NumpyEncoder
 
-from . import ext, talisman, files, mongo
+from . import ext, mongo
 
 client = mongo.cx
 db = client.GTEx_V7
@@ -117,16 +112,11 @@ COLUMN_NAMES: Dict[str, str] = {
 ################
 ################
 
-# app.secret_key = mysecrets.mysecret
-
 collapsed_genes_df_hg19 = pd.read_csv(os.path.join(app.config["LF_DATA_FOLDER"], 'collapsed_gencode_v19_hg19.gz'), compression='gzip', sep='\t', encoding='utf-8')
 collapsed_genes_df_hg38 = pd.read_csv(os.path.join(app.config["LF_DATA_FOLDER"], 'collapsed_gencode_v26_hg38.gz'), compression='gzip', sep='\t', encoding='utf-8')
 
 collapsed_genes_df = collapsed_genes_df_hg19 # For now
 LD_MAT_DIAG_CONSTANT = 1e-6
-
-conn = "mongodb://localhost:27017"
-client = MongoClient(conn)
 
 available_gtex_versions = ["V7", "V8"]
 valid_populations = ["EUR", "AFR", "EAS", "SAS", "AMR", "ASN", "NFE"]

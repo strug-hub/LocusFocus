@@ -23,7 +23,7 @@ def create_app(config_class=ProdConfig):
     app = Flask(__name__, instance_relative_config=False)
 
     app.config.from_object(config_class())
-    if app.config["SECRET_KEY"] is None:
+    if app.config["SECRET_KEY"] is None or app.config["SECRET_KEY"] == "":
         raise Exception("SECRET_KEY is not set! Add FLASK_SECRET_KEY to environment!")
 
     ext.init_app(app)
