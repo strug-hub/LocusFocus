@@ -806,7 +806,7 @@ def get_gwas_column_names_and_validate(request, gwas_data, runcoloc2=False, setb
         FormID.P_COL: pcol
     })
 
-    if not setbasedtest:
+    if not setbasedtest and not infer_variant:
         refcol = verify_gwas_col(FormID.REF_COL, request, gwas_data.columns)
         altcol = verify_gwas_col(FormID.ALT_COL, request, gwas_data.columns)
         column_names.extend([ refcol, altcol ])
@@ -1679,19 +1679,6 @@ def index():
         gwas_data, column_names, column_dict, infer_variant = get_gwas_column_names_and_validate(request, gwas_data, runcoloc2)
         gwas_data, column_dict, infer_variant = subset_gwas_data_to_entered_columns(request, gwas_data, column_names, column_dict, infer_variant)
 
-        # TODO: Replace these everywhere, or use something other than a dictionary?
-        chromcol = column_dict[FormID.CHROM_COL]
-        poscol = column_dict[FormID.POS_COL]
-        refcol = column_dict[FormID.REF_COL]
-        altcol = column_dict[FormID.ALT_COL]
-        snpcol = column_dict[FormID.SNP_COL]
-        pcol = column_dict[FormID.P_COL]
-        if runcoloc2:
-            betacol = column_dict[FormID.BETA_COL]
-            stderrcol = column_dict[FormID.STDERR_COL]
-            numsamplescol = column_dict[FormID.NUMSAMPLES_COL]
-            mafcol = column_dict[FormID.MAF_COL]
-
         # LD:
         pops = request.form[FormID.LD_1000GENOME_POP]
         if len(pops) == 0: pops = 'EUR'
@@ -1737,6 +1724,19 @@ def index():
         #######################################################
         if infer_variant:
             gwas_data, column_dict = standardize_gwas_variant_ids(column_dict, gwas_data, regionstr, coordinate)
+
+        # TODO: Replace these everywhere, or use something other than a dictionary?
+        chromcol = column_dict[FormID.CHROM_COL]
+        poscol = column_dict[FormID.POS_COL]
+        refcol = column_dict[FormID.REF_COL]
+        altcol = column_dict[FormID.ALT_COL]
+        snpcol = column_dict[FormID.SNP_COL]
+        pcol = column_dict[FormID.P_COL]
+        if runcoloc2:
+            betacol = column_dict[FormID.BETA_COL]
+            stderrcol = column_dict[FormID.STDERR_COL]
+            numsamplescol = column_dict[FormID.NUMSAMPLES_COL]
+            mafcol = column_dict[FormID.MAF_COL]
 
         #######################################################
         # Subsetting GWAS file
