@@ -125,12 +125,11 @@
             </div>
             <div class="row">
               <div class="col-md-6">
-                <input disabled type="checkbox" id="markerCheckbox" name="markerCheckbox" onclick="inferVariant(this)" />
+                <input type="checkbox" id="markerCheckbox" name="markerCheckbox" onclick="inferVariant(this)" />
                 <label
                   for="markerCheckbox" style="margin: 0px; padding: 10px;  height:42px" data-toggle="tooltip"
                   data-html="true"
-                  title="<p><b>NOTE: This feature is not working as intended and we are working on a fix. The checkbox will be disabled until the fix is implemented. Sorry for the inconvenience.</b></p>
-                    <p>If checked, the variant ID will be used to infer the chromosome, position, reference and alternate alleles using dbSNP151.</p>
+                  title="<p>If checked, the variant ID will be used to infer the chromosome, position, reference and alternate alleles using dbSNP151.</p>
                     <p>This option is <em>not</em> recommended due to multi-mapping of some rsid's and ambiguity for multi-allelic rsid variants.</p>""
                 >
                   Use marker ID column to infer variant position and alleles
