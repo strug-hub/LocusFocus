@@ -66,7 +66,7 @@ function buildSSguidanceTable(genes, tissues, SSP, SSP2) {
         }
     }
 
-    var suggested_SSP = -Math.log10(0.05 / numTested);
+    var suggested_SSP = numTested > 0 ? -Math.log10(0.05 / numTested) : "N/A (No datasets were tested successfully)";
 
     // Table body:
     var row = tbody.append('tr');
