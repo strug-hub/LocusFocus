@@ -1060,7 +1060,7 @@ def plink_ldmat(build, pop, chrom, snp_positions, outfilename, region=None) -> T
     if plinkrun.returncode != 0:
         raise InvalidUsage(plinkrun.stdout.decode('utf-8'), status_code=410)
     ld_snps_df = pd.read_csv(outfilename + ".bim", sep="\t", header=None)
-    # ld_snps_df.iloc[:, 0] = Xto23(list(ld_snps_df.iloc[:, 0]))  TODO: Is this safe?
+    ld_snps_df.iloc[:, 0] = Xto23(list(ld_snps_df.iloc[:, 0]))
     ldmat = np.matrix(pd.read_csv(outfilename + ".ld", sep="\t", header=None))
     return ld_snps_df, ldmat
 
@@ -1093,6 +1093,9 @@ def plink_ld_pairwise(build, pop, chrom, snp_positions, snp_pvalues, outfilename
             "No alternative lead SNP found in the 1000 Genomes", status_code=410
         )
     new_lead_snp_row = positions_in_1kg_df[positions_in_1kg_df["p"] == positions_in_1kg_df["p"].min()]
+    if len(new_lead_snp_row) > 1:
+        app.logger.warning(f"Dataset has multiple lead SNPs: {new_lead_snp_row.to_json()}, taking first one...")
+        new_lead_snp_row = new_lead_snp_row.iloc[0]
     new_lead_snp_position = int(new_lead_snp_row["pos"])
     lead_snp = f"chr{str(int(chrom))}:{str(int(new_lead_snp_position))}"
 
