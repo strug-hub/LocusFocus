@@ -1714,10 +1714,6 @@ def index():
             except:
                 raise InvalidUsage('Invalid value provided for the set-based p-value threshold. Value must be numeric between 0 and 1.')
 
-        # Ensure custom LD matrix and GWAS files are sorted for accurate matching:
-        if ldmat_filepath != '' and poscol != '' and not isSorted(list(gwas_data[poscol])):
-            raise InvalidUsage('GWAS data input is not sorted and may not match with the LD matrix', status_code=410)
-
         regionstr = request.form[FormID.LOCUS]
         if regionstr == "": regionstr = DEFAULT_FORM_VALUE_DICT[FormID.LOCUS]
         leadsnpname = request.form['leadsnp']
@@ -1740,6 +1736,10 @@ def index():
             stderrcol = column_dict[FormID.STDERR_COL]
             numsamplescol = column_dict[FormID.NUMSAMPLES_COL]
             mafcol = column_dict[FormID.MAF_COL]
+
+        # Ensure custom LD matrix and GWAS files are sorted for accurate matching:
+        if ldmat_filepath != '' and poscol != '' and not isSorted(list(gwas_data[poscol])):
+            raise InvalidUsage('GWAS data input is not sorted and may not match with the LD matrix', status_code=410)
 
         #######################################################
         # Subsetting GWAS file
