@@ -12,7 +12,7 @@ import re
 import pysam
 import glob
 import tarfile
-from typing import Dict, Tuple, List
+from typing import Dict, Optional, Tuple, List
 import gc
 
 from flask import request, jsonify, render_template, send_file, Markup, current_app as app
@@ -972,6 +972,38 @@ def infer_regions(dataset: pd.DataFrame, bp_column: str, chrom_column: str):
 # LD Calculation from 1KG using PLINK (on-the-fly)
 ####################################
 
+def find_plink_1kg_overlap(plink_filepath: str, snp_positions: List[int], snp_pvalues: Optional[List[float]] = None):
+    """Return a Pandas dataframe containing SNP positions ("pos") and P values ("p") that were found
+    in the provided 1000 Genomes dataset.
+
+    Args:
+        plink_filepath (str): Absolute path to a filename (no extension) for a given 1000Genomes dataset. 
+            Returned by `resolve_plink_filepath`.
+        snp_positions (List[int]): List of SNP positions. Must be the same length as `snp_pvalues`.
+        snp_pvalues (List[float] | None): List of SNP P values. Must be the same length as `snp_positions`. If none, then we ignore it.
+
+    Returns:
+        pd.DataFrame: A merged dataframe containing the overlap between the provided positions/pvalues, and the contents of the .bim
+            file for the given 1000 Genomes population.
+    """
+     # Ensure lead snp is also present in 1KG; if not, choose next best lead SNP
+    the1kg_snps_df = pd.read_csv(
+        plink_filepath + ".bim", sep="\t", header=None
+    )  # .iloc[:, 1]
+
+    # Find lowest P-value position in snp_positions that is also in 1KG
+    gwas_positions_df = pd.DataFrame({"pos": snp_positions, "p": snp_pvalues})
+    # intersection
+    positions_in_1kg_df = pd.merge(
+        gwas_positions_df,
+        the1kg_snps_df,
+        how="inner",
+        left_on="pos",
+        right_on=the1kg_snps_df.columns[3],
+    )
+    return positions_in_1kg_df
+
+
 def resolve_plink_filepath(build, pop, chrom):
     """
     Returns the file path of the binary plink file
@@ -1058,6 +1090,9 @@ def plink_ldmat(build, pop, chrom, snp_positions, outfilename, region=None) -> T
     )
 
     if plinkrun.returncode != 0:
+        overlap = find_plink_1kg_overlap(plink_filepath, snp_positions, None)
+        if len(overlap) == 0:
+            raise InvalidUsage(f"No overlap found between provided SNPs and the selected 1000 Genomes dataset. Please select a different 1000 Genomes population, or provide your own LD matrix.\n\nPLINK error output:\n\n{plinkrun.stdout.decode('utf-8')}", status_code=410)
         raise InvalidUsage(plinkrun.stdout.decode('utf-8'), status_code=410)
     ld_snps_df = pd.read_csv(outfilename + ".bim", sep="\t", header=None)
     ld_snps_df.iloc[:, 0] = Xto23(list(ld_snps_df.iloc[:, 0]))
@@ -1073,24 +1108,10 @@ def plink_ld_pairwise(build, pop, chrom, snp_positions, snp_pvalues, outfilename
     snps = [f"chr{str(int(chrom))}:{str(int(position))}" for position in snp_positions]
     writeList(snps, outfilename + "_snps.txt")
 
-    # Ensure lead snp is also present in 1KG; if not, choose next best lead SNP
-    the1kg_snps_df = pd.read_csv(
-        plink_filepath + ".bim", sep="\t", header=None
-    )  # .iloc[:, 1]
-
-    # Find lowest P-value position in snp_positions that is also in 1KG
-    gwas_positions_df = pd.DataFrame({"pos": snp_positions, "p": snp_pvalues})
-    # intersection
-    positions_in_1kg_df = pd.merge(
-        gwas_positions_df,
-        the1kg_snps_df,
-        how="inner",
-        left_on="pos",
-        right_on=the1kg_snps_df.columns[3],
-    )
+    positions_in_1kg_df = find_plink_1kg_overlap(plink_filepath, snp_positions, snp_pvalues)
     if len(positions_in_1kg_df) == 0:
         raise InvalidUsage(
-            "No alternative lead SNP found in the 1000 Genomes", status_code=410
+            f"No alternative lead SNP found in the 1000 Genomes. This error occurs when no provided SNPs could be found in the selected 1000 Genomes dataset. Please try a different population, or provide your own LD matrix.", status_code=410
         )
     new_lead_snp_row = positions_in_1kg_df[positions_in_1kg_df["p"] == positions_in_1kg_df["p"].min()]
     if len(new_lead_snp_row) > 1:
