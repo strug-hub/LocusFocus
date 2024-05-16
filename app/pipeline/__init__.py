@@ -5,4 +5,3 @@ and other utilities for creating pipelines for LocusFocus.
 
 from .pipeline import Pipeline
 from .pipeline_stage import PipelineStage
-from .payload import Payload
