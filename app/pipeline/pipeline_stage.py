@@ -1,12 +1,11 @@
-from .payload import Payload
-
 class PipelineStage():
     """
-    An abstract pipeline stage. Other stages should inherit
-    from this one, and implement the `invoke` method.
+    An abstract pipeline stage. 
+    
+    Other stages must inherit from this one and implement the `invoke` method.
     """
 
-    def invoke(self, payload: Payload) -> Payload:
+    def invoke(self, payload: object) -> object:
         """
         Invoke this pipeline stage on the given payload.
 

@@ -1,6 +1,5 @@
 from typing import List # type: ignore
 from .pipeline_stage import PipelineStage
-from .payload import Payload
 
 
 class Pipeline():
@@ -13,7 +12,7 @@ class Pipeline():
     def __init__(self):
         self.stages: List[PipelineStage] = []
 
-    def invoke_stage(self, stage: PipelineStage, payload: Payload) -> Payload:
+    def invoke_stage(self, stage: PipelineStage, payload: object) -> object:
         # pre-stage steps go here
         new_payload = stage.invoke(payload)
         # post-stage steps go here
@@ -32,7 +31,7 @@ class Pipeline():
         self.stages.append(stage)
         return self
 
-    def process(self, payload: Payload) -> Payload:
+    def process(self, payload: object) -> object:
         """Execute the pipeline stages in-order on the given payload.
 
         Args:
