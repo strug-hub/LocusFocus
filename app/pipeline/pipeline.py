@@ -18,8 +18,8 @@ class Pipeline():
         # post-stage steps go here
         return new_payload
 
-    def pipe(self, stage: PipelineStage):
-        """Add a new stage to the pipeline. 
+    def pipe(self, *stages: PipelineStage):
+        """Add new stage(s) to the pipeline. 
         Serves as a builder function for the pipeline, and can be chain-called.
 
         Args:
@@ -28,7 +28,7 @@ class Pipeline():
         Returns:
             Pipeline: The new pipeline with the new stage added.
         """
-        self.stages.append(stage)
+        self.stages.extend(stages)
         return self
 
     def process(self, payload: object) -> object:
