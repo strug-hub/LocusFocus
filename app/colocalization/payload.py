@@ -1,9 +1,10 @@
 from uuid import uuid4
-from typing import List, Literal, Dict, Optional
+from typing import List, Literal, Dict, Optional, Tuple
 
 import pandas as pd
 from flask import Request
 
+from app.colocalization.utils import parse_region_text
 from app.routes import InvalidUsage
 
 
@@ -38,7 +39,10 @@ class SessionPayload(object):
     # Files
     gwas_data: pd.DataFrame
     ld_data: pd.DataFrame
-    secondary_datasets: Dict[str, pd.DataFrame]
+    secondary_datasets: Optional[Dict[str, pd.DataFrame]]
+
+    # Other
+    gwas_indices_kept: List[bool]
     
     def __init__(self, request: Request):
         self.session_id = uuid4()
@@ -62,6 +66,14 @@ class SessionPayload(object):
         if self.plot_locus is None:
             self.plot_locus = self.request.form.get("locus", "1:205500000-206000000")
         return self.plot_locus
+    
+    def get_locus_tuple(self) -> Tuple[int, int, int]:
+        """
+        Gets the form input for plot locus but as a separated tuple: (chrom, start, end).
+        """
+        locus = self.get_locus()
+        coordinate = self.get_coordinate()
+        return parse_region_text(locus, coordinate)
     
     def get_infer_variant(self) -> bool:
         """

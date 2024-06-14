@@ -1,7 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, List
 
-from flask import current_app as app
 import pandas as pd
 import numpy as np
 
@@ -9,6 +7,7 @@ from app.colocalization.payload import SessionPayload
 from app.colocalization.utils import download_file, standardize_snps, decompose_variant_list, x_to_23
 from app.pipeline import PipelineStage
 from app.routes import InvalidUsage
+
 
 @dataclass
 class GWASColumn():
@@ -24,13 +23,16 @@ class ReadGWASFileStage(PipelineStage):
     """
     Read a GWAS file into the payload as a DataFrame.
 
-    Read the form for column names, and 
+    Read the form for column names, and
     rename the columns to a standard set of column names.
 
     Standard column names are the .default field for each
     GWASColumn in GWAS_COLUMNS.
+
+    Prerequisites:
+    - Session is created.
     """
-    VALID_GWAS_EXTENSIONS = ['.txt', '.tsv']
+    VALID_GWAS_EXTENSIONS = ['txt', 'tsv']
 
     GWAS_COLUMNS = [
         GWASColumn("chrom-col", "CHROM"),
@@ -51,6 +53,7 @@ class ReadGWASFileStage(PipelineStage):
         gwas_data = self._read_gwas_file(payload)
         gwas_data = self._set_gwas_columns(payload, gwas_data)
         gwas_data = self._validate_gwas_file(payload, gwas_data)
+        gwas_data = self._subset_gwas_file(payload, gwas_data)
 
         payload.gwas_data = gwas_data
 
@@ -67,7 +70,7 @@ class ReadGWASFileStage(PipelineStage):
 
         if gwas_filepath is None:
             raise InvalidUsage(f"GWAS file could not be found in uploaded files. Please upload a GWAS dataset in TSV format ({', '.join(self.VALID_GWAS_EXTENSIONS)})")
-        
+
         try:
             gwas_data = pd.read_csv(gwas_filepath, sep='\t', encoding='utf-8')
         except:
@@ -82,7 +85,7 @@ class ReadGWASFileStage(PipelineStage):
                 gwas_data = pd.read_csv(outfile, sep="\t", encoding='utf-8')
             except:
                 raise InvalidUsage('Failed to load primary dataset. Please check formatting is adequate.', status_code=410)
-            
+
         return gwas_data
 
 
@@ -101,7 +104,7 @@ class ReadGWASFileStage(PipelineStage):
         # Get all form inputs, rename columns accordingly
         # Extra labels do not cause an error, so missing columns need to be checked
         old_gwas_columns = list(gwas_data.columns)
-        
+
         column_mapper = {}  # maps user input -> default
         column_inputs = {}  # maps default -> raw user input
         column_input_list = []
@@ -114,7 +117,7 @@ class ReadGWASFileStage(PipelineStage):
         # Column uniqueness check
         if len(set(column_input_list)) != len(column_input_list):
             raise InvalidUsage(f'Duplicate column names provided: {column_input_list}')
-        
+
         gwas_data = gwas_data.rename(columns=column_mapper)
 
         # Get P value column (always needed)
@@ -122,7 +125,7 @@ class ReadGWASFileStage(PipelineStage):
             raise InvalidUsage(f"P value column not found in provided GWAS file.")
 
         infer_variant = bool(payload.request.form.get('markerCheckbox'))
-        
+
         # Get CHROM, POS, REF, ALT
         if infer_variant:
             gwas_data = self._infer_gwas_columns(payload, gwas_data)
@@ -136,7 +139,7 @@ class ReadGWASFileStage(PipelineStage):
             for column in [c for c in self.GWAS_COLUMNS if c.coloc2]:
                 if column not in gwas_data.columns:
                     raise InvalidUsage(f"{column} column missing but is required for COLOC2. '{column_inputs[column]}' not in columns '{', '.join(old_gwas_columns)}'")
-                
+
             # Extra columns that the user might provide in their GWAS file and we need for COLOC2
             studytype = payload.get_coloc2_study_type()
             if 'type' not in gwas_data.columns:
@@ -166,7 +169,7 @@ class ReadGWASFileStage(PipelineStage):
 
         coordinate = payload.get_coordinate()
         regionstr = payload.get_locus()
-        
+
         variant_list = standardize_snps(list(gwas_data["SNP"]), regionstr, coordinate)
         if all(x=="." for x in variant_list):
             raise InvalidUsage(f"None of the variants provided could be mapped to {regionstr}!", status_code=410)
@@ -206,5 +209,36 @@ class ReadGWASFileStage(PipelineStage):
                 raise InvalidUsage(f'Number of samples column has non-integer entries')
             if not all(isinstance(x, float) for x in list(gwas_data["MAF"])):
                 raise InvalidUsage(f'MAF column has non-numeric entries')
+
+        return gwas_data
+
+    def _subset_gwas_file(self, payload: SessionPayload, gwas_data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Subset the provided GWAS dataset based on the regionstr provided in the request.
+
+        Prerequisite: gwas_data columns are set as default values (eg. "SNP", "P", etc.)
+        """
+        # mostly copied from subsetLocus
+        chrom, start, end = payload.get_locus_tuple()
+
+        gwas_data = gwas_data.loc[ [str(x) != '.' for x in list(gwas_data["CHROM"])] ].copy()
+        bool1 = [x == chrom for x in x_to_23(list(gwas_data["CHROM"]))]
+        bool2 = [x>=start and x<=end for x in list(gwas_data["POS"])]
+        bool3 = [not x for x in list(gwas_data.isnull().any(axis=1))]
+        bool4 = [str(x) != '.' for x in list(gwas_data["CHROM"])]
+        gwas_indices_kept = [ ((x and y) and z) and w for x,y,z,w in zip(bool1,bool2,bool3,bool4)]
+        gwas_data = gwas_data.loc[ gwas_indices_kept ].copy()
+        gwas_data.sort_values(by=[ "POS" ], inplace=True)
+        chromcolnum = list(gwas_data.columns).index("CHROM")
+        gwas_data.reset_index(drop=True, inplace=True)
+        gwas_data.iloc[:,chromcolnum] = x_to_23(list(gwas_data["CHROM"])) # type: ignore
+        if gwas_data.shape[0] == 0:
+            raise InvalidUsage('No data found for entered region', status_code=410)
+        # Check for invalid p=0 rows:
+        zero_p = [x for x in list(gwas_data["P"]) if x==0]
+        if len(zero_p)>0:
+            raise InvalidUsage('P-values of zero detected; please replace with a non-zero p-value')
+
+        payload.gwas_indices_kept = gwas_indices_kept
 
         return gwas_data
