@@ -19,6 +19,8 @@ def download_file(request: Request, extensions: List[str]) -> Optional[str]:
     """
     Download the first file at 'files[]' that matches the given extensions,
     and return the filepath to the saved file. Return None if no such file exists.
+
+    Extensions should not include the period. eg. `["html", "tsv", "txt"]`
     """
     if not ('files[]' in request.files):
         raise InvalidUsage(f"No files found in request")
