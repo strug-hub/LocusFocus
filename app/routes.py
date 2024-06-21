@@ -252,7 +252,7 @@ def classify_files(filenames):
 
 def isSorted(l):
     # l is a list
-    # returns True if l is sorted, False otherwise
+    # returns True if l is sorted in non-descending order, False otherwise
     return all(l[i] <= l[i+1] for i in range(len(l)-1))
 
 
