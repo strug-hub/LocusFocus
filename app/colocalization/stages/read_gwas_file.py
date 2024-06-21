@@ -54,6 +54,8 @@ class ReadGWASFileStage(PipelineStage):
         gwas_data = self._set_gwas_columns(payload, gwas_data)
         gwas_data = self._validate_gwas_file(payload, gwas_data)
         gwas_data = self._subset_gwas_file(payload, gwas_data)
+        lead_snp_index = self._get_lead_snp(payload, gwas_data)
+        payload.gwas_lead_snp_index = lead_snp_index
 
         payload.gwas_data = gwas_data
 
@@ -226,7 +228,7 @@ class ReadGWASFileStage(PipelineStage):
         bool2 = [x>=start and x<=end for x in list(gwas_data["POS"])]
         bool3 = [not x for x in list(gwas_data.isnull().any(axis=1))]
         bool4 = [str(x) != '.' for x in list(gwas_data["CHROM"])]
-        gwas_indices_kept = [ ((x and y) and z) and w for x,y,z,w in zip(bool1,bool2,bool3,bool4)]
+        gwas_indices_kept = [ all(conditions) for conditions in zip(bool1,bool2,bool3,bool4)]
         gwas_data = gwas_data.loc[ gwas_indices_kept ].copy()
         gwas_data.sort_values(by=[ "POS" ], inplace=True)
         chromcolnum = list(gwas_data.columns).index("CHROM")
@@ -242,3 +244,19 @@ class ReadGWASFileStage(PipelineStage):
         payload.gwas_indices_kept = gwas_indices_kept
 
         return gwas_data
+    
+    def _get_lead_snp(self, payload: SessionPayload, gwas_data: pd.DataFrame) -> int:
+        """
+        Determine the lead SNP index for this gwas dataset. Might not be used but is handy to have stored ahead of time.
+        """
+
+        lead_snp = payload.get_lead_snp_name()
+        snp_list = list(gwas_data.loc[:,"SNP"])
+        # cleaning up the SNP names a bit 
+        snp_list = [asnp.split(';')[0] for asnp in snp_list] # type: ignore
+        if lead_snp=='': lead_snp = list(gwas_data.loc[ gwas_data.loc[:,"P"] == gwas_data.loc[:,"P"].min() ].loc[:,"SNP"])[0].split(';')[0] # type: ignore
+        if lead_snp not in snp_list:
+            raise InvalidUsage('Lead SNP not found', status_code=410)
+        lead_snp_position_index = snp_list.index(lead_snp)
+
+        return lead_snp_position_index
