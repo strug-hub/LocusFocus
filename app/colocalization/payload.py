@@ -119,3 +119,15 @@ class SessionPayload(object):
             self.num_cases = num_cases
 
         return self.num_cases # type: ignore
+    
+    def get_ld_population(self) -> str:
+        """
+        Get selected LD population from user input (1000 Genomes dataset).
+        If the user did not specify LD population, then use default "EUR".
+        """
+        if self.ld_population is None:
+            pop = self.request.form.get("LD-populations", "EUR")
+            if pop not in self.VALID_POPULATIONS:
+                raise InvalidUsage(f"Invalid population provided: '{pop}'. Population must be one of '{', '.join(self.VALID_POPULATIONS)}'")
+            self.ld_population = pop
+        return self.ld_population
