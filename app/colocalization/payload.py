@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from uuid import uuid4
 from typing import List, Literal, Dict, Optional, Tuple
 
@@ -5,9 +6,11 @@ import pandas as pd
 from flask import Request
 
 from app.colocalization.utils import parse_region_text
+from app.colocalization.constants import VALID_COORDINATES, VALID_POPULATIONS
 from app.routes import InvalidUsage
 
 
+@dataclass
 class SessionPayload(object):
     """
     Payload object for colocalization sessions.
@@ -15,9 +18,6 @@ class SessionPayload(object):
     Contains metadata, form inputs and user data uploaded
     for this session.
     """
-    # Constants
-    VALID_COORDINATES = ['hg38', 'hg19']
-    VALID_POPULATIONS = ["EUR", "AFR", "EAS", "SAS", "AMR", "ASN", "NFE"]
 
     # Request object
     request: Request
@@ -43,6 +43,8 @@ class SessionPayload(object):
 
     # Other
     gwas_indices_kept: List[bool]
+    gwas_lead_snp_index: Optional[int]
+    r2: List[float]
     
     def __init__(self, request: Request):
         self.session_id = uuid4()
@@ -53,7 +55,7 @@ class SessionPayload(object):
         Gets the form input for coordinate (aka. genome assembly, or 'build') for this session.
         """
         if self.coordinate is None:
-            if self.request.form.get("coordinate") not in self.VALID_COORDINATES:
+            if self.request.form.get("coordinate") not in VALID_COORDINATES:
                 raise InvalidUsage(f"Invalid coordinate: '{self.request.form.get('coordinate')}'")
             
             self.coordinate = self.request.form.get("coordinate") # type: ignore
@@ -127,7 +129,17 @@ class SessionPayload(object):
         """
         if self.ld_population is None:
             pop = self.request.form.get("LD-populations", "EUR")
-            if pop not in self.VALID_POPULATIONS:
+            if pop not in VALID_POPULATIONS:
                 raise InvalidUsage(f"Invalid population provided: '{pop}'. Population must be one of '{', '.join(self.VALID_POPULATIONS)}'")
             self.ld_population = pop
         return self.ld_population
+    
+    def get_lead_snp_name(self) -> str:
+        """
+        Get the lead SNP name from user input, if specified.
+        """
+
+        if self.lead_snp_name is None:
+            self.lead_snp_name = self.request.form.get("leadsnp", "")
+
+        return self.lead_snp_name
