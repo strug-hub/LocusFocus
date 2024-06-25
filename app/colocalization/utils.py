@@ -317,3 +317,18 @@ def x_to_23(l):
         else:
             raise InvalidUsage('Chromosome unrecognized', status_code=410)
     return newl
+
+
+def write_list(alist, filename):
+    with open(filename, 'w') as f:
+        for item in alist:
+            f.write("%s\n" % item)
+
+
+def write_matrix(aMat, filename):
+    aMat = np.matrix(aMat)
+    with open(filename, 'w') as f:
+        for row in np.arange(aMat.shape[0]):
+            for col in np.arange(aMat.shape[1] - 1):
+                f.write("%s\t" % str(aMat[row,col]))
+            f.write("%s\n" % str(aMat[row,-1]))
