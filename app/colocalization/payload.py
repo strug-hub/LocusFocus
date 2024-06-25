@@ -43,9 +43,9 @@ class SessionPayload(object):
     secondary_datasets: Optional[Dict[str, pd.DataFrame]] = None
 
     # Other
-    gwas_indices_kept: List[bool] = []
+    gwas_indices_kept: List[bool] = field(default_factory=list)
     gwas_lead_snp_index: Optional[int] = None
-    r2: List[float] = []
+    r2: List[float] = field(default_factory=list)
 
     def get_coordinate(self) -> Literal['hg38', 'hg19']:
         """
