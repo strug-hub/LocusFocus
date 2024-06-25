@@ -127,7 +127,7 @@ class SessionPayload(object):
         if self.ld_population is None:
             pop = self.request.form.get("LD-populations", "EUR")
             if pop not in VALID_POPULATIONS:
-                raise InvalidUsage(f"Invalid population provided: '{pop}'. Population must be one of '{', '.join(self.VALID_POPULATIONS)}'")
+                raise InvalidUsage(f"Invalid population provided: '{pop}'. Population must be one of '{', '.join(VALID_POPULATIONS)}'")
             self.ld_population = pop
         return self.ld_population
     
