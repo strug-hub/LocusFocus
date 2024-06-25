@@ -11,5 +11,5 @@ class CreateSessionStage(PipelineStage):
     """
 
     def invoke(self, request: Request) -> SessionPayload:
-        payload = SessionPayload(request)
+        payload = SessionPayload(request=request)
         return payload

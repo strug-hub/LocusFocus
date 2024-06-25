@@ -1,5 +1,5 @@
-from dataclasses import dataclass
-from uuid import uuid4
+from dataclasses import dataclass, field
+from uuid import uuid4, UUID
 from typing import List, Literal, Dict, Optional, Tuple
 
 import pandas as pd
@@ -21,34 +21,31 @@ class SessionPayload(object):
 
     # Request object
     request: Request
+    session_id: UUID = field(default_factory=uuid4)
     
     # Form Inputs
-    coordinate: Optional[Literal['hg38', 'hg19']]
-    coloc2: Optional[bool]
-    study_type: Optional[Literal["quant", "cc"]]
-    num_cases: Optional[int] # Used for study_type "cc" (case-control)
-    ld_population: Optional[str]
-    infer_variant: Optional[bool]
-    gtex_tissues: Optional[List[str]]
-    gtex_genes: Optional[List[str]]
-    set_based_p: Optional[float]
-    plot_locus: Optional[str]  # regionstr
-    simple_sum_locus: Optional[str]
-    lead_snp_name: Optional[str]
+    coordinate: Optional[Literal['hg38', 'hg19']] = None
+    coloc2: Optional[bool] = None
+    study_type: Optional[Literal["quant", "cc"]] = None
+    num_cases: Optional[int] = None # Used for study_type "cc" (case-control)
+    ld_population: Optional[str] = None
+    infer_variant: Optional[bool] = None
+    gtex_tissues: Optional[List[str]] = None
+    gtex_genes: Optional[List[str]] = None
+    set_based_p: Optional[float] = None
+    plot_locus: Optional[str] = None  # regionstr
+    simple_sum_locus: Optional[str] = None
+    lead_snp_name: Optional[str] = None
 
     # Files
-    gwas_data: pd.DataFrame
-    ld_data: pd.DataFrame
-    secondary_datasets: Optional[Dict[str, pd.DataFrame]]
+    gwas_data: Optional[pd.DataFrame] = None
+    ld_data: Optional[pd.DataFrame] = None
+    secondary_datasets: Optional[Dict[str, pd.DataFrame]] = None
 
     # Other
-    gwas_indices_kept: List[bool]
-    gwas_lead_snp_index: Optional[int]
-    r2: List[float]
-    
-    def __init__(self, request: Request):
-        self.session_id = uuid4()
-        self.request = request
+    gwas_indices_kept: List[bool] = []
+    gwas_lead_snp_index: Optional[int] = None
+    r2: List[float] = []
 
     def get_coordinate(self) -> Literal['hg38', 'hg19']:
         """
