@@ -11,11 +11,7 @@ from flask import current_app as app
 
 from app.routes import InvalidUsage
 from app.colocalization.utils import write_list, x_to_23
-
-
-### CONSTANTS ###
-
-VALID_POPULATIONS = ["EUR", "AFR", "EAS", "SAS", "AMR", "ASN", "NFE"]
+from app.colocalization.constants import VALID_POPULATIONS
 
 
 ### FUNCTIONS ###
