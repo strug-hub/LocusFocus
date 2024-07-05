@@ -54,6 +54,8 @@ class ReadGWASFileStage(PipelineStage):
         gwas_data = self._set_gwas_columns(payload, gwas_data)
         gwas_data = self._validate_gwas_file(payload, gwas_data)
         gwas_data = self._subset_gwas_file(payload, gwas_data)
+
+        # Update lead SNP based on user input
         lead_snp_index = self._get_lead_snp(payload, gwas_data)
         payload.gwas_lead_snp_index = lead_snp_index
 

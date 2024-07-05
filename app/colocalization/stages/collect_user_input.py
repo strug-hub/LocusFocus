@@ -15,10 +15,11 @@ class CollectUserInputStage(PipelineStage):
     """
     VALID_POPULATIONS = ["EUR", "AFR", "EAS", "SAS", "AMR", "ASN", "NFE"]
     VALID_COORDINATES = ["hg19", "hg38"]
-    
-    def invoke(self, request: Request) -> SessionPayload:
+
+    def invoke(self, request: SessionPayload) -> SessionPayload:
         
         new_payload = SessionPayload()
+        new_payload.request = request
 
         new_payload = self._read_form_inputs(request, new_payload)
         new_payload = self._read_files(request, new_payload)
@@ -71,6 +72,12 @@ class CollectUserInputStage(PipelineStage):
 
         new_payload.lead_snp_name = request.form.get("leadsnp", "")
 
+        if len(errors) > 0:
+            raise InvalidUsage(
+                message=f"Error(s) found in uploaded form",
+                payload={ f"error_{i+1}": error for i, error in enumerate(errors) }
+            )
+
         return new_payload
 
 
@@ -79,7 +86,13 @@ class CollectUserInputStage(PipelineStage):
         Populate the payload with dataframes for the uploaded files.
         Gets file information from the request.
         """
+        if 'files[]' not in request.files:
+            raise InvalidUsage(
+                message=f"No file(s) selected or invalid input",
+            )
+
         return new_payload
+
 
     def _fix_gwas_columns(self, request: Request, new_payload: SessionPayload) -> SessionPayload:
         """
