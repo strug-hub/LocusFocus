@@ -7,7 +7,7 @@ from flask import current_app as app
 
 from app.colocalization.payload import SessionPayload
 from app.colocalization.utils import download_file
-from app.colocalization.plink import plink_ld_pairwise
+from app.colocalization.plink import plink_ld_pairwise, plink_ldmat
 from app.pipeline import PipelineStage
 from app.routes import InvalidUsage
 
@@ -20,6 +20,8 @@ class GetLDMatrixStage(PipelineStage):
 
     If no GWAS data is in the session, then an error is raised.
 
+    Will also determine lead SNP and R2 values for the gwas dataset.
+
     Prerequisites:
     - Session is created.
     - `gwas_data` is defined in the session.
@@ -31,14 +33,13 @@ class GetLDMatrixStage(PipelineStage):
         if payload.gwas_data is None:
             raise Exception(f"Cannot use GetLDMatrixStage; gwas_data is None")
 
-        # First, read from file if it exists
+        # Read from file if it exists. Otherwise, create with PLINK
+        user_provided_ld = True
         ld_matrix = self._read_ld_matrix_file(payload)
-        if ld_matrix is not None:
-            payload.ld_data = ld_matrix
-            return payload
+        if ld_matrix is None:
+            user_provided_ld = False
+            ld_matrix = self._create_ld_matrix(payload)
 
-        # Second, create matrix using PLINK if first didnt work
-        ld_matrix = self._create_ld_matrix(payload)
         payload.ld_data = ld_matrix
 
         return payload
@@ -87,6 +88,17 @@ class GetLDMatrixStage(PipelineStage):
 
         chrom, _, _ = payload.get_locus_tuple()
 
+        # Create LD matrix with PLINK
+        plink_ldmat(
+            build=None,
+            pop=None,
+            chrom=chrom,
+            snp_positions=None,
+            outfilename=None,
+            region=None
+        )
+
+        # Update lead SNP if needed, and set R2
         ld_df, new_lead_snp_position = plink_ld_pairwise(
             build=payload.get_coordinate(),
             pop=payload.get_ld_population(),
