@@ -1257,6 +1257,9 @@ def get_gtex_data(version, tissue, gene, snp_list, raiseErrors = False):
             # print('gtex_data.shape' + str(gtex_data.shape))
             # print(gtex_data)
         else:
+            # Make sure that SNP ID format is correct
+            # Remove 'chr' from chrom part
+            snp_list = [ x.replace("chr", "") for x in snp_list ]
             snp_df = pd.DataFrame(snp_list, columns=['variant_id'])
             gtex_data = snp_df.reset_index().merge(eqtl, on='variant_id', how='left', sort=False).sort_values('index')
     else:
