@@ -1226,14 +1226,16 @@ def get_gtex_data(version, tissue, gene, snp_list, raiseErrors = False):
         build = "hg38"
     gtex_data = []
     rsids = True
-    rsid_snps = [ x for x in snp_list if x.startswith('rs') ]
-    b37_snps = [ x for x in snp_list if x.endswith('_b37') ]
-    b38_snps = [ x for x in snp_list if x.endswith('_b38') ]
-    if len(rsid_snps) > 0 and (len(b37_snps)>0 or len(b38_snps) > 0):
+
+    has_rsid_snps = any(x.startswith('rs') for x in snp_list)
+    has_b37_snps = any(x.endswith('_b37') for x in snp_list)
+    has_b38_snps = any(x.endswith('_b38') for x in snp_list)
+
+    if has_rsid_snps and (has_b37_snps or has_b38_snps):
         raise InvalidUsage("There is a mix of rsid and other variant id formats; please use a consistent format")
-    elif len(rsid_snps) > 0:
+    elif has_rsid_snps:
         rsids = True
-    elif len(b37_snps) or len(b38_snps) > 0:
+    elif has_b37_snps or has_b38_snps:
         rsids = False
     else:
         raise InvalidUsage('Variant naming format not supported; ensure all are rs ID\'s are formatted as chrom_pos_ref_alt_b37 eg. 1_205720483_G_A_b37')
@@ -1257,6 +1259,9 @@ def get_gtex_data(version, tissue, gene, snp_list, raiseErrors = False):
             # print('gtex_data.shape' + str(gtex_data.shape))
             # print(gtex_data)
         else:
+            # Make sure that SNP ID format is correct
+            # Remove 'chr' from chrom part
+            snp_list = [ x.replace("chr", "") for x in snp_list ]
             snp_df = pd.DataFrame(snp_list, columns=['variant_id'])
             gtex_data = snp_df.reset_index().merge(eqtl, on='variant_id', how='left', sort=False).sort_values('index')
     else:
