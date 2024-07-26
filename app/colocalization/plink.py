@@ -209,6 +209,7 @@ def plink_ldmat(build, pop, chrom, snp_positions, outfilename, region=None) -> T
         if len(overlap) == 0:
             raise InvalidUsage(f"No overlap found between provided SNPs and the selected 1000 Genomes dataset. Please select a different 1000 Genomes population, or provide your own LD matrix.\n\nPLINK error output:\n\n{plinkrun.stdout.decode('utf-8')}", status_code=410)
         raise InvalidUsage(plinkrun.stdout.decode('utf-8'), status_code=410)
+    # BIM file format, see https://www.cog-genomics.org/plink/1.9/formats#bim
     ld_snps_df = pd.read_csv(outfilename + ".bim", sep="\t", header=None)
     ld_snps_df.iloc[:, 0] = x_to_23(list(ld_snps_df.iloc[:, 0])) # type: ignore 
     ldmat = np.matrix(pd.read_csv(outfilename + ".ld", sep="\t", header=None))

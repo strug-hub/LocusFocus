@@ -45,7 +45,7 @@ class GetLDMatrixStage(PipelineStage):
         return payload
 
 
-    def _read_ld_matrix_file(self, payload: SessionPayload) -> Optional[pd.DataFrame]:
+    def _read_ld_matrix_file(self, payload: SessionPayload) -> Optional[np.matrix]:
         """
         Try to read in an LD matrix if one is provided by the user.
 
@@ -76,10 +76,12 @@ class GetLDMatrixStage(PipelineStage):
 
         payload.r2 = list(ld_mat.iloc[:, payload.gwas_lead_snp_index]) # type: ignore
 
+        ld_mat = np.matrix(ld_mat)
+
         return ld_mat
 
 
-    def _create_ld_matrix(self, payload: SessionPayload) -> pd.DataFrame:
+    def _create_ld_matrix(self, payload: SessionPayload) -> np.matrix:
         """
         Try to create an LD matrix using PLINK.
         """
@@ -89,17 +91,17 @@ class GetLDMatrixStage(PipelineStage):
         chrom, _, _ = payload.get_locus_tuple()
 
         # Create LD matrix with PLINK
-        plink_ldmat(
-            build=None,
-            pop=None,
+        ld_snps_df, ldmat = plink_ldmat(
+            build=payload.get_coordinate(),
+            pop=payload.get_ld_population(),
             chrom=chrom,
-            snp_positions=None,
-            outfilename=None,
-            region=None
+            snp_positions=list(payload.gwas_data["POS"]),
+            outfilename=os.path.join(app.config["SESSION_FOLDER"], f"ld-{payload.session_id}"),
+            region=payload.get_locus()
         )
 
         # Update lead SNP if needed, and set R2
-        ld_df, new_lead_snp_position = plink_ld_pairwise(
+        _, new_lead_snp_position = plink_ld_pairwise(
             build=payload.get_coordinate(),
             pop=payload.get_ld_population(),
             chrom=chrom,
@@ -113,4 +115,6 @@ class GetLDMatrixStage(PipelineStage):
         if new_lead_snp_position != old_lead_snp_position:
             payload.gwas_lead_snp_index = list(payload.gwas_data["POS"]).index(new_lead_snp_position)
 
-        return ld_df
+        payload.ld_snps_bim_df = ld_snps_df
+
+        return np.matrix(ldmat)
