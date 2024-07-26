@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from uuid import uuid4, UUID
 from typing import List, Literal, Dict, Optional, Tuple
 
+import numpy as np
 import pandas as pd
 from flask import Request
 
@@ -37,10 +38,14 @@ class SessionPayload(object):
     simple_sum_locus: Optional[str] = None
     lead_snp_name: Optional[str] = None
 
-    # Files
+    # File data
     gwas_data: Optional[pd.DataFrame] = None
-    ld_data: Optional[pd.DataFrame] = None
+    ld_data: Optional[np.matrix] = None
     secondary_datasets: Optional[Dict[str, pd.DataFrame]] = None
+
+    # LD Matrix data
+    # DataFrame containing SNPs that were actually used in LD. See: https://www.cog-genomics.org/plink/1.9/formats#bim
+    ld_snps_bim_df: Optional[pd.DataFrame] = None 
 
     # Other
     gwas_indices_kept: List[bool] = field(default_factory=list)
