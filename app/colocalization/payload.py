@@ -7,12 +7,12 @@ import pandas as pd
 from flask import Request
 
 from app.colocalization.utils import parse_region_text
-from app.colocalization.constants import VALID_COORDINATES, VALID_POPULATIONS
+from app.colocalization.constants import ONE_SIDED_SS_WINDOW_SIZE, VALID_COORDINATES, VALID_POPULATIONS
 from app.routes import InvalidUsage
 
 
 @dataclass
-class SessionPayload(object):
+class SessionPayload():
     """
     Payload object for colocalization sessions.
 
@@ -51,6 +51,9 @@ class SessionPayload(object):
     gwas_indices_kept: List[bool] = field(default_factory=list)
     gwas_lead_snp_index: Optional[int] = None
     r2: List[float] = field(default_factory=list)
+
+    # Simple Sum
+    ss_locustext: Optional[str] = None
 
     def get_coordinate(self) -> Literal['hg38', 'hg19']:
         """
@@ -145,3 +148,59 @@ class SessionPayload(object):
             self.lead_snp_name = self.request.form.get("leadsnp", "")
 
         return self.lead_snp_name
+    
+    def get_lead_snp_index(self) -> int:
+        """
+        Get the index of the lead SNP for the GWAS dataset.
+        """
+        lead_snp = self.get_lead_snp_name()
+        if self.gwas_data is None:
+            raise Exception("Cannot get lead SNP index when GWAS dataset is undefined.")
+        
+        snps = [snp.split(";")[0] for snp in self.gwas_data.loc[:, "SNP"]] # type: ignore
+        if lead_snp == "":
+            lead_snp = list(self.gwas_data.loc[ self.gwas_data.loc[:,"P"] == self.gwas_data.loc[:,"P"].min() ].loc[:,"SNP"])[0].split(';')[0]
+        if lead_snp not in snps:
+            raise InvalidUsage('Lead SNP not found', status_code=410)
+        return snps.index(lead_snp)
+
+    def get_ss_locus(self) -> str:
+        """
+        Get the Simple Sum region string from form input.
+        If no Simple Sum region string is provided by user, 
+        then use default (200kbp region centered at lead SNP position).
+
+        Prerequisite: need GWAS dataset.
+        """
+        if self.ss_locustext is not None:
+            return self.ss_locustext
+
+        SSlocustext = self.request.form.get("SSlocus", "")
+        
+        if SSlocustext != "":
+            SSchrom, SS_start, SS_end = parse_region_text(SSlocustext, self.get_coordinate())
+        else:
+            if self.gwas_data is None:
+                raise Exception("Need GWAS dataset in order to find Lead SNP for SS region")
+            SSchrom, _, _ = self.get_locus_tuple()
+            lead_snp_position_index = self.get_lead_snp_index()
+            lead_snp_position = int(self.gwas_data.iloc[lead_snp_position_index, :]["POS"]) # type: ignore
+            SS_start = max(int(lead_snp_position - ONE_SIDED_SS_WINDOW_SIZE), 0)
+            SS_end = int(lead_snp_position + ONE_SIDED_SS_WINDOW_SIZE)
+        SSlocustext = str(SSchrom) + ":" + str(SS_start) + "-" + str(SS_end)
+        self.ss_locustext = SSlocustext
+
+        return self.ss_locustext
+    
+    def get_ss_locus_tuple(self) -> Tuple[int, int, int]:
+        """
+        Get the Simple Sum region as a tuple: (chrom, start, end).
+
+        Prerequisite: need GWAS dataset.
+        """
+        locus_text = self.get_ss_locus()
+        chrom, startend = locus_text.split(":", 1)
+        start, end = startend.split("-", 1)
+        return int(chrom), int(start), int(end)
+
+

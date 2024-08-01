@@ -1985,17 +1985,10 @@ def index():
         SS_snp_list = list(SS_gwas_data[snpcol])
         SS_snp_list = cleanSNPs(SS_snp_list, regionstr, coordinate)
 
-        # optimizing best match variant if given a mix of rsids and non-rsid variants
-        # varids = SS_snp_list
-        # if infer_variant:
-        #     rsidx = [i for i,e in enumerate(SS_snp_list) if e.startswith('rs')]
-        #     varids = standardizeSNPs(SS_snp_list, SSlocustext, coordinate)
-        #     SS_rsids = torsid(SS_std_snp_list, SSlocustext, coordinate)
         if SSlocustext == '':
             SSlocustext = str(chrom) + ":" + str(SS_start) + "-" + str(SS_end)
-        #SS_std_snp_list = standardizeSNPs(SS_snp_list, SSlocustext, coordinate)
-        #SS_rsids = torsid(SS_std_snp_list, SSlocustext, coordinate)
         SS_positions = list(SS_gwas_data[poscol])
+        
         # TODO: does it make sense to reject duplicate positions if the alt alleles are different?
         check_pos_duplicates(SS_positions)
 
