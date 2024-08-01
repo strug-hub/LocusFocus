@@ -332,3 +332,41 @@ def write_matrix(aMat, filename):
             for col in np.arange(aMat.shape[1] - 1):
                 f.write("%s\t" % str(aMat[row,col]))
             f.write("%s\n" % str(aMat[row,-1]))
+
+
+def getLeadSNPindex(leadsnpname, summaryStats, snpcol, pcol):
+    lead_snp = leadsnpname
+    snp_list = list(summaryStats.loc[:,snpcol])
+    snp_list = [asnp.split(';')[0] for asnp in snp_list] # cleaning up the SNP names a bit
+    if lead_snp=='': 
+        lead_snp = list(summaryStats.loc[ summaryStats.loc[:,pcol] == min(summaryStats.loc[:,pcol]) ].loc[:,snpcol])[0].split(';')[0]
+    if lead_snp not in snp_list:
+        raise InvalidUsage('Lead SNP not found', status_code=410)
+    lead_snp_position_index = snp_list.index(lead_snp)
+    return lead_snp_position_index
+
+
+def clean_snps(variantlist, regiontext, build):
+    """
+    Parameters
+    ----------
+    variantlist : list
+        list of variant IDs in rs id or chr_pos, chr_pos_ref_alt, chr_pos_ref_alt_build, etc formats
+    regiontext : str
+        the region of interest in chr:start-end format
+    build : str
+        build.lower() in ['hg19','hg38', 'grch37', 'grch38'] must be true
+
+    Returns
+    -------
+    A cleaner set of SNP names
+        rs id's are cleaned to contain only one,
+        non-rs id formats are standardized to chr_pos_ref_alt_build format)
+        any SNPs not in regiontext are returned as '.'
+    """
+
+    variantlist = [asnp.split(';')[0].replace(':','_').replace('.','') for asnp in variantlist] # cleaning up the SNP names a bit
+    std_varlist = standardize_snps(variantlist, regiontext, build)
+    final_varlist = [ e if (e.startswith('rs') and std_varlist[i] != '.') else std_varlist[i] for i, e in enumerate(variantlist) ]
+
+    return final_varlist
