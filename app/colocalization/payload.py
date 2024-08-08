@@ -41,7 +41,7 @@ class SessionPayload():
     # File data
     gwas_data: Optional[pd.DataFrame] = None
     ld_data: Optional[np.matrix] = None
-    secondary_datasets: Optional[Dict[str, pd.DataFrame]] = None
+    secondary_datasets: Optional[Dict[str, dict]] = None
 
     # LD Matrix data
     # DataFrame containing SNPs that were actually used in LD. See: https://www.cog-genomics.org/plink/1.9/formats#bim
@@ -159,7 +159,7 @@ class SessionPayload():
         
         snps = [snp.split(";")[0] for snp in self.gwas_data.loc[:, "SNP"]] # type: ignore
         if lead_snp == "":
-            lead_snp = list(self.gwas_data.loc[ self.gwas_data.loc[:,"P"] == self.gwas_data.loc[:,"P"].min() ].loc[:,"SNP"])[0].split(';')[0]
+            lead_snp = list(self.gwas_data.loc[ self.gwas_data.loc[:,"P"] == self.gwas_data.loc[:,"P"].min() ].loc[:,"SNP"])[0].split(';')[0] # type: ignore
         if lead_snp not in snps:
             raise InvalidUsage('Lead SNP not found', status_code=410)
         return snps.index(lead_snp)
