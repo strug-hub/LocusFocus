@@ -1,5 +1,5 @@
 import os
-from typing import List, Tuple
+from typing import Tuple
 import pandas as pd
 from flask import current_app as app
 from app.colocalization.payload import SessionPayload
@@ -25,6 +25,7 @@ class SimpleSumSubsetGWASStage(PipelineStage):
         SS_gwas_data, ss_indices = self._subset_gwas(payload, payload.gwas_data)
         payload.gwas_data = SS_gwas_data
         self._write_gwas_to_file(payload, payload.gwas_data, ss_indices) # type: ignore
+        self._check_pos_duplicates(SS_gwas_data)
 
         return payload
 
@@ -90,3 +91,20 @@ class SimpleSumSubsetGWASStage(PipelineStage):
                 encoding='utf-8', 
                 sep="\t"
             )
+
+
+    def _check_pos_duplicates(self, subsetted_gwas_data: pd.DataFrame):
+        """
+        Raise error if there are duplicate positions in the now-subsetted GWAS data.
+
+        TODO: positions with different alt alleles count as duplicates if same position occurs. 
+        Determine if this is okay, or if there's a better way to check here.
+        """
+
+        positions = subsetted_gwas_data["POS"]
+        if len(positions) != len(set(positions)):
+            # collect duplicates for error message
+            dups = set([x for x in positions if positions.count(x) > 1])
+            dup_counts = [(x, positions.count(x)) for x in dups]
+            raise InvalidUsage(f'Duplicate chromosome basepair positions detected: {[f"bp: {dup[0]}, num. duplicates: {dup[1]}" for dup in dup_counts]}')
+        return None
