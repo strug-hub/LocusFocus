@@ -61,7 +61,7 @@ class ReadGWASFileStage(PipelineStage):
 
         payload.gwas_data = gwas_data
 
-        return payload # TODO: finish this
+        return payload
 
 
     def _read_gwas_file(self, payload: SessionPayload) -> pd.DataFrame:
