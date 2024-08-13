@@ -216,6 +216,7 @@ class ReadGWASFileStage(PipelineStage):
 
         return gwas_data
 
+
     def _subset_gwas_file(self, payload: SessionPayload, gwas_data: pd.DataFrame) -> pd.DataFrame:
         """
         Subset the provided GWAS dataset based on the regionstr provided in the request.
@@ -246,7 +247,7 @@ class ReadGWASFileStage(PipelineStage):
         payload.gwas_indices_kept = gwas_indices_kept
 
         return gwas_data
-    
+
     def _get_lead_snp(self, payload: SessionPayload, gwas_data: pd.DataFrame) -> int:
         """
         Determine the lead SNP index for this gwas dataset. Might not be used but is handy to have stored ahead of time.
@@ -254,7 +255,7 @@ class ReadGWASFileStage(PipelineStage):
 
         lead_snp = payload.get_lead_snp_name()
         snp_list = list(gwas_data.loc[:,"SNP"])
-        # cleaning up the SNP names a bit 
+        # cleaning up the SNP names a bit
         snp_list = [asnp.split(';')[0] for asnp in snp_list] # type: ignore
         if lead_snp=='': lead_snp = list(gwas_data.loc[ gwas_data.loc[:,"P"] == gwas_data.loc[:,"P"].min() ].loc[:,"SNP"])[0].split(';')[0] # type: ignore
         if lead_snp not in snp_list:

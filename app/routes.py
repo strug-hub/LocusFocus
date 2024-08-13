@@ -2256,7 +2256,6 @@ def index():
         ####################################################################################################
         # Indicate that the request was a success
         data['success'] = True
-        #print('Loading a success')
 
         # Save data in JSON format for plotting
         sessionfile = f'session_data/form_data-{my_session_id}.json'

@@ -48,6 +48,7 @@ class SessionPayload():
     ld_snps_bim_df: Optional[pd.DataFrame] = None 
 
     # Other
+    success: bool = False
     gwas_indices_kept: List[bool] = field(default_factory=list)
     gwas_lead_snp_index: Optional[int] = None
     r2: List[float] = field(default_factory=list)
@@ -202,5 +203,37 @@ class SessionPayload():
         chrom, startend = locus_text.split(":", 1)
         start, end = startend.split("-", 1)
         return int(chrom), int(start), int(end)
+    
+    def dump_session_data(self):
+        """
+        Create JSON dict of session data needed for form_data file.
+        """
 
+        data = {}
+        data['success'] = self.success
+        data['sessionid'] = str(self.session_id)
+        data['snps'] = list(self.gwas_data["SNP"]) if self.gwas_data is not None else []
+        data['infervariant'] = self.get_infer_variant()
+        data['pvalues'] = list(self.gwas_data["P"]) if self.gwas_data is not None else []
+        data['lead_snp'] = self.gwas_data["SNP"].iloc(self.get_lead_snp_index()) if self.gwas_data is not None else None
+        data['ld_values'] = self.r2
+        data['positions'] = list(self.gwas_data["POS"]) if self.gwas_data is not None else []
+        data['chrom'], data['startbp'], data['endbp'] = self.get_locus_tuple()
+        data['ld_populations'] = self.get_ld_population()
+        # TODO: Unfinished session data fields
+        data['gtex_tissues'] = None
+        data['gene'] = None
+        data['gtex_genes'] = None
+        data['gtex_version'] = None
 
+        data['coordinate'] = self.get_coordinate()
+
+        data['set_based_p'] = setbasedP
+        SSlocustext = request.form['SSlocus'] # SSlocus defined below
+        data['std_snp_list'] = std_snp_list
+        data['runcoloc2'] = runcoloc2
+        data['snp_warning'] = snp_warning
+        data['thresh'] = thresh
+        data['numGTExMatches'] = numGTExMatches
+
+        return data
