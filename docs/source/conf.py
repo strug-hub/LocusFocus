@@ -18,8 +18,8 @@
 # -- Project information -----------------------------------------------------
 
 project = 'LocusFocus'
-copyright = '2019, Naim Panjwani'
-author = 'Naim Panjwani'
+copyright = '2024, Naim Panjwani, Mackenzie Frew'
+author = 'Naim Panjwani, Mackenzie Frew'
 
 # The full version, including alpha/beta/rc tags
 release = '1.6.0 alpha'

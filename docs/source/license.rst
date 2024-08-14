@@ -4,7 +4,7 @@
 MIT License
 ####################################
 
-Copyright (c) 2019 Naim Panjwani
+Copyright (c) 2024 Naim Panjwani, Mackenzie Frew
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
