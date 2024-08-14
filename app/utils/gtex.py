@@ -1,9 +1,21 @@
+import os
+
+import pandas as pd
 from flask import current_app as app
 from pymongo import MongoClient
 
-from app import mongo
 
-client: MongoClient = mongo.cx  # type: ignore
+from app import mongo
+from app.routes import InvalidUsage
+
+client = None  # type: ignore
+collapsed_genes_df_hg19 = None
+collapsed_genes_df_hg38 = None
+
+with app.app_context():
+    client: MongoClient = mongo.cx  # type: ignore
+    collapsed_genes_df_hg19 = pd.read_csv(os.path.join(app.config["LF_DATA_FOLDER"], 'collapsed_gencode_v19_hg19.gz'), compression='gzip', sep='\t', encoding='utf-8')
+    collapsed_genes_df_hg38 = pd.read_csv(os.path.join(app.config["LF_DATA_FOLDER"], 'collapsed_gencode_v26_hg38.gz'), compression='gzip', sep='\t', encoding='utf-8')
 
 # This is the main function to extract the data for a tissue and gene_id:
 def get_gtex(version, tissue, gene_id):

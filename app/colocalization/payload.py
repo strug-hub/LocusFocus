@@ -56,6 +56,9 @@ class SessionPayload():
     # Simple Sum
     ss_locustext: Optional[str] = None
 
+    # GTEx
+    gtex_data: dict = {}
+
     def get_coordinate(self) -> Literal['hg38', 'hg19']:
         """
         Gets the form input for coordinate (aka. genome assembly, or 'build') for this session.
@@ -203,6 +206,25 @@ class SessionPayload():
         chrom, startend = locus_text.split(":", 1)
         start, end = startend.split("-", 1)
         return int(chrom), int(start), int(end)
+    
+    def get_gtex_selection(self) -> Tuple[List[str], List[str]]:
+        """
+        Return a tuple containing list of selected tissues and list of selected genes.
+        
+        Format: (tissues, genes)
+        """
+        if self.gtex_genes is None:
+            self.gtex_genes = self.request.form.getlist("region-genes")
+        if self.gtex_tissues is None:
+            self.gtex_tissues = self.request.form.getlist("GTEx-tissues")
+        
+        if len(self.gtex_tissues) > 0 and len(self.gtex_genes) == 0:
+            raise InvalidUsage('Please select one or more genes to complement your GTEx tissue(s) selection', status_code=410)
+        elif len(self.gtex_genes) > 0 and len(self.gtex_tissues) == 0:
+            raise InvalidUsage('Please select one or more tissues to complement your GTEx gene(s) selection', status_code=410)
+
+        return self.gtex_tissues, self.gtex_genes
+
     
     def dump_session_data(self):
         """
