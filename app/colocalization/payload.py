@@ -224,7 +224,15 @@ class SessionPayload():
             raise InvalidUsage('Please select one or more tissues to complement your GTEx gene(s) selection', status_code=410)
 
         return self.gtex_tissues, self.gtex_genes
-
+    
+    def get_gtex_version(self) -> str:
+        """
+        Get the version of GTEx needed for fetching from MongoDB.
+        """
+        if self.get_coordinate() == "hg38":
+            return "V8"
+        else:
+            return "V7"
     
     def dump_session_data(self):
         """
@@ -242,11 +250,9 @@ class SessionPayload():
         data['positions'] = list(self.gwas_data["POS"]) if self.gwas_data is not None else []
         data['chrom'], data['startbp'], data['endbp'] = self.get_locus_tuple()
         data['ld_populations'] = self.get_ld_population()
-        # TODO: Unfinished session data fields
-        data['gtex_tissues'] = None
-        data['gene'] = None
-        data['gtex_genes'] = None
-        data['gtex_version'] = None
+        data['gtex_tissues'], data['gtex_genes'] = self.get_gtex_selection()
+        data['gene'] = gene
+        data['gtex_version'] = self.get_gtex_version()
 
         data['coordinate'] = self.get_coordinate()
 
