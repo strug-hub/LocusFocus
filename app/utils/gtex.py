@@ -9,8 +9,6 @@ from app import mongo
 from app.routes import InvalidUsage
 
 client = None  # type: ignore
-collapsed_genes_df_hg19 = None
-collapsed_genes_df_hg38 = None
 
 with app.app_context():
     client: MongoClient = mongo.cx  # type: ignore
@@ -66,7 +64,7 @@ def get_gtex(version, tissue, gene_id):
     return x
 
 # Function to merge the GTEx data with a particular snp_list
-def get_gtex_data(version, tissue, gene, snp_list, raiseErrors = False):
+def get_gtex_data(version, tissue, gene, snp_list, raiseErrors = False) -> pd.DataFrame:
     build = "hg19"
     if version.upper() == "V8":
         build = "hg38"
