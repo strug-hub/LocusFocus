@@ -48,6 +48,10 @@ class ReadGWASFileStage(PipelineStage):
     ]
 
 
+    def __init__(self, enforce_one_chrom = True):
+        self.enforce_one_chrom = enforce_one_chrom
+
+
     def invoke(self, payload: SessionPayload) -> SessionPayload:
 
         gwas_data = self._read_gwas_file(payload)
@@ -213,6 +217,12 @@ class ReadGWASFileStage(PipelineStage):
                 raise InvalidUsage(f'Number of samples column has non-integer entries')
             if not all(isinstance(x, float) for x in list(gwas_data["MAF"])):
                 raise InvalidUsage(f'MAF column has non-numeric entries')
+        
+        # One chrom check
+        if self.enforce_one_chrom and gwas_data["CHROM"].nunique() > 1:
+            unique_chroms = list(gwas_data["CHROM"].unique()) # type: ignore
+            raise InvalidUsage(f"Multiple chromosomes provided where only 1 is required: {unique_chroms}")
+
 
         return gwas_data
 

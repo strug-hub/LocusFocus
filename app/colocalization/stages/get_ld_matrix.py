@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 from flask import current_app as app
 
+from app.colocalization.constants import LD_MAT_DIAG_CONSTANT
 from app.colocalization.payload import SessionPayload
 from app.colocalization.utils import download_file
 from app.colocalization.plink import plink_ld_pairwise, plink_ldmat
@@ -34,13 +35,11 @@ class GetLDMatrixStage(PipelineStage):
             raise Exception(f"Cannot use GetLDMatrixStage; gwas_data is None")
 
         # Read from file if it exists. Otherwise, create with PLINK
-        user_provided_ld = True
         ld_matrix = self._read_ld_matrix_file(payload)
         if ld_matrix is None:
-            user_provided_ld = False
             ld_matrix = self._create_ld_matrix(payload)
 
-        payload.ld_data = ld_matrix
+        payload.ld_matrix = ld_matrix
 
         return payload
 
@@ -77,6 +76,19 @@ class GetLDMatrixStage(PipelineStage):
         payload.r2 = list(ld_mat.iloc[:, payload.gwas_lead_snp_index]) # type: ignore
 
         ld_mat = np.matrix(ld_mat)
+
+        # Recreate BIM file from PLINK
+        # since the user provided their own LD, we assume they correspond to the provided SNPs
+        ld_snps_df = pd.DataFrame({
+            "CHROM": payload.gwas_data["CHROM"],
+            "CHROM_POS": payload.gwas_data["CHROM_POS"],
+            "POS": payload.gwas_data["POS"],
+            "ALT": payload.gwas_data["ALT"],
+            "REF": payload.gwas_data["REF"],
+        })
+
+        ld_snps_df.iloc[:, 0] = x_to_23(list(ld_snps_df.iloc[:, 0])) # type: ignore
+        payload.ld_snps_bim_df = ld_snps_df
 
         return ld_mat
 
@@ -115,6 +127,16 @@ class GetLDMatrixStage(PipelineStage):
         if new_lead_snp_position != old_lead_snp_position:
             payload.gwas_lead_snp_index = list(payload.gwas_data["POS"]).index(new_lead_snp_position)
 
+        # Rename to consistent naming structure (see plink .bim file format)
+        ld_snps_df = ld_snps_df.rename(columns={
+            0: "CHROM",
+            1: "CHROM_POS",
+            3: "POS",
+            4: "ALT",
+            5: "REF"
+        }).iloc[:, [0, 1, 3, 4, 5]] # drop third column (all zeroes)
+
+        payload.r2 = list(ldmat[:, payload.gwas_lead_snp_index]) # type: ignore
         payload.ld_snps_bim_df = ld_snps_df
 
         return np.matrix(ldmat)

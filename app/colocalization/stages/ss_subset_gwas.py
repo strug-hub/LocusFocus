@@ -13,8 +13,10 @@ class SimpleSumSubsetGWASStage(PipelineStage):
     Stage responsible for subsetting the SNPs in the GWAS dataset such that
     Simple Sum colocalization may be performed at a later stage.
 
+    Prerequisites:
+    - GWAS data is loaded
+
     Must take place after a GWAS dataset is added to the payload.
-    Must also take place before any stages that rely on GWAS dataset (eg. LD matrix).
     """
 
     def invoke(self, payload: SessionPayload) -> SessionPayload:
@@ -24,6 +26,7 @@ class SimpleSumSubsetGWASStage(PipelineStage):
 
         SS_gwas_data, ss_indices = self._subset_gwas(payload, payload.gwas_data)
         payload.gwas_data = SS_gwas_data
+        payload.ss_indices = ss_indices # type: ignore
         self._write_gwas_to_file(payload, payload.gwas_data, ss_indices) # type: ignore
         self._check_pos_duplicates(SS_gwas_data)
 

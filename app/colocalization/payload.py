@@ -1,12 +1,12 @@
 from dataclasses import dataclass, field
 from uuid import uuid4, UUID
-from typing import List, Literal, Dict, Optional, Tuple
+from typing import List, Literal, Dict, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
 from flask import Request
 
-from app.colocalization.utils import parse_region_text
+from app.colocalization.utils import download_file, parse_region_text
 from app.colocalization.constants import ONE_SIDED_SS_WINDOW_SIZE, VALID_COORDINATES, VALID_POPULATIONS
 from app.routes import InvalidUsage
 
@@ -23,7 +23,7 @@ class SessionPayload():
     # Request object
     request: Request
     session_id: UUID = field(default_factory=uuid4)
-    
+
     # Form Inputs
     coordinate: Optional[Literal['hg38', 'hg19']] = None
     coloc2: Optional[bool] = None
@@ -33,19 +33,20 @@ class SessionPayload():
     infer_variant: Optional[bool] = None
     gtex_tissues: Optional[List[str]] = None
     gtex_genes: Optional[List[str]] = None
-    set_based_p: Optional[float] = None
+    set_based_p: Optional[Union[str, float]] = None
     plot_locus: Optional[str] = None  # regionstr
     simple_sum_locus: Optional[str] = None
     lead_snp_name: Optional[str] = None
 
     # File data
     gwas_data: Optional[pd.DataFrame] = None
-    ld_data: Optional[np.matrix] = None
+    ld_matrix: Optional[np.matrix] = None
     secondary_datasets: Optional[Dict[str, dict]] = None
 
     # LD Matrix data
     # DataFrame containing SNPs that were actually used in LD. See: https://www.cog-genomics.org/plink/1.9/formats#bim
-    ld_snps_bim_df: Optional[pd.DataFrame] = None 
+    # has columns: "CHROM", "CHROM_POS", "POS", "ALT", "REF"
+    ld_snps_bim_df: Optional[pd.DataFrame] = None
 
     # Other
     success: bool = False
@@ -55,9 +56,11 @@ class SessionPayload():
 
     # Simple Sum
     ss_locustext: Optional[str] = None
+    ss_indices: List[int] = []
+    ss_result_df: Optional[pd.DataFrame] = None
 
     # GTEx
-    gtex_data: dict = {}
+    reported_gtex_data: dict = {}  # only used for reporting, use get_gtex_selection() instead
 
     def get_coordinate(self) -> Literal['hg38', 'hg19']:
         """
@@ -66,10 +69,10 @@ class SessionPayload():
         if self.coordinate is None:
             if self.request.form.get("coordinate") not in VALID_COORDINATES:
                 raise InvalidUsage(f"Invalid coordinate: '{self.request.form.get('coordinate')}'")
-            
+
             self.coordinate = self.request.form.get("coordinate") # type: ignore
         return self.coordinate # type: ignore
-    
+
     def get_locus(self) -> str:
         """
         Gets the form input for plot locus (aka. 'regionstr' or 'regiontxt') for this session.
@@ -77,7 +80,7 @@ class SessionPayload():
         if self.plot_locus is None:
             self.plot_locus = self.request.form.get("locus", "1:205500000-206000000")
         return self.plot_locus
-    
+
     def get_locus_tuple(self) -> Tuple[int, int, int]:
         """
         Gets the form input for plot locus but as a separated tuple: (chrom, start, end).
@@ -85,17 +88,17 @@ class SessionPayload():
         locus = self.get_locus()
         coordinate = self.get_coordinate()
         return parse_region_text(locus, coordinate)
-    
+
     def get_infer_variant(self) -> bool:
         """
-        Gets the form input for infer_variant for this session. 
+        Gets the form input for infer_variant for this session.
         True if the user would like to use dbSNP to get CHROM, POS, REF, ALT columns,
         False if they provide such columns themselves.
         """
         if self.infer_variant is None:
             self.infer_variant = bool(self.request.form.get("markerCheckbox"))
         return self.infer_variant
-    
+
     def get_is_coloc2(self) -> bool:
         """
         Gets the form input for coloc2 for this session.
@@ -105,7 +108,7 @@ class SessionPayload():
         if self.coloc2 is None:
             self.coloc2 = bool(self.request.form.get('coloc2check'))
         return self.coloc2
-    
+
     def get_coloc2_study_type(self) -> Literal["quant", "cc"]:
         """
         Get study type for COLOC2. Assumes that coloc2 is requested.
@@ -130,7 +133,7 @@ class SessionPayload():
             self.num_cases = num_cases
 
         return self.num_cases # type: ignore
-    
+
     def get_ld_population(self) -> str:
         """
         Get selected LD population from user input (1000 Genomes dataset).
@@ -142,7 +145,7 @@ class SessionPayload():
                 raise InvalidUsage(f"Invalid population provided: '{pop}'. Population must be one of '{', '.join(VALID_POPULATIONS)}'")
             self.ld_population = pop
         return self.ld_population
-    
+
     def get_lead_snp_name(self) -> str:
         """
         Get the lead SNP name from user input, if specified.
@@ -152,7 +155,7 @@ class SessionPayload():
             self.lead_snp_name = self.request.form.get("leadsnp", "")
 
         return self.lead_snp_name
-    
+
     def get_lead_snp_index(self) -> int:
         """
         Get the index of the lead SNP for the GWAS dataset.
@@ -160,7 +163,7 @@ class SessionPayload():
         lead_snp = self.get_lead_snp_name()
         if self.gwas_data is None:
             raise Exception("Cannot get lead SNP index when GWAS dataset is undefined.")
-        
+
         snps = [snp.split(";")[0] for snp in self.gwas_data.loc[:, "SNP"]] # type: ignore
         if lead_snp == "":
             lead_snp = list(self.gwas_data.loc[ self.gwas_data.loc[:,"P"] == self.gwas_data.loc[:,"P"].min() ].loc[:,"SNP"])[0].split(';')[0] # type: ignore
@@ -171,7 +174,7 @@ class SessionPayload():
     def get_ss_locus(self) -> str:
         """
         Get the Simple Sum region string from form input.
-        If no Simple Sum region string is provided by user, 
+        If no Simple Sum region string is provided by user,
         then use default (200kbp region centered at lead SNP position).
 
         Prerequisite: need GWAS dataset.
@@ -180,7 +183,7 @@ class SessionPayload():
             return self.ss_locustext
 
         SSlocustext = self.request.form.get("SSlocus", "")
-        
+
         if SSlocustext != "":
             SSchrom, SS_start, SS_end = parse_region_text(SSlocustext, self.get_coordinate())
         else:
@@ -195,7 +198,7 @@ class SessionPayload():
         self.ss_locustext = SSlocustext
 
         return self.ss_locustext
-    
+
     def get_ss_locus_tuple(self) -> Tuple[int, int, int]:
         """
         Get the Simple Sum region as a tuple: (chrom, start, end).
@@ -206,26 +209,26 @@ class SessionPayload():
         chrom, startend = locus_text.split(":", 1)
         start, end = startend.split("-", 1)
         return int(chrom), int(start), int(end)
-    
+
     def get_gtex_selection(self) -> Tuple[List[str], List[str]]:
         """
         Return a tuple containing list of selected tissues and list of selected genes.
-        
+
         Format: (tissues, genes)
         """
         if self.gtex_genes is None:
             self.gtex_genes = self.request.form.getlist("region-genes")
         if self.gtex_tissues is None:
             self.gtex_tissues = self.request.form.getlist("GTEx-tissues")
-        
+
         if len(self.gtex_tissues) > 0 and len(self.gtex_genes) == 0:
             raise InvalidUsage('Please select one or more genes to complement your GTEx tissue(s) selection', status_code=410)
         elif len(self.gtex_genes) > 0 and len(self.gtex_tissues) == 0:
             raise InvalidUsage('Please select one or more tissues to complement your GTEx gene(s) selection', status_code=410)
 
         return self.gtex_tissues, self.gtex_genes
-    
-    def get_gtex_version(self) -> str:
+
+    def get_gtex_version(self) -> Literal["V7", "V8"]:
         """
         Get the version of GTEx needed for fetching from MongoDB.
         """
@@ -233,7 +236,35 @@ class SessionPayload():
             return "V8"
         else:
             return "V7"
-    
+
+    def get_p_value_threshold(self) -> Union[float, str]:
+        """
+        Get the user-selected P value threshold for set-based test.
+        """
+
+        if self.set_based_p is None:
+            set_based_p = self.request.form['setbasedP'] # type: ignore
+            if set_based_p == "":
+                set_based_p = "default"
+            else:
+                try:
+                    set_based_p = float(set_based_p)
+                    if set_based_p < 0 or set_based_p > 1:
+                        raise InvalidUsage('Set-based p-value threshold given is not between 0 and 1')
+                except:
+                    raise InvalidUsage('Invalid value provided for the set-based p-value threshold. Value must be numeric between 0 and 1.')
+
+            self.set_based_p = set_based_p
+
+        return self.set_based_p
+
+    def is_ld_user_defined(self) -> bool:
+        """
+        Return True if the user has uploaded their own LD matrix, False otherwise.
+        """
+        return download_file(self.request, ["ld"]) is not None
+
+
     def dump_session_data(self):
         """
         Create JSON dict of session data needed for form_data file.
@@ -256,12 +287,16 @@ class SessionPayload():
 
         data['coordinate'] = self.get_coordinate()
 
-        data['set_based_p'] = setbasedP
+        data['set_based_p'] = self.set_based_p
         SSlocustext = request.form['SSlocus'] # SSlocus defined below
         data['std_snp_list'] = std_snp_list
         data['runcoloc2'] = runcoloc2
         data['snp_warning'] = snp_warning
         data['thresh'] = thresh
         data['numGTExMatches'] = numGTExMatches
+
+        # simple sum
+        data['first_stages'] = first_stages
+        data['first_stage_Pvalues'] = first_stage_p
 
         return data

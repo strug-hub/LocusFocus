@@ -15,10 +15,30 @@ from app.routes import InvalidUsage
 GENOMIC_WINDOW_LIMIT = 2e6
 
 
-def download_file(request: Request, extensions: List[str]) -> Optional[str]:
+def get_session_filepath(filename: str) -> os.PathLike:
+    """
+    Given a desired filename, return the path to the file in the session folder.
+    """
+    filename = secure_filename(filename)
+    with app.app_context():
+        return os.path.join(app.config['SESSION_FOLDER'], filename) # type: ignore
+
+
+def get_upload_filepath(filename: str) -> os.PathLike:
+    """
+    Given a desired filename, return the path to the file in the upload folder.
+    """
+    filename = secure_filename(filename)
+    with app.app_context():
+        return os.path.join(app.config['UPLOAD_FOLDER'], filename) # type: ignore
+
+
+def download_file(request: Request, extensions: List[str], check_only: bool = False) -> Optional[str]:
     """
     Download the first file at 'files[]' that matches the given extensions,
     and return the filepath to the saved file. Return None if no such file exists.
+
+    If check_only is True, do not download the file.
 
     Extensions should not include the period. eg. `["html", "tsv", "txt"]`
     """
@@ -33,15 +53,16 @@ def download_file(request: Request, extensions: List[str]) -> Optional[str]:
             continue
 
         filename = secure_filename(file.filename)
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(filepath)
+        filepath = get_upload_filepath(filename)
+        if not check_only:
+            file.save(filepath)
         if not os.path.isfile(filepath):
             raise RequestEntityTooLarge(f"File '{filename}' too large")
         
         saved_filepath = filepath
         break
 
-    return saved_filepath
+    return saved_filepath # type: ignore
 
 
 def decompose_variant_list(variant_list):
