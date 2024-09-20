@@ -9,8 +9,6 @@ Expected order:
 - report_gtex_data
 - get_ld_matrix
 - ss_subset_gwas
-- ss_colocalization X
-- coloc2 X
-- save_coloc_results X
-
+- coloc_simple_sum
+- finalize_results
 """

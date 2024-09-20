@@ -50,8 +50,8 @@ class BaseConfig:
             "https://*.googletagmanager.com",
         ],
     }
-    UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), "static", "upload")
-    SESSION_FOLDER = os.path.join(os.path.dirname(__file__), "static", "session_data")
+    UPLOAD_FOLDER = os.path.abspath(os.path.join(os.path.dirname(__file__), "static", "upload"))
+    SESSION_FOLDER = os.path.abspath(os.path.join(os.path.dirname(__file__), "static", "session_data"))
     # Flask-Uploads
     UPLOADED_FILES_DEST = UPLOAD_FOLDER
     UPLOADED_FILES_ALLOW = set(['txt', 'tsv', 'ld', 'html'])

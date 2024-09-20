@@ -2137,7 +2137,6 @@ def index():
 
         t1 = datetime.now() # timer for Simple Sum calculation time
         Rscript_code_path = os.path.join(MYDIR, 'getSimpleSumStats.R')
-        # Rscript_path = subprocess.run(args=["which","Rscript"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
         SSresult_path = os.path.join(MYDIR, 'static', f'session_data/SSPvalues-{my_session_id}.txt')
         Rscript_args = [
             'Rscript',
@@ -2245,8 +2244,6 @@ def index():
         json.dump(genes_data, open(genes_sessionfilepath, 'w'))
 
         ####################################################################################################
-
-
 
         timing_file = f'session_data/times-{my_session_id}.txt'
         timing_file_path = os.path.join(MYDIR, 'static', timing_file)
