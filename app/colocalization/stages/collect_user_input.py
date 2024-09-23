@@ -16,48 +16,49 @@ class CollectUserInputStage(PipelineStage):
     VALID_POPULATIONS = ["EUR", "AFR", "EAS", "SAS", "AMR", "ASN", "NFE"]
     VALID_COORDINATES = ["hg19", "hg38"]
 
-    def invoke(self, request: SessionPayload) -> SessionPayload:
-        
-        new_payload = SessionPayload()
-        new_payload.request = request
+    def name(self) -> str:
+        """
+        The name of the stage.
+        """
+        return "collect-user-input"
 
-        new_payload = self._read_form_inputs(request, new_payload)
-        new_payload = self._read_files(request, new_payload)
-        new_payload = self._fix_gwas_columns(request, new_payload)
+    def invoke(self, payload: SessionPayload) -> SessionPayload:
+        
+        new_payload = self._read_form_inputs(payload)
         
         return new_payload
 
-    def _read_form_inputs(self, request: Request, new_payload: SessionPayload) -> SessionPayload:
+    def _read_form_inputs(self, payload: SessionPayload) -> SessionPayload:
         """
         Populate the payload with form inputs read from the given request.
         """
         # Collect all form errors, check length at end, and then raise exception if > 0
         errors = []
 
-        if request.form.get("coordinate") not in self.VALID_COORDINATES:
-            errors.append(f"Invalid coordinate: '{request.form.get('coordinate')}'")
-        new_payload.coordinate = request.form.get("coordinate", "hg19") # type: ignore
+        if payload.request.form.get("coordinate") not in self.VALID_COORDINATES:
+            errors.append(f"Invalid coordinate: '{payload.request.form.get('coordinate')}'")
+        payload.coordinate = payload.request.form.get("coordinate", "hg19") # type: ignore
         
-        new_payload.coloc2 = bool(request.form.get("coloc2check"))
+        payload.coloc2 = bool(payload.request.form.get("coloc2check"))
 
-        if request.form.get("LD-populations") not in self.VALID_POPULATIONS:
-            errors.append(f"Invalid 1000 Genomes population: '{request.form.get('LD-populations')}'")
-        new_payload.ld_population = request.form.get("LD-populations", "EUR")
+        if payload.request.form.get("LD-populations") not in self.VALID_POPULATIONS:
+            errors.append(f"Invalid 1000 Genomes population: '{payload.request.form.get('LD-populations')}'")
+        payload.ld_population = payload.request.form.get("LD-populations", "EUR")
 
-        new_payload.infer_variant = bool(request.form.get("markerCheckbox"))
-        new_payload.plot_locus = request.form.get("locus", "1:205500000-206000000")
-        new_payload.simple_sum_locus = request.form.get("SSlocus", "")
+        payload.infer_variant = bool(payload.request.form.get("markerCheckbox"))
+        payload.plot_locus = payload.request.form.get("locus", "1:205500000-206000000")
+        payload.simple_sum_locus = payload.request.form.get("SSlocus", "")
 
         # GTEx
-        new_payload.gtex_tissues = request.form.getlist("GTEx-tissues")
-        new_payload.gtex_genes = request.form.getlist("region-genes")
-        if len(new_payload.gtex_tissues) > 0 and len(new_payload.gtex_genes) == 0:
+        payload.gtex_tissues = payload.request.form.getlist("GTEx-tissues")
+        payload.gtex_genes = payload.request.form.getlist("region-genes")
+        if len(payload.gtex_tissues) > 0 and len(payload.gtex_genes) == 0:
             errors.append('Please select one or more genes to complement your GTEx tissue(s) selection')
-        elif len(new_payload.gtex_genes) > 0 and len(new_payload.gtex_tissues) == 0:
+        elif len(payload.gtex_genes) > 0 and len(payload.gtex_tissues) == 0:
             errors.append('Please select one or more tissues to complement your GTEx gene(s) selection')
 
         # First stage set-based test P value threshold
-        p_threshold = request.form.get("setbasedP", "")
+        p_threshold = payload.request.form.get("setbasedP", "")
         if p_threshold == "":
             p_threshold = "default"
         else:
@@ -66,11 +67,11 @@ class CollectUserInputStage(PipelineStage):
                 if p_threshold < 0 or p_threshold > 1:
                     errors.append('Set-based p-value threshold given is not between 0 and 1')
                 else:
-                    new_payload.set_based_p = p_threshold
+                    payload.set_based_p = p_threshold
             except:
                 errors.append('Invalid value provided for the set-based p-value threshold. Value must be numeric between 0 and 1.')
 
-        new_payload.lead_snp_name = request.form.get("leadsnp", "")
+        payload.lead_snp_name = payload.request.form.get("leadsnp", "")
 
         if len(errors) > 0:
             raise InvalidUsage(
@@ -78,24 +79,4 @@ class CollectUserInputStage(PipelineStage):
                 payload={ f"error_{i+1}": error for i, error in enumerate(errors) }
             )
 
-        return new_payload
-
-
-    def _read_files(self, request: Request, new_payload: SessionPayload) -> SessionPayload:
-        """
-        Populate the payload with dataframes for the uploaded files.
-        Gets file information from the request.
-        """
-        if 'files[]' not in request.files:
-            raise InvalidUsage(
-                message=f"No file(s) selected or invalid input",
-            )
-
-        return new_payload
-
-
-    def _fix_gwas_columns(self, request: Request, new_payload: SessionPayload) -> SessionPayload:
-        """
-        Using info in the provided request, check and rename the columns in the GWAS file.
-        """
-        return new_payload
+        return payload

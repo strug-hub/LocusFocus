@@ -13,10 +13,24 @@ class Pipeline():
         self.stages: List[PipelineStage] = []
 
     def invoke_stage(self, stage: PipelineStage, payload: object) -> object:
-        # pre-stage steps go here
-        new_payload = stage.invoke(payload)
-        # post-stage steps go here
-        return new_payload
+        payload = self.pre_stage(stage, payload)
+        payload = stage.invoke(payload)
+        payload = self.post_stage(stage, payload)
+        return payload
+
+    def pre_stage(self, stage: PipelineStage, payload: object):
+        """
+        Operations performed before the stage's `invoke` method is called.
+        Can be extended.
+        """
+        return payload
+
+    def post_stage(self, stage: PipelineStage, payload: object):
+        """
+        Operations performed after the stage's `invoke` method is called.
+        Can be extended.
+        """
+        return payload
 
     def pipe(self, *stages: PipelineStage):
         """Add new stage(s) to the pipeline. 

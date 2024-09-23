@@ -28,6 +28,9 @@ class GetLDMatrixStage(PipelineStage):
     - `gwas_data` is defined in the session.
     """
 
+    def name(self) -> str:
+        return "get-ld-matrix"
+
     def invoke(self, payload: SessionPayload) -> SessionPayload:
 
         # Enforce prerequisites

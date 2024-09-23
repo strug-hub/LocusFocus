@@ -16,6 +16,9 @@ class ReadSecondaryDatasetsStage(PipelineStage):
     and storing them in the session payload, if they exist.
     """
 
+    def name(self):
+        return "read-secondary-datasets"
+
     def invoke(self, payload: SessionPayload) -> SessionPayload:
 
         secondary_datasets = self._read_dataset_file(payload)

@@ -19,6 +19,9 @@ class SimpleSumSubsetGWASStage(PipelineStage):
     Must take place after a GWAS dataset is added to the payload.
     """
 
+    def name(self) -> str:
+        return "simple-sum-subset-gwas"
+
     def invoke(self, payload: SessionPayload) -> SessionPayload:
 
         if payload.gwas_data is None:
@@ -48,22 +51,6 @@ class SimpleSumSubsetGWASStage(PipelineStage):
         SS_chrom_bool = [str(x).replace('23','X') for x in gwas_chrom_col.isin(chromList) if x == True]
         SS_indices = SS_chrom_bool & (gwas_data["POS"] >= SS_start) & (gwas_data["POS"] <= SS_end)
         SS_gwas_data = gwas_data.loc[ SS_indices ]
-
-        # TODO: Include this step somewhere in COLOC2 handling stages
-        # if runcoloc2:
-        #     coloc2_gwasdf = SS_gwas_data.rename(columns={
-        #         chromcol: 'CHR'
-        #         ,poscol: 'POS'
-        #         ,snpcol: 'SNPID'
-        #         ,pcol: 'PVAL'
-        #         ,refcol: REF
-        #         ,altcol: ALT
-        #         ,betacol: BETA
-        #         ,stderrcol: SE
-        #         ,mafcol: MAF
-        #         ,numsamplescol: 'N'
-        #     })
-        #     coloc2_gwasdf = coloc2_gwasdf.reindex(columns=coloc2gwascolnames)
 
         if SS_gwas_data.shape[0] == 0:
             raise InvalidUsage('No data points found for entered Simple Sum region', status_code=410)
