@@ -9,6 +9,9 @@ class FinalizeResultsStage(PipelineStage):
     Perform final steps for the colocalization process.
     """
 
+    def name(self) -> str:
+        return "finalize-results"
+
     def invoke(self, payload: SessionPayload) -> SessionPayload:
 
         # Indicate that the request was a success

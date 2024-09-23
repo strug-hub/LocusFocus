@@ -16,6 +16,10 @@ class ReportGTExDataStage(PipelineStage):
     - GWAS data is loaded in session *before* subsetting (original uploaded data).
     - GWAS dataset contains only one chromosome.
     """
+
+    def name(self):
+        return "report-gtex-data"
+
     def invoke(self, payload: SessionPayload) -> SessionPayload:
 
         if payload.gwas_data is None:

@@ -26,6 +26,9 @@ class ColocSimpleSumStage(PipelineStage):
     COLOC2_EQTL_COLNAMES = COLOC2_COLNAMES + ['ProbeID']
     COLOC2_GWAS_COLNAMES = COLOC2_COLNAMES + ['type']
 
+    def name(self) -> str:
+        return "simple-sum"
+
     def invoke(self, payload: SessionPayload) -> SessionPayload:
 
         # Check prerequisites

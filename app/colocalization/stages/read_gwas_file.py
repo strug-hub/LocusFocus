@@ -47,6 +47,8 @@ class ReadGWASFileStage(PipelineStage):
         GWASColumn("maf-col", "MAF", coloc2=True),
     ]
 
+    def name(self) -> str:
+        return "read-gwas-file"
 
     def __init__(self, enforce_one_chrom = True):
         self.enforce_one_chrom = enforce_one_chrom
