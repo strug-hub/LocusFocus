@@ -338,6 +338,9 @@ class ColocSimpleSumStage(PipelineStage):
         ####################################################################################################
 
         if payload.coloc2:
+
+            assert coloc2eqtl_df is not None
+
             # COLOC2
             gwas_to_coloc2_colnames = {
                 "CHROM": "CHR",
