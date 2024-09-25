@@ -1,3 +1,4 @@
+from os import PathLike
 from dataclasses import dataclass, field
 from uuid import uuid4, UUID
 from typing import List, Literal, Dict, Optional, Tuple, Union
@@ -6,9 +7,35 @@ import numpy as np
 import pandas as pd
 from flask import Request
 
-from app.colocalization.utils import download_file, parse_region_text
+from app.colocalization.utils import download_file, get_session_filepath, parse_region_text
 from app.colocalization.constants import ONE_SIDED_SS_WINDOW_SIZE, VALID_COORDINATES, VALID_POPULATIONS
 from app.routes import InvalidUsage
+
+
+class SessionFiles():
+    """
+    Files and filepaths for a given session.
+    """
+
+    def __init__(self, session_id: UUID):
+        # Session files
+        self.session_filepath = get_session_filepath(f"form_data-{session_id}.json")
+        self.genes_session_filepath = get_session_filepath(f"genes_data-{session_id}.json")
+        self.SSPvalues_filepath = get_session_filepath(f"SSPvalues-{session_id}.json")
+        self.coloc2_filepath = get_session_filepath(f"coloc2result-{session_id}.json")
+        self.metadata_filepath = get_session_filepath(f"metadata-{session_id}.json")
+
+        # Simple Sum files
+        self.p_value_filepath = get_session_filepath(f"Pvalues-{session_id}.txt")
+        self.ld_matrix_filepath = get_session_filepath(f"ldmat-{session_id}.txt")
+        self.ld_mat_snps_filepath = get_session_filepath(f"ldmat_snps-{session_id}.txt")
+        self.ld_mat_positions_filepath = get_session_filepath(f"ldmat_positions-{session_id}.txt")
+        self.simple_sum_results_filepath = get_session_filepath(f"SSPvalues-{session_id}.txt")
+
+        # COLOC2 files
+        self.coloc2_gwas_filepath = get_session_filepath(f"coloc2gwas_df-{session_id}.txt")
+        self.coloc2_eqtl_filepath = get_session_filepath(f"coloc2eqtl_df-{session_id}.txt")
+        self.coloc2_results_filepath = get_session_filepath(f"coloc2result_df-{session_id}.txt")
 
 
 @dataclass
@@ -42,6 +69,7 @@ class SessionPayload():
     gwas_data: Optional[pd.DataFrame] = None
     ld_matrix: Optional[np.matrix] = None
     secondary_datasets: Optional[Dict[str, dict]] = None
+    file: SessionFiles = field(init=False)
 
     # LD Matrix data
     # DataFrame containing SNPs that were actually used in LD. See: https://www.cog-genomics.org/plink/1.9/formats#bim
@@ -61,6 +89,10 @@ class SessionPayload():
 
     # GTEx
     reported_gtex_data: dict = {}  # only used for reporting, use get_gtex_selection() instead
+
+    def __post_init__(self):
+        # Runs after init, initializes SessionFiles object
+        self.file = SessionFiles(self.session_id)
 
     def get_coordinate(self) -> Literal['hg38', 'hg19']:
         """

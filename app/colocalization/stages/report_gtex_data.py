@@ -1,7 +1,6 @@
 import json
 from tqdm import tqdm
 from app.colocalization.payload import SessionPayload
-from app.colocalization.utils import get_session_filepath
 from app.pipeline.pipeline_stage import PipelineStage
 from app.utils.gtex import get_gtex_data, collapsed_genes_df_hg19, collapsed_genes_df_hg38
 
@@ -99,5 +98,4 @@ class ReportGTExDataStage(PipelineStage):
                 ,'exonEnds': [int(bp) for bp in list(genes_to_draw['exonEnds'])[i].split(',')]
             })
 
-        genes_sessionfilepath = get_session_filepath(f"genes_data-{payload.session_id}.json")
-        json.dump(genes_data, open(genes_sessionfilepath, 'w'))
+        json.dump(genes_data, open(payload.file.genes_session_filepath, 'w'))

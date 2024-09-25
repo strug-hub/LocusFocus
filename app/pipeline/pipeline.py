@@ -4,9 +4,12 @@ from .pipeline_stage import PipelineStage
 
 class Pipeline():
     """
-    Generic pipeline class for creating an ordered series of stages to execute on a given payload.
+    Generic pipeline class for creating an 
+    ordered series of stages to execute on a given payload.
 
     Similar implementation as the Chain of Responsibility design pattern.
+
+    Includes methods for handling pre and post-stage operations.
     """
 
     def __init__(self):
@@ -21,13 +24,35 @@ class Pipeline():
     def pre_stage(self, stage: PipelineStage, payload: object):
         """
         Operations performed before the stage's `invoke` method is called.
-        Can be extended.
+        Executes before every stage in the pipeline, and can be extended.
+        
+        Parameters:
+            stage (PipelineStage): The stage that's about to be invoked.
+            payload (object): The payload to be processed by the stage.
         """
         return payload
 
     def post_stage(self, stage: PipelineStage, payload: object):
         """
         Operations performed after the stage's `invoke` method is called.
+        Executes immediately after every stage in the pipeline, and can be extended.
+
+        Parameters:
+            stage (PipelineStage): The stage that was just invoked.
+            payload (object): The payload that was processed by the stage.
+        """
+        return payload
+    
+    def pre_pipeline(self, payload: object):
+        """
+        Operations performed before the pipeline's `process` method is called.
+        Can be extended.
+        """
+        return payload
+
+    def post_pipeline(self, payload: object):
+        """ 
+        Operations performed after the pipeline's `process` method is called.
         Can be extended.
         """
         return payload
@@ -54,6 +79,8 @@ class Pipeline():
         Returns:
             object: A payload that has been processed by all stages in this pipeline.
         """
+        self.pre_pipeline(payload)
         for stage in self.stages:
             payload = self.invoke_stage(stage, payload)
+        self.post_pipeline(payload)
         return payload
