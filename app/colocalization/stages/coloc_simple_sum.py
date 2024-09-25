@@ -5,7 +5,7 @@ import pandas as pd
 
 from app.colocalization.constants import LD_MAT_DIAG_CONSTANT
 from app.colocalization.payload import SessionPayload
-from app.colocalization.utils import clean_snps, get_session_filepath, standardize_snps, write_list, write_matrix
+from app.colocalization.utils import clean_snps, standardize_snps, write_list, write_matrix
 from app.pipeline.pipeline_stage import PipelineStage
 from app.routes import InvalidUsage
 from app.scripts import ScriptError, coloc2, simple_sum
@@ -263,22 +263,18 @@ class ColocSimpleSumStage(PipelineStage):
         p_matrix_indices = [i for i, e in enumerate(SS_positions) if e in ld_mat_positions]
         p_value_matrix = p_value_matrix[:, p_matrix_indices] # type: ignore
 
-        p_value_matrix_filepath = get_session_filepath(f"Pvalues-{payload.session_id}.txt")
-        ld_matrix_filepath = get_session_filepath(f"ldmat-{payload.session_id}.txt")
-
-        write_matrix(p_value_matrix, p_value_matrix_filepath)
-        write_matrix(ld_matrix, ld_matrix_filepath)
+        write_matrix(p_value_matrix, payload.file.p_value_filepath)
+        write_matrix(ld_matrix, payload.file.ld_matrix_filepath)
         # Extra files written for LD matrix:
-        write_list(ld_mat_snps, get_session_filepath(f'ldmat_snps-{payload.session_id}.txt'))
-        write_list(ld_mat_positions, get_session_filepath(f'ldmat_positions-{payload.session_id}.txt'))
+        write_list(ld_mat_snps, payload.file.ld_mat_snps_filepath)
+        write_list(ld_mat_positions, payload.file.ld_mat_positions_filepath)
 
         # Run Simple Sum
-        SSresult_path = get_session_filepath(f'SSPvalues-{payload.session_id}.txt')
         try:
             SSdf = simple_sum(
-                p_value_matrix_filepath,
-                ld_matrix_filepath,
-                SSresult_path,
+                payload.file.p_value_filepath,
+                payload.file.ld_matrix_filepath,
+                payload.file.simple_sum_results_filepath,
                 payload.get_p_value_threshold(),
             )
         except ScriptError as e:
@@ -332,8 +328,7 @@ class ColocSimpleSumStage(PipelineStage):
             ,'First_stages': first_stages
             ,'First_stage_Pvalues': first_stage_p
         }
-        SSPvalues_filepath = get_session_filepath(f"SSPvalues-{payload.session_id}.json")
-        json.dump(SSPvalues_dict, open(SSPvalues_filepath, 'w'))
+        json.dump(SSPvalues_dict, open(payload.file.SSPvalues_filepath, 'w'))
 
         ####################################################################################################
 
@@ -355,16 +350,14 @@ class ColocSimpleSumStage(PipelineStage):
                 .reindex(columns=self.COLOC2_GWAS_COLNAMES)
 
             # Calculating COLOC2 stats
-            coloc2gwasfilepath = get_session_filepath(f"coloc2gwas_df-{payload.session_id}.txt")
-            coloc2_gwasdf.dropna().to_csv(coloc2gwasfilepath, index=False, encoding='utf-8', sep="\t")
-            coloc2eqtlfilepath = get_session_filepath(f"coloc2eqtl_df-{payload.session_id}.txt")
+            coloc2_gwasdf.dropna().to_csv(payload.file.coloc2_gwas_filepath, index=False, encoding='utf-8', sep="\t")
             if coloc2_gwasdf.shape[0] == 0 or coloc2eqtl_df.shape[0] == 0:
                 raise InvalidUsage(f'Empty datasets for coloc2. Cannot proceed. GWAS numRows: {coloc2_gwasdf.shape[0]}; eQTL numRows: {coloc2eqtl_df.shape[0]}. May be due to inability to match with GTEx variants. Please check position, REF/ALT allele correctness, and or SNP names.')
-            coloc2eqtl_df.dropna().to_csv(coloc2eqtlfilepath, index=False, encoding='utf-8', sep="\t")
+            coloc2eqtl_df.dropna().to_csv(payload.file.coloc2_eqtl_filepath, index=False, encoding='utf-8', sep="\t")
 
             # Run COLOC2
             try:
-                coloc2df = coloc2(coloc2gwasfilepath, coloc2eqtlfilepath, get_session_filepath(f"coloc2result_df-{payload.session_id}.txt"))
+                coloc2df = coloc2(payload.file.coloc2_gwas_filepath, payload.file.coloc2_eqtl_filepath, payload.file.coloc2_results_filepath)
             except ScriptError as e:
                 raise InvalidUsage(e.stdout, status_code=410)
 
@@ -379,7 +372,6 @@ class ColocSimpleSumStage(PipelineStage):
                 ,'PPH4abf': []
             }
 
-        coloc2_filepath = get_session_filepath(f"coloc2result-{payload.session_id}.json")
-        json.dump(coloc2_dict, open(coloc2_filepath,'w'))
+        json.dump(coloc2_dict, open(payload.file.coloc2_filepath,'w'))
 
         return
