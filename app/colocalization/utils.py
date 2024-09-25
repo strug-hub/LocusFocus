@@ -11,6 +11,7 @@ from werkzeug.exceptions import RequestEntityTooLarge
 
 from app import mongo
 from app.routes import InvalidUsage
+from app.utils.gtex import collapsed_genes_df_hg19, collapsed_genes_df_hg38
 
 GENOMIC_WINDOW_LIMIT = 2e6
 
@@ -391,3 +392,17 @@ def clean_snps(variantlist, regiontext, build):
     final_varlist = [ e if (e.startswith('rs') and std_varlist[i] != '.') else std_varlist[i] for i, e in enumerate(variantlist) ]
 
     return final_varlist
+
+
+def gene_names(genename, build):
+    # Given either ENSG gene name or HUGO gene name, returns both HUGO and ENSG names
+    ensg_gene = genename
+    if build.lower() in ["hg19","grch37"]:
+        collapsed_genes_df = collapsed_genes_df_hg19
+    elif build.lower() in ["hg38", "grch38"]:
+        collapsed_genes_df = collapsed_genes_df_hg38
+    if genename in list(collapsed_genes_df['name']):
+        ensg_gene = collapsed_genes_df['ENSG_name'][list(collapsed_genes_df['name']).index(genename)]
+    if genename in list(collapsed_genes_df['ENSG_name']):
+        genename = collapsed_genes_df['name'][list(collapsed_genes_df['ENSG_name']).index(genename)]
+    return genename, ensg_gene

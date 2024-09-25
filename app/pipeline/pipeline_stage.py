@@ -7,7 +7,7 @@ class PipelineStage():
 
     def name(self) -> str:
         """
-        The name of the stage.
+        The unique name of the stage.
 
         Use kebab-case for the name. eg. "my-example-stage"
         """

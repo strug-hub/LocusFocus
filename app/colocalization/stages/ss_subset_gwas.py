@@ -66,6 +66,7 @@ class SimpleSumSubsetGWASStage(PipelineStage):
         coordinate = payload.get_coordinate()
 
         std_snp_list = clean_snps(list(gwas_data["SNP"]), regionstr, coordinate)
+        payload.std_snp_list = std_snp_list
         ss_std_snp_list = [e for i,e in enumerate(std_snp_list) if ss_indices[i]]  # TODO: Is this not redundant?
 
         gwas_df = pd.DataFrame({

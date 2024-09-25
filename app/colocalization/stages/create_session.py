@@ -1,12 +1,16 @@
+from datetime import datetime
+import json
 from flask import Request
+from werkzeug.utils import secure_filename
 
 from app.colocalization.payload import SessionPayload
 from app.pipeline import PipelineStage
+from app.routes import InvalidUsage
 
 
 class CreateSessionStage(PipelineStage):
     """
-    Given a Flask request, 
+    Given a Flask request,
     create a Colocalization payload to use for the rest of the pipeline.
     """
 
@@ -15,4 +19,37 @@ class CreateSessionStage(PipelineStage):
 
     def invoke(self, request: Request) -> SessionPayload:
         payload = SessionPayload(request=request)
+
+        self._create_metadata_file(payload)
+        self._check_file_upload(payload)
+
         return payload
+
+    def _create_metadata_file(self, payload: SessionPayload):
+        """
+        Create JSON dict of session data needed for metadata file.
+        """
+
+        metadata = {}
+        metadata.update(
+            {
+                "datetime": datetime.now().isoformat(),
+                "files_uploaded": [
+                    secure_filename(file.filename or "")
+                    for file in payload.request.files.getlist("files[]")
+                ],
+                "session_id": str(payload.session_id),
+                "type": "default",
+            }
+        )
+
+        json.dump(metadata, open(payload.file.metadata_filepath, "w"))
+        return None
+
+    def _check_file_upload(self, payload: SessionPayload):
+        """
+        Check if the user has uploaded any files.
+        """
+        if "files[]" not in payload.request.files:
+            raise InvalidUsage(f"No files found in request")
+        return None
