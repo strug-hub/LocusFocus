@@ -6,7 +6,7 @@ import numpy as np
 from app.colocalization.payload import SessionPayload
 from app.colocalization.utils import download_file, standardize_snps, decompose_variant_list, x_to_23
 from app.pipeline import PipelineStage
-from app.routes import InvalidUsage
+from app.utils.errors import InvalidUsage
 
 
 @dataclass
@@ -94,7 +94,7 @@ class ReadGWASFileStage(PipelineStage):
             try:
                 gwas_data = pd.read_csv(outfile, sep="\t", encoding='utf-8')
             except:
-                raise InvalidUsage('Failed to load primary dataset. Please check formatting is adequate.', status_code=410)
+                raise InvalidUsage('Failed to load primary dataset as tab-separated file. Please check formatting is adequate, and that the file is not empty.', status_code=410)
 
         return gwas_data
 
@@ -134,7 +134,7 @@ class ReadGWASFileStage(PipelineStage):
 
         # Get P value column (always needed)
         if "P" not in gwas_data.columns:
-            raise InvalidUsage(f"P value column not found in provided GWAS file.")
+            raise InvalidUsage(f"P value column not found in provided GWAS file. Found columns: '{', '.join(old_gwas_columns)}'")
 
         infer_variant = bool(payload.request.form.get('markerCheckbox'))
 
@@ -199,34 +199,35 @@ class ReadGWASFileStage(PipelineStage):
         Prerequisite: gwas_data columns are set as default values (eg. "SNP", "P", etc.)
         """
 
+        # TODO: make helper function for error messages
         # Chromosome check
-        if not all(isinstance(x, int) for x in x_to_23(list(gwas_data["CHROM"]))):
-            raise InvalidUsage(f'Chromosome column contains unrecognizable values', status_code=410)
+        converted_chorms = x_to_23(list(gwas_data["CHROM"]))
+        if not all(isinstance(x, int) for x in converted_chorms):
+            raise InvalidUsage(f'Chromosome column contains unrecognizable values: {", ".join(f"Row {i+1}: {x}" for i, x in enumerate(converted_chorms) if not isinstance(x, int))}', status_code=410)
 
         # Position check
         if not all(isinstance(x, int) for x in list(gwas_data["POS"])):
-            raise InvalidUsage(f'Position column has non-integer entries', status_code=410)
+            raise InvalidUsage(f'Position column has non-integer entries: {", ".join(f"Row {i+1}: {x}" for i, x in enumerate(list(gwas_data["POS"])) if not isinstance(x, int))}', status_code=410)
 
         # P value check
         if not all(isinstance(x, float) for x in list(gwas_data["P"])):
-            raise InvalidUsage(f'P-value column has non-numeric entries', status_code=410)
+            raise InvalidUsage(f'P-value column has non-numeric entries: {", ".join(f"Row {i+1}: {x}" for i, x in enumerate(list(gwas_data["P"])) if not isinstance(x, float))}', status_code=410)
 
         # COLOC2 checks
         if payload.get_is_coloc2():
             if not all(isinstance(x, float) for x in list(gwas_data["BETA"])):
-                raise InvalidUsage(f'Beta column has non-numeric entries')
+                raise InvalidUsage(f'Beta column has non-numeric entries: {", ".join(f"Row {i+1}: {x}" for i, x in enumerate(list(gwas_data["BETA"])) if not isinstance(x, float))}', status_code=410)
             if not all(isinstance(x, float) for x in list(gwas_data["SE"])):
-                raise InvalidUsage(f'Standard error column has non-numeric entries')
+                raise InvalidUsage(f'Standard error column has non-numeric entries: {", ".join(f"Row {i+1}: {x}" for i, x in enumerate(list(gwas_data["SE"])) if not isinstance(x, float))}', status_code=410)
             if not all(isinstance(x, int) for x in list(gwas_data["N"])):
-                raise InvalidUsage(f'Number of samples column has non-integer entries')
+                raise InvalidUsage(f'Number of samples column has non-integer entries: {", ".join(f"Row {i+1}: {x}" for i, x in enumerate(list(gwas_data["N"])) if not isinstance(x, int))}', status_code=410)
             if not all(isinstance(x, float) for x in list(gwas_data["MAF"])):
-                raise InvalidUsage(f'MAF column has non-numeric entries')
+                raise InvalidUsage(f'MAF column has non-numeric entries: {", ".join(f"Row {i+1}: {x}" for i, x in enumerate(list(gwas_data["MAF"])) if not isinstance(x, float))}', status_code=410)
         
         # One chrom check
         if self.enforce_one_chrom and gwas_data["CHROM"].nunique() > 1:
             unique_chroms = list(gwas_data["CHROM"].unique()) # type: ignore
             raise InvalidUsage(f"Multiple chromosomes provided where only 1 is required: {unique_chroms}")
-
 
         return gwas_data
 
@@ -256,7 +257,7 @@ class ReadGWASFileStage(PipelineStage):
         # Check for invalid p=0 rows:
         zero_p = [x for x in list(gwas_data["P"]) if x==0]
         if len(zero_p)>0:
-            raise InvalidUsage('P-values of zero detected; please replace with a non-zero p-value')
+            raise InvalidUsage(f'P-values of zero detected; please replace with a non-zero p-value: {", ".join(f"Row {i+1}: {x}" for i, x in enumerate(zero_p) if x==0)}', status_code=410)
 
         payload.gwas_indices_kept = gwas_indices_kept
 
@@ -273,7 +274,7 @@ class ReadGWASFileStage(PipelineStage):
         snp_list = [asnp.split(';')[0] for asnp in snp_list] # type: ignore
         if lead_snp=='': lead_snp = list(gwas_data.loc[ gwas_data.loc[:,"P"] == gwas_data.loc[:,"P"].min() ].loc[:,"SNP"])[0].split(';')[0] # type: ignore
         if lead_snp not in snp_list:
-            raise InvalidUsage('Lead SNP not found', status_code=410)
+            raise InvalidUsage(f"Lead SNP '{lead_snp}' not found in dataset", status_code=410)
         lead_snp_position_index = snp_list.index(lead_snp)
 
         return lead_snp_position_index

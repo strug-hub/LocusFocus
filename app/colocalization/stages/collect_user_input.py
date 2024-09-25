@@ -2,7 +2,7 @@ from flask import Request
 
 from app.colocalization.payload import SessionPayload
 from app.pipeline import PipelineStage
-from app.routes import InvalidUsage
+from app.utils.errors import InvalidUsage
 
 
 class CollectUserInputStage(PipelineStage):

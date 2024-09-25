@@ -7,8 +7,8 @@ from app.colocalization.constants import LD_MAT_DIAG_CONSTANT
 from app.colocalization.payload import SessionPayload
 from app.colocalization.utils import clean_snps, standardize_snps, write_list, write_matrix
 from app.pipeline.pipeline_stage import PipelineStage
-from app.routes import InvalidUsage
 from app.scripts import ScriptError, coloc2, simple_sum
+from app.utils.errors import InvalidUsage, ServerError
 from app.utils.gtex import get_gtex_data
 
 
@@ -46,20 +46,17 @@ class ColocSimpleSumStage(PipelineStage):
             )
 
         if len(errors) > 0:
-            raise Exception(
+            raise ServerError(
                 f"Missing prerequisites for Simple Sum Stage: {', '.join(errors)}"
             )
 
         p_value_matrix, coloc2eqtl_df = self._build_pvalue_matrix(payload)
 
-        try:
-            self._run_simple_sum(
-                p_value_matrix,
-                payload,
-                coloc2eqtl_df,
-            )
-        except Exception as e:
-            raise Exception(f"Error running Simple Sum: {str(e)}")
+        self._run_simple_sum(
+            p_value_matrix,
+            payload,
+            coloc2eqtl_df,
+        )
 
         return payload
 
@@ -244,11 +241,11 @@ class ColocSimpleSumStage(PipelineStage):
         assert payload.ld_matrix is not None
 
         if payload.coloc2 and coloc2eqtl_df is None:
-            raise Exception("COLOC2 was selected but no coloc2eqtl_df was provided")
+            raise InvalidUsage("COLOC2 was selected but no coloc2eqtl_df was provided")
 
         SS_indices = payload.ss_indices
         if len(SS_indices) == 0:
-            raise Exception("No SNPs in Simple Sum subset")
+            raise InvalidUsage("No SNPs in Simple Sum subset")
 
         SS_positions = payload.gwas_data["POS"].to_list()
 
