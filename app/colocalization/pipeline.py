@@ -1,5 +1,7 @@
 import timeit
 
+from flask import Request
+
 from app.colocalization.payload import SessionPayload
 from app.colocalization.utils import get_session_filepath
 from app.pipeline import Pipeline
@@ -27,6 +29,9 @@ class ColocalizationPipeline(Pipeline):
         )
 
         self.timers = {f"{stage.name()}": 0.0 for stage in self.stages}
+
+    def process(self, payload: Request) -> SessionPayload:
+        return super().process(payload) # type: ignore
 
     def pre_stage(self, stage: PipelineStage, payload: object):
         # Timer for each stage (start time)
