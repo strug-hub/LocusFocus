@@ -10,7 +10,7 @@ from app.colocalization.payload import SessionPayload
 from app.colocalization.utils import download_file
 from app.colocalization.plink import plink_ld_pairwise, plink_ldmat
 from app.pipeline import PipelineStage
-from app.routes import InvalidUsage
+from app.utils.errors import InvalidUsage, ServerError
 
 
 class GetLDMatrixStage(PipelineStage):
@@ -35,7 +35,7 @@ class GetLDMatrixStage(PipelineStage):
 
         # Enforce prerequisites
         if payload.gwas_data is None:
-            raise Exception(f"Cannot use GetLDMatrixStage; gwas_data is None")
+            raise ServerError(f"Cannot use GetLDMatrixStage; gwas_data is None")
 
         # Read from file if it exists. Otherwise, create with PLINK
         ld_matrix = self._read_ld_matrix_file(payload)
@@ -63,7 +63,7 @@ class GetLDMatrixStage(PipelineStage):
             return None
 
         if payload.gwas_data is None:
-            raise Exception(f"Cannot validate user-provided LD matrix; gwas_data is not defined")
+            raise ServerError(f"Cannot validate user-provided LD matrix; gwas_data is not defined")
 
         ld_mat = pd.read_csv(ld_matrix_filepath, sep="\t", encoding='utf-8', header=None)
         if not (len(ld_mat.shape) == 2 and ld_mat.shape[0] == ld_mat.shape[1] and ld_mat.shape[0] == payload.gwas_data.shape[0]):
@@ -101,7 +101,7 @@ class GetLDMatrixStage(PipelineStage):
         Try to create an LD matrix using PLINK.
         """
         if payload.gwas_data is None:
-            raise Exception(f"Cannot create LD matrix; gwas_data is not defined")
+            raise ServerError(f"Cannot create LD matrix; gwas_data is not defined")
 
         chrom, _, _ = payload.get_locus_tuple()
 

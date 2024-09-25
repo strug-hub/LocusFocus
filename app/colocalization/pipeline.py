@@ -7,6 +7,7 @@ from app.colocalization.utils import get_session_filepath
 from app.pipeline import Pipeline
 from app.pipeline.pipeline_stage import PipelineStage
 from app.colocalization.stages import *
+from app.utils.errors import LocusFocusError
 
 
 class ColocalizationPipeline(Pipeline):
@@ -70,3 +71,10 @@ class ColocalizationPipeline(Pipeline):
             f.write(f"Total time: {self.timers['pipeline']}\n")
 
         return super().post_pipeline(payload)
+
+    def invoke_stage(self, stage: PipelineStage, payload: object):
+        try:
+            return super().invoke_stage(stage, payload)
+        except LocusFocusError as e:
+            e.message = f"[{stage.name()}] {e.message}"
+            raise e
