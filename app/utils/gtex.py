@@ -6,6 +6,7 @@ from pymongo import MongoClient
 
 
 from app import mongo
+from app.colocalization.utils import parse_region_text
 from app.routes import InvalidUsage
 
 client = None  # type: ignore
@@ -130,3 +131,27 @@ def get_gtex_data_pvalues(eqtl_data, snp_list):
     else:
         gtex_data = pd.merge(eqtl_data, pd.DataFrame(snp_list, columns=['variant_id']), on='variant_id', how='right')
     return list(gtex_data['pval'])
+
+
+def verify_std_snps(stdsnplist, regiontxt, build):
+    # Ensure valid region:
+    chrom, startbp, endbp = parse_region_text(regiontxt, build)
+    chrom = str(chrom).replace('23',"X")
+
+    # Load GTEx variant lookup table for region indicated
+    db = client.GTEx_V7
+    if build.lower() in ["hg38", "grch38"]:
+        db = client.GTEx_V8
+    collection = db['variant_table']
+    variants_query = collection.find(
+        { '$and': [
+            { 'chr': int(chrom.replace('X','23')) },
+            { 'variant_pos': { '$gte': int(startbp), '$lte': int(endbp) } }
+            ]}
+        )
+    variants_list = list(variants_query)
+    variants_df = pd.DataFrame(variants_list)
+    variants_df = variants_df.drop(['_id'], axis=1)
+    gtex_std_snplist = list(variants_df['variant_id'])
+    isInGTEx = [ x for x in stdsnplist if x in gtex_std_snplist ]
+    return len(isInGTEx)

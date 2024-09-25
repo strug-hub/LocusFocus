@@ -1,4 +1,3 @@
-from os import PathLike
 from dataclasses import dataclass, field
 from uuid import uuid4, UUID
 from typing import List, Literal, Dict, Optional, Tuple, Union
@@ -7,12 +6,22 @@ import numpy as np
 import pandas as pd
 from flask import Request
 
-from app.colocalization.utils import download_file, get_session_filepath, parse_region_text
-from app.colocalization.constants import ONE_SIDED_SS_WINDOW_SIZE, VALID_COORDINATES, VALID_POPULATIONS
+from app.colocalization.utils import (
+    download_file,
+    gene_names,
+    get_session_filepath,
+    parse_region_text,
+)
+from app.colocalization.constants import (
+    ONE_SIDED_SS_WINDOW_SIZE,
+    VALID_COORDINATES,
+    VALID_POPULATIONS,
+)
 from app.routes import InvalidUsage
+from app.utils.gtex import verify_std_snps
 
 
-class SessionFiles():
+class SessionFiles:
     """
     Files and filepaths for a given session.
     """
@@ -20,7 +29,9 @@ class SessionFiles():
     def __init__(self, session_id: UUID):
         # Session files
         self.session_filepath = get_session_filepath(f"form_data-{session_id}.json")
-        self.genes_session_filepath = get_session_filepath(f"genes_data-{session_id}.json")
+        self.genes_session_filepath = get_session_filepath(
+            f"genes_data-{session_id}.json"
+        )
         self.SSPvalues_filepath = get_session_filepath(f"SSPvalues-{session_id}.json")
         self.coloc2_filepath = get_session_filepath(f"coloc2result-{session_id}.json")
         self.metadata_filepath = get_session_filepath(f"metadata-{session_id}.json")
@@ -29,17 +40,33 @@ class SessionFiles():
         self.p_value_filepath = get_session_filepath(f"Pvalues-{session_id}.txt")
         self.ld_matrix_filepath = get_session_filepath(f"ldmat-{session_id}.txt")
         self.ld_mat_snps_filepath = get_session_filepath(f"ldmat_snps-{session_id}.txt")
-        self.ld_mat_positions_filepath = get_session_filepath(f"ldmat_positions-{session_id}.txt")
-        self.simple_sum_results_filepath = get_session_filepath(f"SSPvalues-{session_id}.txt")
+        self.ld_mat_positions_filepath = get_session_filepath(
+            f"ldmat_positions-{session_id}.txt"
+        )
+        self.simple_sum_results_filepath = get_session_filepath(
+            f"SSPvalues-{session_id}.txt"
+        )
 
         # COLOC2 files
-        self.coloc2_gwas_filepath = get_session_filepath(f"coloc2gwas_df-{session_id}.txt")
-        self.coloc2_eqtl_filepath = get_session_filepath(f"coloc2eqtl_df-{session_id}.txt")
-        self.coloc2_results_filepath = get_session_filepath(f"coloc2result_df-{session_id}.txt")
+        self.coloc2_gwas_filepath = get_session_filepath(
+            f"coloc2gwas_df-{session_id}.txt"
+        )
+        self.coloc2_eqtl_filepath = get_session_filepath(
+            f"coloc2eqtl_df-{session_id}.txt"
+        )
+        self.coloc2_results_filepath = get_session_filepath(
+            f"coloc2result_df-{session_id}.txt"
+        )
+
+    def write_to_file(self, filename: str, data: str):
+        # TODO: Implement in data-agnostic way.
+        # Fail if file already exists and is not empty.
+        # Write data to file. Writing method depends on data type.
+        pass
 
 
 @dataclass
-class SessionPayload():
+class SessionPayload:
     """
     Payload object for colocalization sessions.
 
@@ -52,10 +79,10 @@ class SessionPayload():
     session_id: UUID = field(default_factory=uuid4)
 
     # Form Inputs
-    coordinate: Optional[Literal['hg38', 'hg19']] = None
+    coordinate: Optional[Literal["hg38", "hg19"]] = None
     coloc2: Optional[bool] = None
     study_type: Optional[Literal["quant", "cc"]] = None
-    num_cases: Optional[int] = None # Used for study_type "cc" (case-control)
+    num_cases: Optional[int] = None  # Used for study_type "cc" (case-control)
     ld_population: Optional[str] = None
     infer_variant: Optional[bool] = None
     gtex_tissues: Optional[List[str]] = None
@@ -88,22 +115,28 @@ class SessionPayload():
     ss_result_df: Optional[pd.DataFrame] = None
 
     # GTEx
-    reported_gtex_data: dict = {}  # only used for reporting, use get_gtex_selection() instead
+    reported_gtex_data: dict = (
+        {}
+    )  # only used for reporting, use get_gtex_selection() instead
+    gene: Optional[str] = None
+    std_snp_list: List[str] = []
 
     def __post_init__(self):
         # Runs after init, initializes SessionFiles object
         self.file = SessionFiles(self.session_id)
 
-    def get_coordinate(self) -> Literal['hg38', 'hg19']:
+    def get_coordinate(self) -> Literal["hg38", "hg19"]:
         """
         Gets the form input for coordinate (aka. genome assembly, or 'build') for this session.
         """
         if self.coordinate is None:
             if self.request.form.get("coordinate") not in VALID_COORDINATES:
-                raise InvalidUsage(f"Invalid coordinate: '{self.request.form.get('coordinate')}'")
+                raise InvalidUsage(
+                    f"Invalid coordinate: '{self.request.form.get('coordinate')}'"
+                )
 
-            self.coordinate = self.request.form.get("coordinate") # type: ignore
-        return self.coordinate # type: ignore
+            self.coordinate = self.request.form.get("coordinate")  # type: ignore
+        return self.coordinate  # type: ignore
 
     def get_locus(self) -> str:
         """
@@ -138,7 +171,7 @@ class SessionPayload():
         False otherwise.
         """
         if self.coloc2 is None:
-            self.coloc2 = bool(self.request.form.get('coloc2check'))
+            self.coloc2 = bool(self.request.form.get("coloc2check"))
         return self.coloc2
 
     def get_coloc2_study_type(self) -> Literal["quant", "cc"]:
@@ -146,11 +179,13 @@ class SessionPayload():
         Get study type for COLOC2. Assumes that coloc2 is requested.
         """
         if self.study_type is None:
-            study_type = self.request.form.get("studytype") # type: ignore
+            study_type = self.request.form.get("studytype")  # type: ignore
             if study_type not in ["quant", "cc"]:
-                raise InvalidUsage(f"Study type form value is invalid: {self.request.form.get('studytype')}")
-            self.study_type = study_type # type: ignore
-        return self.study_type # type: ignore
+                raise InvalidUsage(
+                    f"Study type form value is invalid: {self.request.form.get('studytype')}"
+                )
+            self.study_type = study_type  # type: ignore
+        return self.study_type  # type: ignore
 
     def get_coloc2_case_control_cases(self) -> int:
         """
@@ -161,10 +196,12 @@ class SessionPayload():
             try:
                 num_cases = self.request.form.get("numcases", type=int)
             except ValueError:
-                raise InvalidUsage("Number of cases entered must be an integer", status_code=410)
+                raise InvalidUsage(
+                    "Number of cases entered must be an integer", status_code=410
+                )
             self.num_cases = num_cases
 
-        return self.num_cases # type: ignore
+        return self.num_cases  # type: ignore
 
     def get_ld_population(self) -> str:
         """
@@ -174,7 +211,9 @@ class SessionPayload():
         if self.ld_population is None:
             pop = self.request.form.get("LD-populations", "EUR")
             if pop not in VALID_POPULATIONS:
-                raise InvalidUsage(f"Invalid population provided: '{pop}'. Population must be one of '{', '.join(VALID_POPULATIONS)}'")
+                raise InvalidUsage(
+                    f"Invalid population provided: '{pop}'. Population must be one of '{', '.join(VALID_POPULATIONS)}'"
+                )
             self.ld_population = pop
         return self.ld_population
 
@@ -196,11 +235,11 @@ class SessionPayload():
         if self.gwas_data is None:
             raise Exception("Cannot get lead SNP index when GWAS dataset is undefined.")
 
-        snps = [snp.split(";")[0] for snp in self.gwas_data.loc[:, "SNP"]] # type: ignore
+        snps = [snp.split(";")[0] for snp in self.gwas_data.loc[:, "SNP"]]  # type: ignore
         if lead_snp == "":
-            lead_snp = list(self.gwas_data.loc[ self.gwas_data.loc[:,"P"] == self.gwas_data.loc[:,"P"].min() ].loc[:,"SNP"])[0].split(';')[0] # type: ignore
+            lead_snp = list(self.gwas_data.loc[self.gwas_data.loc[:, "P"] == self.gwas_data.loc[:, "P"].min()].loc[:, "SNP"])[0].split(";")[0]  # type: ignore
         if lead_snp not in snps:
-            raise InvalidUsage('Lead SNP not found', status_code=410)
+            raise InvalidUsage("Lead SNP not found", status_code=410)
         return snps.index(lead_snp)
 
     def get_ss_locus(self) -> str:
@@ -217,13 +256,17 @@ class SessionPayload():
         SSlocustext = self.request.form.get("SSlocus", "")
 
         if SSlocustext != "":
-            SSchrom, SS_start, SS_end = parse_region_text(SSlocustext, self.get_coordinate())
+            SSchrom, SS_start, SS_end = parse_region_text(
+                SSlocustext, self.get_coordinate()
+            )
         else:
             if self.gwas_data is None:
-                raise Exception("Need GWAS dataset in order to find Lead SNP for SS region")
+                raise Exception(
+                    "Need GWAS dataset in order to find Lead SNP for SS region"
+                )
             SSchrom, _, _ = self.get_locus_tuple()
             lead_snp_position_index = self.get_lead_snp_index()
-            lead_snp_position = int(self.gwas_data.iloc[lead_snp_position_index, :]["POS"]) # type: ignore
+            lead_snp_position = int(self.gwas_data.iloc[lead_snp_position_index, :]["POS"])  # type: ignore
             SS_start = max(int(lead_snp_position - ONE_SIDED_SS_WINDOW_SIZE), 0)
             SS_end = int(lead_snp_position + ONE_SIDED_SS_WINDOW_SIZE)
         SSlocustext = str(SSchrom) + ":" + str(SS_start) + "-" + str(SS_end)
@@ -254,9 +297,15 @@ class SessionPayload():
             self.gtex_tissues = self.request.form.getlist("GTEx-tissues")
 
         if len(self.gtex_tissues) > 0 and len(self.gtex_genes) == 0:
-            raise InvalidUsage('Please select one or more genes to complement your GTEx tissue(s) selection', status_code=410)
+            raise InvalidUsage(
+                "Please select one or more genes to complement your GTEx tissue(s) selection",
+                status_code=410,
+            )
         elif len(self.gtex_genes) > 0 and len(self.gtex_tissues) == 0:
-            raise InvalidUsage('Please select one or more tissues to complement your GTEx gene(s) selection', status_code=410)
+            raise InvalidUsage(
+                "Please select one or more tissues to complement your GTEx gene(s) selection",
+                status_code=410,
+            )
 
         return self.gtex_tissues, self.gtex_genes
 
@@ -275,16 +324,20 @@ class SessionPayload():
         """
 
         if self.set_based_p is None:
-            set_based_p = self.request.form['setbasedP'] # type: ignore
+            set_based_p = self.request.form["setbasedP"]  # type: ignore
             if set_based_p == "":
                 set_based_p = "default"
             else:
                 try:
                     set_based_p = float(set_based_p)
                     if set_based_p < 0 or set_based_p > 1:
-                        raise InvalidUsage('Set-based p-value threshold given is not between 0 and 1')
+                        raise InvalidUsage(
+                            "Set-based p-value threshold given is not between 0 and 1"
+                        )
                 except:
-                    raise InvalidUsage('Invalid value provided for the set-based p-value threshold. Value must be numeric between 0 and 1.')
+                    raise InvalidUsage(
+                        "Invalid value provided for the set-based p-value threshold. Value must be numeric between 0 and 1."
+                    )
 
             self.set_based_p = set_based_p
 
@@ -296,39 +349,78 @@ class SessionPayload():
         """
         return download_file(self.request, ["ld"]) is not None
 
-
     def dump_session_data(self):
         """
         Create JSON dict of session data needed for form_data file.
         """
+        # TODO: find a way to dump session data in a way that doesn't suck
 
         data = {}
-        data['success'] = self.success
-        data['sessionid'] = str(self.session_id)
-        data['snps'] = list(self.gwas_data["SNP"]) if self.gwas_data is not None else []
-        data['infervariant'] = self.get_infer_variant()
-        data['pvalues'] = list(self.gwas_data["P"]) if self.gwas_data is not None else []
-        data['lead_snp'] = self.gwas_data["SNP"].iloc(self.get_lead_snp_index()) if self.gwas_data is not None else None
-        data['ld_values'] = self.r2
-        data['positions'] = list(self.gwas_data["POS"]) if self.gwas_data is not None else []
-        data['chrom'], data['startbp'], data['endbp'] = self.get_locus_tuple()
-        data['ld_populations'] = self.get_ld_population()
-        data['gtex_tissues'], data['gtex_genes'] = self.get_gtex_selection()
-        data['gene'] = gene
-        data['gtex_version'] = self.get_gtex_version()
+        data["success"] = self.success
+        data["sessionid"] = str(self.session_id)
+        data["snps"] = list(self.gwas_data["SNP"]) if self.gwas_data is not None else []
+        data["infervariant"] = self.get_infer_variant()
+        data["pvalues"] = (
+            list(self.gwas_data["P"]) if self.gwas_data is not None else []
+        )
+        data["lead_snp"] = (
+            self.gwas_data["SNP"].iloc(self.get_lead_snp_index())
+            if self.gwas_data is not None
+            else None
+        )
+        data["ld_values"] = self.r2
+        data["positions"] = (
+            list(self.gwas_data["POS"]) if self.gwas_data is not None else []
+        )
+        data["chrom"], data["startbp"], data["endbp"] = self.get_locus_tuple()
+        data["ld_populations"] = self.get_ld_population()
+        data["gtex_tissues"], data["gtex_genes"] = self.get_gtex_selection()
+        data["gene"] = gene_names(self.gene, self.get_coordinate())[0]
+        data["gtex_version"] = self.get_gtex_version()
+        data["coordinate"] = self.get_coordinate()
+        data["set_based_p"] = self.set_based_p
+        data["std_snp_list"] = self.std_snp_list
+        data["runcoloc2"] = self.coloc2 is True
+        num_GTEx_matches = verify_std_snps(
+            self.std_snp_list, self.get_locus(), self.get_coordinate()
+        )
+        data["snp_warning"] = (
+            verify_std_snps(self.std_snp_list, self.get_locus(), self.get_coordinate())
+            / len(self.std_snp_list)
+            < 0.8
+        )
+        data["thresh"] = 0.8
+        data["numGTExMatches"] = num_GTEx_matches
 
-        data['coordinate'] = self.get_coordinate()
-
-        data['set_based_p'] = self.set_based_p
-        SSlocustext = request.form['SSlocus'] # SSlocus defined below
-        data['std_snp_list'] = std_snp_list
-        data['runcoloc2'] = runcoloc2
-        data['snp_warning'] = snp_warning
-        data['thresh'] = thresh
-        data['numGTExMatches'] = numGTExMatches
+        # secondary datasets
+        if self.secondary_datasets is not None:
+            data["secondary_dataset_titles"] = list(self.secondary_datasets.keys())
+            if self.coloc2:
+                data["secondary_dataset_colnames"] = [
+                    "CHR",
+                    "POS",
+                    "SNPID",
+                    "PVAL",
+                    "BETA",
+                    "SE",
+                    "N",
+                    "A1",
+                    "A2",
+                    "MAF",
+                    "ProbeID",
+                ]
+            else:
+                data["secondary_dataset_colnames"] = ["CHROM", "BP", "SNP", "P"]
 
         # simple sum
-        data['first_stages'] = first_stages
-        data['first_stage_Pvalues'] = first_stage_p
+        _, ss_start, ss_end = self.get_ss_locus_tuple()
+        data["SS_region"] = [ss_start, ss_end]
+        data["num_SS_snps"] = len(self.std_snp_list)
+        if self.ss_result_df is None:
+            data["first_stages"] = []
+            data["first_stage_Pvalues"] = []
+        else:
+            data["first_stages"] = self.ss_result_df["first_stages"].tolist()
+            data["first_stage_Pvalues"] = self.ss_result_df["first_stage_p"].tolist()
 
         return data

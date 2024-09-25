@@ -53,6 +53,7 @@ class ReportGTExDataStage(PipelineStage):
                 gtex_data[tissue] = eqtl_df.to_dict(orient='records')
 
         payload.reported_gtex_data = gtex_data
+        payload.gene = gene
 
         self._report_genes_to_plot(payload)
 

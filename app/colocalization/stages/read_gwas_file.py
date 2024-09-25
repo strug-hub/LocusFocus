@@ -128,6 +128,8 @@ class ReadGWASFileStage(PipelineStage):
         if len(set(column_input_list)) != len(column_input_list):
             raise InvalidUsage(f'Duplicate column names provided: {column_input_list}')
 
+        # Rename columns to match GWAS_COLUMNS.
+        # All checks from this point forward should be based on GWAS_COLUMNS
         gwas_data = gwas_data.rename(columns=column_mapper)
 
         # Get P value column (always needed)
@@ -146,7 +148,7 @@ class ReadGWASFileStage(PipelineStage):
 
         # Get coloc2 if applicable
         if payload.get_is_coloc2():
-            for column in [c for c in self.GWAS_COLUMNS if c.coloc2]:
+            for column in [c.default for c in self.GWAS_COLUMNS if c.coloc2]:
                 if column not in gwas_data.columns:
                     raise InvalidUsage(f"{column} column missing but is required for COLOC2. '{column_inputs[column]}' not in columns '{', '.join(old_gwas_columns)}'")
 
