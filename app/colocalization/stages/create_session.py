@@ -5,7 +5,7 @@ from werkzeug.utils import secure_filename
 
 from app.colocalization.payload import SessionPayload
 from app.pipeline import PipelineStage
-from app.routes import InvalidUsage
+from app.utils.errors import InvalidUsage
 
 
 class CreateSessionStage(PipelineStage):

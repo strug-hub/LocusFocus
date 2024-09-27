@@ -6,8 +6,8 @@ from pymongo import MongoClient
 
 
 from app import mongo
-from app.colocalization.utils import parse_region_text
-from app.routes import InvalidUsage
+from app.utils import parse_region_text
+from app.utils.errors import InvalidUsage
 
 client = None  # type: ignore
 
@@ -155,3 +155,21 @@ def verify_std_snps(stdsnplist, regiontxt, build):
     gtex_std_snplist = list(variants_df['variant_id'])
     isInGTEx = [ x for x in stdsnplist if x in gtex_std_snplist ]
     return len(isInGTEx)
+
+
+def gene_names(genename, build):
+    # Given either ENSG gene name or HUGO gene name, returns both HUGO and ENSG names
+    ensg_gene = genename
+    if build.lower() in ["hg19", "grch37"]:
+        collapsed_genes_df = collapsed_genes_df_hg19
+    elif build.lower() in ["hg38", "grch38"]:
+        collapsed_genes_df = collapsed_genes_df_hg38
+    if genename in list(collapsed_genes_df["name"]):
+        ensg_gene = collapsed_genes_df["ENSG_name"][
+            list(collapsed_genes_df["name"]).index(genename)
+        ]
+    if genename in list(collapsed_genes_df["ENSG_name"]):
+        genename = collapsed_genes_df["name"][
+            list(collapsed_genes_df["ENSG_name"]).index(genename)
+        ]
+    return genename, ensg_gene

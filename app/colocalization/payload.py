@@ -1,24 +1,23 @@
 from dataclasses import dataclass, field
 from uuid import uuid4, UUID
-from typing import List, Literal, Dict, Optional, Tuple, Union
+from typing import List, Dict, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
 from flask import Request
 
-from app.colocalization.utils import (
-    download_file,
-    gene_names,
-    get_session_filepath,
-    parse_region_text,
-)
 from app.colocalization.constants import (
     ONE_SIDED_SS_WINDOW_SIZE,
     VALID_COORDINATES,
     VALID_POPULATIONS,
 )
-from app.routes import InvalidUsage
-from app.utils.gtex import verify_std_snps
+from app.utils.errors import InvalidUsage
+from app.utils.gtex import verify_std_snps, gene_names
+from app.utils import (
+    download_file,
+    get_session_filepath,
+    parse_region_text,
+)
 
 
 class SessionFiles:
@@ -79,9 +78,9 @@ class SessionPayload:
     session_id: UUID = field(default_factory=uuid4)
 
     # Form Inputs
-    coordinate: Optional[Literal["hg38", "hg19"]] = None
+    coordinate: Optional[str] = None
     coloc2: Optional[bool] = None
-    study_type: Optional[Literal["quant", "cc"]] = None
+    study_type: Optional[str] = None
     num_cases: Optional[int] = None  # Used for study_type "cc" (case-control)
     ld_population: Optional[str] = None
     infer_variant: Optional[bool] = None
@@ -111,21 +110,21 @@ class SessionPayload:
 
     # Simple Sum
     ss_locustext: Optional[str] = None
-    ss_indices: List[int] = []
+    ss_indices: List[int] = field(default_factory=list)
     ss_result_df: Optional[pd.DataFrame] = None
 
     # GTEx
-    reported_gtex_data: dict = (
-        {}
+    reported_gtex_data: dict = field(
+        default_factory=dict
     )  # only used for reporting, use get_gtex_selection() instead
     gene: Optional[str] = None
-    std_snp_list: List[str] = []
+    std_snp_list: List[str] = field(default_factory=list)
 
     def __post_init__(self):
         # Runs after init, initializes SessionFiles object
         self.file = SessionFiles(self.session_id)
 
-    def get_coordinate(self) -> Literal["hg38", "hg19"]:
+    def get_coordinate(self) -> str:
         """
         Gets the form input for coordinate (aka. genome assembly, or 'build') for this session.
         """
@@ -135,7 +134,7 @@ class SessionPayload:
                     f"Invalid coordinate: '{self.request.form.get('coordinate')}'"
                 )
 
-            self.coordinate = self.request.form.get("coordinate")  # type: ignore
+            self.coordinate = self.request.form.get("coordinate")
         return self.coordinate  # type: ignore
 
     def get_locus(self) -> str:
@@ -174,17 +173,17 @@ class SessionPayload:
             self.coloc2 = bool(self.request.form.get("coloc2check"))
         return self.coloc2
 
-    def get_coloc2_study_type(self) -> Literal["quant", "cc"]:
+    def get_coloc2_study_type(self) -> str:
         """
         Get study type for COLOC2. Assumes that coloc2 is requested.
         """
         if self.study_type is None:
-            study_type = self.request.form.get("studytype")  # type: ignore
+            study_type = self.request.form.get("studytype")
             if study_type not in ["quant", "cc"]:
                 raise InvalidUsage(
                     f"Study type form value is invalid: {self.request.form.get('studytype')}"
                 )
-            self.study_type = study_type  # type: ignore
+            self.study_type = study_type
         return self.study_type  # type: ignore
 
     def get_coloc2_case_control_cases(self) -> int:
@@ -309,9 +308,10 @@ class SessionPayload:
 
         return self.gtex_tissues, self.gtex_genes
 
-    def get_gtex_version(self) -> Literal["V7", "V8"]:
+    def get_gtex_version(self) -> str:
         """
         Get the version of GTEx needed for fetching from MongoDB.
+        One of "V7" or "V8".
         """
         if self.get_coordinate() == "hg38":
             return "V8"

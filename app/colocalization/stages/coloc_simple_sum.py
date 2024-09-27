@@ -5,7 +5,7 @@ import pandas as pd
 
 from app.colocalization.constants import LD_MAT_DIAG_CONSTANT
 from app.colocalization.payload import SessionPayload
-from app.colocalization.utils import clean_snps, standardize_snps, write_list, write_matrix
+from app.utils import clean_snps, standardize_snps, write_list, write_matrix
 from app.pipeline.pipeline_stage import PipelineStage
 from app.scripts import ScriptError, coloc2, simple_sum
 from app.utils.errors import InvalidUsage, ServerError

@@ -5,9 +5,9 @@ import numpy as np
 import htmltableparser
 
 from app.colocalization.payload import SessionPayload
-from app.colocalization.utils import download_file
+from app.utils import download_file
 from app.pipeline.pipeline_stage import PipelineStage
-from app.routes import InvalidUsage
+from app.utils.errors import InvalidUsage
 
 
 class ReadSecondaryDatasetsStage(PipelineStage):
@@ -25,8 +25,8 @@ class ReadSecondaryDatasetsStage(PipelineStage):
         payload.secondary_datasets = secondary_datasets
 
         return payload
-    
-    
+
+
     def _read_dataset_file(self, payload: SessionPayload):
         """
         Read if it exists. #TODO write this comment better
@@ -36,9 +36,9 @@ class ReadSecondaryDatasetsStage(PipelineStage):
 
         if html_filepath is None or html_filepath == "":
             return None
-        
+
         secondary_datasets = dict()
-        
+
         with open(html_filepath, encoding='utf-8', errors='replace') as f:
             html = f.read()
             if (not html.startswith('<h3>')) and (not html.startswith('<html>')) and (not html.startswith('<table>') and (not html.startswith('<!DOCTYPE html>'))):

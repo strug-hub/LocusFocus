@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 
 from app.colocalization.payload import SessionPayload
-from app.colocalization.utils import download_file, standardize_snps, decompose_variant_list, x_to_23
+from app.utils import download_file, standardize_snps, decompose_variant_list, x_to_23
 from app.pipeline import PipelineStage
 from app.utils.errors import InvalidUsage
 
@@ -223,7 +223,7 @@ class ReadGWASFileStage(PipelineStage):
                 raise InvalidUsage(f'Number of samples column has non-integer entries: {", ".join(f"Row {i+1}: {x}" for i, x in enumerate(list(gwas_data["N"])) if not isinstance(x, int))}', status_code=410)
             if not all(isinstance(x, float) for x in list(gwas_data["MAF"])):
                 raise InvalidUsage(f'MAF column has non-numeric entries: {", ".join(f"Row {i+1}: {x}" for i, x in enumerate(list(gwas_data["MAF"])) if not isinstance(x, float))}', status_code=410)
-        
+
         # One chrom check
         if self.enforce_one_chrom and gwas_data["CHROM"].nunique() > 1:
             unique_chroms = list(gwas_data["CHROM"].unique()) # type: ignore

@@ -3,9 +3,9 @@ from typing import Tuple
 import pandas as pd
 from flask import current_app as app
 from app.colocalization.payload import SessionPayload
-from app.colocalization.utils import clean_snps
+from app.utils import clean_snps
 from app.pipeline.pipeline_stage import PipelineStage
-from app.routes import InvalidUsage
+from app.utils.errors import InvalidUsage
 
 
 class SimpleSumSubsetGWASStage(PipelineStage):
@@ -56,8 +56,8 @@ class SimpleSumSubsetGWASStage(PipelineStage):
             raise InvalidUsage('No data points found for entered Simple Sum region', status_code=410)
 
         return SS_gwas_data, SS_indices
-    
-    
+
+
     def _write_gwas_to_file(self, payload: SessionPayload, gwas_data: pd.DataFrame, ss_indices: pd.Series):
         """
         Writes data from subsetted GWAS dataset to file for reporting purposes.
@@ -77,9 +77,9 @@ class SimpleSumSubsetGWASStage(PipelineStage):
         })
         with app.app_context():
             gwas_df.to_csv(
-                os.path.join(app.config["SESSION_FOLDER"], f'gwas_df-{payload.session_id}.txt'), 
-                index=False, 
-                encoding='utf-8', 
+                os.path.join(app.config["SESSION_FOLDER"], f'gwas_df-{payload.session_id}.txt'),
+                index=False,
+                encoding='utf-8',
                 sep="\t"
             )
 
@@ -88,7 +88,7 @@ class SimpleSumSubsetGWASStage(PipelineStage):
         """
         Raise error if there are duplicate positions in the now-subsetted GWAS data.
 
-        TODO: positions with different alt alleles count as duplicates if same position occurs. 
+        TODO: positions with different alt alleles count as duplicates if same position occurs.
         Determine if this is okay, or if there's a better way to check here.
         """
 
