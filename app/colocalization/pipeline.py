@@ -3,7 +3,7 @@ import timeit
 from flask import Request
 
 from app.colocalization.payload import SessionPayload
-from app.colocalization.utils import get_session_filepath
+from app.utils import get_session_filepath
 from app.pipeline import Pipeline
 from app.pipeline.pipeline_stage import PipelineStage
 from app.colocalization.stages import *

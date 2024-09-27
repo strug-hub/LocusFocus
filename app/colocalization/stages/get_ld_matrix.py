@@ -7,7 +7,7 @@ from flask import current_app as app
 
 from app.colocalization.constants import LD_MAT_DIAG_CONSTANT
 from app.colocalization.payload import SessionPayload
-from app.colocalization.utils import download_file
+from app.utils import download_file
 from app.colocalization.plink import plink_ld_pairwise, plink_ldmat
 from app.pipeline import PipelineStage
 from app.utils.errors import InvalidUsage, ServerError

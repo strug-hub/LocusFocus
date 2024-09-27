@@ -9,8 +9,8 @@ import pandas as pd
 import numpy as np
 from flask import current_app as app
 
-from app.routes import InvalidUsage
-from app.colocalization.utils import write_list, x_to_23
+from app.utils.errors import InvalidUsage
+from app.utils import write_list, x_to_23
 from app.colocalization.constants import VALID_POPULATIONS
 
 
@@ -21,7 +21,7 @@ def find_plink_1kg_overlap(plink_filepath: str, snp_positions: List[int], snp_pv
     in the provided 1000 Genomes dataset.
 
     Args:
-        plink_filepath (str): Absolute path to a filename (no extension) for a given 1000Genomes dataset. 
+        plink_filepath (str): Absolute path to a filename (no extension) for a given 1000Genomes dataset.
             Returned by `resolve_plink_filepath`.
         snp_positions (List[int]): List of SNP positions. Must be the same length as `snp_pvalues`.
         snp_pvalues (List[float] | None): List of SNP P values. Must be the same length as `snp_positions`. If none, then we ignore it.
@@ -160,7 +160,7 @@ def plink_ldmat(build, pop, chrom, snp_positions, outfilename, region=None) -> T
     # make snps file to extract:
     snps = [f"chr{str(int(chrom))}:{str(int(position))}" for position in snp_positions]
     write_list(snps, outfilename + "_snps.txt")
-        
+
     #plink_path = subprocess.run(args=["which","plink"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
     if region is not None:
         from_bp = str(region[1])
@@ -211,6 +211,6 @@ def plink_ldmat(build, pop, chrom, snp_positions, outfilename, region=None) -> T
         raise InvalidUsage(plinkrun.stdout.decode('utf-8'), status_code=410)
     # BIM file format, see https://www.cog-genomics.org/plink/1.9/formats#bim
     ld_snps_df = pd.read_csv(outfilename + ".bim", sep="\t", header=None)
-    ld_snps_df.iloc[:, 0] = x_to_23(list(ld_snps_df.iloc[:, 0])) # type: ignore 
+    ld_snps_df.iloc[:, 0] = x_to_23(list(ld_snps_df.iloc[:, 0])) # type: ignore
     ldmat = np.matrix(pd.read_csv(outfilename + ".ld", sep="\t", header=None))
     return ld_snps_df, ldmat
