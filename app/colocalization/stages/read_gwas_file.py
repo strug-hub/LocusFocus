@@ -108,16 +108,11 @@ class ReadGWASFileStage(PipelineStage):
 
         # We rename the columns so that we don't have to pass variables around everywhere for each column name.
         # instead, we can just use the same column name everywhere.
-
-        # TODO: In the future, implement a way to infer columns based on a sample of the column's content
-
-        # Get all form inputs, rename columns accordingly
-        # Extra labels do not cause an error, so missing columns need to be checked
-        old_gwas_columns = list(gwas_data.columns)
+        old_gwas_columns = list(gwas_data.columns) # Columns in gwas_file
 
         column_mapper = {}  # maps user input -> default
         column_inputs = {}  # maps default -> raw user input
-        column_input_list = []
+        column_input_list = []  # for duplicate checks
 
         for column in self.GWAS_COLUMNS:
             column_input_list.append(payload.request.form.get(column.form_id, column.default))
@@ -138,11 +133,11 @@ class ReadGWASFileStage(PipelineStage):
 
         infer_variant = bool(payload.request.form.get('markerCheckbox'))
 
-        # Get CHROM, POS, REF, ALT
+        # Get CHROM, POS, REF, ALT, SNP
         if infer_variant:
             gwas_data = self._infer_gwas_columns(payload, gwas_data)
         else:
-            for column in ["CHROM", "POS", "REF", "ALT"]:
+            for column in ["CHROM", "POS", "REF", "ALT", "SNP"]:
                 if column not in gwas_data.columns:
                     raise InvalidUsage(f"'{column}' column missing where required. '{column_inputs[column]}' not in columns '{', '.join(old_gwas_columns)}'. Please update your GWAS columns to match, or type a different column name that is found in your dataset.")
 
