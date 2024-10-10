@@ -134,7 +134,7 @@ class ReadGWASFileStage(PipelineStage):
 
         # Get P value column (always needed)
         if "P" not in gwas_data.columns:
-            raise InvalidUsage(f"P value column not found in provided GWAS file. Found columns: '{', '.join(old_gwas_columns)}'")
+            raise InvalidUsage(f"P value column not found in provided GWAS file. Found columns: '{', '.join(old_gwas_columns)}'. Please verify that your GWAS file contains a P value column.")
 
         infer_variant = bool(payload.request.form.get('markerCheckbox'))
 
@@ -144,7 +144,7 @@ class ReadGWASFileStage(PipelineStage):
         else:
             for column in ["CHROM", "POS", "REF", "ALT"]:
                 if column not in gwas_data.columns:
-                    raise InvalidUsage(f"{column} column missing where required. '{column_inputs[column]}' not in columns '{', '.join(old_gwas_columns)}'")
+                    raise InvalidUsage(f"'{column}' column missing where required. '{column_inputs[column]}' not in columns '{', '.join(old_gwas_columns)}'. Please update your GWAS columns to match, or type a different column name that is found in your dataset.")
 
         # Get coloc2 if applicable
         if payload.get_is_coloc2():
@@ -253,7 +253,7 @@ class ReadGWASFileStage(PipelineStage):
         gwas_data.reset_index(drop=True, inplace=True)
         gwas_data.iloc[:,chromcolnum] = x_to_23(list(gwas_data["CHROM"])) # type: ignore
         if gwas_data.shape[0] == 0:
-            raise InvalidUsage('No data found for entered region', status_code=410)
+            raise InvalidUsage(f"No data found for entered region: '{chrom}:{start}-{end}'", status_code=410)
         # Check for invalid p=0 rows:
         zero_p = [x for x in list(gwas_data["P"]) if x==0]
         if len(zero_p)>0:

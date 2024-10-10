@@ -112,11 +112,11 @@ class GetLDMatrixStage(PipelineStage):
             chrom=chrom,
             snp_positions=list(payload.gwas_data["POS"]),
             outfilename=os.path.join(app.config["SESSION_FOLDER"], f"ld-{payload.session_id}"),
-            region=payload.get_locus()
+            region=payload.get_locus_tuple()
         )
 
         # Update lead SNP if needed, and set R2
-        _, new_lead_snp_position = plink_ld_pairwise(
+        temp_ld_mat, new_lead_snp_position = plink_ld_pairwise(
             build=payload.get_coordinate(),
             pop=payload.get_ld_population(),
             chrom=chrom,
@@ -138,8 +138,8 @@ class GetLDMatrixStage(PipelineStage):
             4: "ALT",
             5: "REF"
         }).iloc[:, [0, 1, 3, 4, 5]] # drop third column (all zeroes)
-
-        payload.r2 = list(ldmat[:, payload.gwas_lead_snp_index]) # type: ignore
+ 
+        payload.r2 = list(temp_ld_mat["R2"])
         payload.ld_snps_bim_df = ld_snps_df
 
         return np.matrix(ldmat)

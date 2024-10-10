@@ -75,7 +75,7 @@ class ReportGTExDataStage(PipelineStage):
 
         This data is used to draw the genes in the region of interest.
         """
-        chrom, startbp, endbp = payload.get_locus()
+        chrom, startbp, endbp = payload.get_locus_tuple()
 
         gtex_version = payload.get_gtex_version()
         if gtex_version == "V7":

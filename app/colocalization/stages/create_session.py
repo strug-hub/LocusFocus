@@ -35,7 +35,7 @@ class CreateSessionStage(PipelineStage):
             {
                 "datetime": datetime.now().isoformat(),
                 "files_uploaded": [
-                    secure_filename(file.filename or "")
+                    file.filename or ""
                     for file in payload.request.files.getlist("files[]")
                 ],
                 "session_id": str(payload.session_id),

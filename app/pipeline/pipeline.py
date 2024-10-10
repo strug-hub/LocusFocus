@@ -21,7 +21,7 @@ class Pipeline():
         payload = self.post_stage(stage, payload)
         return payload
 
-    def pre_stage(self, stage: PipelineStage, payload: object):
+    def pre_stage(self, stage: PipelineStage, payload: object) -> object:
         """
         Operations performed before the stage's `invoke` method is called.
         Executes before every stage in the pipeline, and can be extended.
@@ -32,7 +32,7 @@ class Pipeline():
         """
         return payload
 
-    def post_stage(self, stage: PipelineStage, payload: object):
+    def post_stage(self, stage: PipelineStage, payload: object) -> object:
         """
         Operations performed after the stage's `invoke` method is called.
         Executes immediately after every stage in the pipeline, and can be extended.
@@ -43,14 +43,14 @@ class Pipeline():
         """
         return payload
     
-    def pre_pipeline(self, payload: object):
+    def pre_pipeline(self, payload: object) -> object:
         """
         Operations performed before the pipeline's `process` method is called.
         Can be extended.
         """
         return payload
 
-    def post_pipeline(self, payload: object):
+    def post_pipeline(self, payload: object) -> object:
         """ 
         Operations performed after the pipeline's `process` method is called.
         Can be extended.

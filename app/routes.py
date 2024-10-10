@@ -709,7 +709,7 @@ def subsetLocus(build, summaryStats, regiontext, chromcol, poscol, pcol):
     summaryStats.reset_index(drop=True, inplace=True)
     summaryStats.iloc[:,chromcolnum] = Xto23(list(summaryStats[chromcol]))
     if summaryStats.shape[0] == 0:
-        raise InvalidUsage('No data found for entered region', status_code=410)
+        raise InvalidUsage(f"No data found for entered region: '{regiontext}'", status_code=410)
     # Check for invalid p=0 rows:
     zero_p = [x for x in list(summaryStats[pcol]) if x==0]
     if len(zero_p)>0:
@@ -1421,21 +1421,19 @@ def get_snps_in_region(dataset: pd.DataFrame, region: Tuple[int, int, int], chro
 #####################################
 @app.errorhandler(413)
 def request_entity_too_large(error):
-    return 'File Too Large', error
+    return 'File Too Large', 413
 
 @app.errorhandler(InvalidUsage)
-def handle_invalid_usage(error):
-    app.logger.warning(error)
+def handle_invalid_usage(error: InvalidUsage):
+    app.logger.warning(error.message)
     response = jsonify(error.to_dict())
-    response.status_code = error.status_code
-    return response
+    return response, error.status_code
 
 @app.errorhandler(ServerError)
-def handle_server_error(error):
-    app.logger.error(error)
+def handle_server_error(error: ServerError):
+    app.logger.error(error.message)
     response = jsonify(error.to_dict())
-    response.status_code = error.status_code
-    return response
+    return response, error.status_code
 
 @app.route("/dbstatus")
 def getDBStatus():
