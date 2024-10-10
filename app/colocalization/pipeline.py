@@ -1,6 +1,6 @@
 import timeit
 
-from flask import Request
+from flask import Request, current_app as app
 
 from app.colocalization.payload import SessionPayload
 from app.utils import get_session_filepath
@@ -36,6 +36,7 @@ class ColocalizationPipeline(Pipeline):
 
     def pre_stage(self, stage: PipelineStage, payload: object):
         # Timer for each stage (start time)
+        app.logger.debug(f"Starting stage {stage.name()}")
         if stage.name() in self.timers:
             self.timers[stage.name()] = timeit.default_timer()
 
@@ -43,6 +44,7 @@ class ColocalizationPipeline(Pipeline):
 
     def post_stage(self, stage: PipelineStage, payload: object):
         # Timer for each stage (stop time - start time)
+        app.logger.debug(f"Finished stage {stage.name()}")
         if stage.name() in self.timers:
             self.timers[stage.name()] = (
                 timeit.default_timer() - self.timers[stage.name()]
@@ -72,9 +74,14 @@ class ColocalizationPipeline(Pipeline):
 
         return super().post_pipeline(payload)
 
-    def invoke_stage(self, stage: PipelineStage, payload: object):
+    def invoke_stage(self, stage: PipelineStage, payload: object) -> object:
         try:
             return super().invoke_stage(stage, payload)
         except LocusFocusError as e:
+            # Expected errors
+            payload = self.post_pipeline(payload) # type: ignore
             e.message = f"[{stage.name()}] {e.message}"
+            raise e
+        except Exception as e:
+            # Unexpected errors
             raise e

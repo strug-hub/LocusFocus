@@ -82,7 +82,7 @@ def get_gtex_data(version, tissue, gene, snp_list, raiseErrors = False) -> pd.Da
         rsids = False
     else:
         raise InvalidUsage('Variant naming format not supported; ensure all are rs ID\'s are formatted as chrom_pos_ref_alt_b37 eg. 1_205720483_G_A_b37')
-    hugo_gene, ensg_gene = genenames(gene, build)
+    hugo_gene, ensg_gene = gene_names(gene, build)
 #    print(f'Gathering eQTL data for {hugo_gene} ({ensg_gene}) in {tissue}')
     response_df = pd.DataFrame({})
     if version.upper() == "V7":

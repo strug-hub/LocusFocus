@@ -28,10 +28,11 @@ class SimpleSumSubsetGWASStage(PipelineStage):
             raise Exception("GWAS dataset not found")
 
         SS_gwas_data, ss_indices = self._subset_gwas(payload, payload.gwas_data)
+        self._write_gwas_to_file(payload, SS_gwas_data, ss_indices) # type: ignore
+        self._check_pos_duplicates(SS_gwas_data)
+
         payload.gwas_data = SS_gwas_data
         payload.ss_indices = ss_indices # type: ignore
-        self._write_gwas_to_file(payload, payload.gwas_data, ss_indices) # type: ignore
-        self._check_pos_duplicates(SS_gwas_data)
 
         return payload
 
@@ -58,22 +59,24 @@ class SimpleSumSubsetGWASStage(PipelineStage):
         return SS_gwas_data, SS_indices
 
 
-    def _write_gwas_to_file(self, payload: SessionPayload, gwas_data: pd.DataFrame, ss_indices: pd.Series):
+    def _write_gwas_to_file(self, payload: SessionPayload, ss_gwas_data: pd.DataFrame, ss_indices: pd.Series):
         """
         Writes data from subsetted GWAS dataset to file for reporting purposes.
         """
+        assert payload.gwas_data is not None
+
         regionstr = payload.get_locus()
         coordinate = payload.get_coordinate()
 
-        std_snp_list = clean_snps(list(gwas_data["SNP"]), regionstr, coordinate)
+        std_snp_list = clean_snps(list(ss_gwas_data["SNP"]), regionstr, coordinate)
         payload.std_snp_list = std_snp_list
         ss_std_snp_list = [e for i,e in enumerate(std_snp_list) if ss_indices[i]]  # TODO: Is this not redundant?
 
         gwas_df = pd.DataFrame({
-            'Position': list(gwas_data["POS"]),
+            'Position': list(ss_gwas_data["POS"]),
             'SNP': std_snp_list,
             'variant_id': ss_std_snp_list,
-            'P': list(gwas_data["P"])
+            'P': list(ss_gwas_data["P"])
         })
         with app.app_context():
             gwas_df.to_csv(
