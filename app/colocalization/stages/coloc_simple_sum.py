@@ -110,9 +110,9 @@ class ColocSimpleSumStage(PipelineStage):
         p_value_matrix.append(list(payload.gwas_data["P"]))  # type: ignore
 
         # 2. GTEx secondary datasets
-        ss_snp_list = clean_snps(list(payload.gwas_data["SNP"]), regionstr, coordinate)
+        std_snp_list = clean_snps(list(payload.std_snp_list), regionstr, coordinate)
         ss_std_snp_list = [
-            e for i, e in enumerate(ss_snp_list) if payload.ss_indices[i]
+            e for i, e in enumerate(std_snp_list) if payload.ss_indices[i]
         ]
 
         gtex_tissues, gtex_genes = payload.get_gtex_selection()
@@ -164,7 +164,7 @@ class ColocSimpleSumStage(PipelineStage):
                                     [coloc2eqtl_df, tempdf], axis=0
                                 )
                     else:
-                        pvalues = np.repeat(np.nan, len(ss_snp_list))
+                        pvalues = np.repeat(np.nan, len(std_snp_list))
                     p_value_matrix.append(pvalues)
 
         # 3. Uploaded secondary datasets
@@ -175,7 +175,7 @@ class ColocSimpleSumStage(PipelineStage):
                     secondary_dataset = pd.DataFrame(secondary_dataset)
                     if secondary_dataset.shape[0] == 0:
                         #print(f'No data for table {table_titles[i]}')
-                        pvalues = np.repeat(np.nan, len(ss_snp_list))
+                        pvalues = np.repeat(np.nan, len(std_snp_list))
                         p_value_matrix.append(pvalues)
                         continue
                     try:
@@ -201,7 +201,7 @@ class ColocSimpleSumStage(PipelineStage):
                     secondary_dataset = pd.DataFrame(secondary_dataset)
                     if secondary_dataset.shape[0] == 0:
                         #print(f'No data for table {table_titles[i]}')
-                        pvalues = np.repeat(np.nan, len(ss_snp_list))
+                        pvalues = np.repeat(np.nan, len(std_snp_list))
                         p_value_matrix.append(pvalues)
                         continue
                     # remove duplicate SNPs
@@ -251,7 +251,7 @@ class ColocSimpleSumStage(PipelineStage):
 
         # Handle LD matrix
         ld_matrix = payload.ld_matrix
-        ld_mat_snps = payload.ld_snps_bim_df["CHR_POS"].to_list()
+        ld_mat_snps = payload.ld_snps_bim_df["CHROM_POS"].to_list()
         ld_mat_positions = payload.ld_snps_bim_df["POS"].to_list()
         ld_matrix = ld_matrix[SS_indices][:, SS_indices]
 

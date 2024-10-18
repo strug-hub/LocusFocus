@@ -12,7 +12,7 @@ from app.colocalization.constants import (
     VALID_POPULATIONS,
 )
 from app.utils.errors import InvalidUsage
-from app.utils.gtex import verify_std_snps, gene_names
+from app.utils.gtex import get_gtex_snp_matches, gene_names
 from app.utils import (
     download_file,
     get_session_filepath,
@@ -126,7 +126,9 @@ class SessionPayload:
 
     def get_coordinate(self) -> str:
         """
-        Gets the form input for coordinate (aka. genome assembly, or 'build') for this session.
+        Get the form input for coordinate (aka. genome assembly, or 'build') for this session.
+
+        Return either 'hg19' or 'hg38'.
         """
         if self.coordinate is None:
             if self.request.form.get("coordinate") not in VALID_COORDINATES:
@@ -381,11 +383,11 @@ class SessionPayload:
         data["set_based_p"] = self.set_based_p
         data["std_snp_list"] = self.std_snp_list
         data["runcoloc2"] = self.coloc2 is True
-        num_GTEx_matches = verify_std_snps(
+        num_GTEx_matches = get_gtex_snp_matches(
             self.std_snp_list, self.get_locus(), self.get_coordinate()
         )
         data["snp_warning"] = (
-            verify_std_snps(self.std_snp_list, self.get_locus(), self.get_coordinate())
+            get_gtex_snp_matches(self.std_snp_list, self.get_locus(), self.get_coordinate())
             / len(self.std_snp_list)
             < 0.8
         )

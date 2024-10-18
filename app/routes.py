@@ -1425,13 +1425,13 @@ def request_entity_too_large(error):
 
 @app.errorhandler(InvalidUsage)
 def handle_invalid_usage(error: InvalidUsage):
-    app.logger.warning(error.message)
+    app.logger.warning(error.message, exc_info=True)
     response = jsonify(error.to_dict())
     return response, error.status_code
 
 @app.errorhandler(ServerError)
 def handle_server_error(error: ServerError):
-    app.logger.error(error.message)
+    app.logger.error(error.message, exc_info=True)
     response = jsonify(error.to_dict())
     return response, error.status_code
 

@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import List
 
 import pandas as pd
 import numpy as np
@@ -64,6 +65,9 @@ class ReadGWASFileStage(PipelineStage):
         # Update lead SNP based on user input
         lead_snp_index = self._get_lead_snp(payload, gwas_data)
         payload.gwas_lead_snp_index = lead_snp_index
+
+        # Get standardized list of SNPs
+        payload.std_snp_list = self._get_std_snp_list(payload, gwas_data)
 
         payload.gwas_data = gwas_data
 
@@ -258,6 +262,7 @@ class ReadGWASFileStage(PipelineStage):
 
         return gwas_data
 
+
     def _get_lead_snp(self, payload: SessionPayload, gwas_data: pd.DataFrame) -> int:
         """
         Determine the lead SNP index for this gwas dataset. Might not be used but is handy to have stored ahead of time.
@@ -267,9 +272,25 @@ class ReadGWASFileStage(PipelineStage):
         snp_list = list(gwas_data.loc[:,"SNP"])
         # cleaning up the SNP names a bit
         snp_list = [asnp.split(';')[0] for asnp in snp_list] # type: ignore
-        if lead_snp=='': lead_snp = list(gwas_data.loc[ gwas_data.loc[:,"P"] == gwas_data.loc[:,"P"].min() ].loc[:,"SNP"])[0].split(';')[0] # type: ignore
+        if lead_snp=='': 
+            lead_snp: str = list(gwas_data.loc[ gwas_data.loc[:,"P"] == gwas_data.loc[:,"P"].min() ].loc[:,"SNP"])[0].split(';')[0] # type: ignore
         if lead_snp not in snp_list:
             raise InvalidUsage(f"Lead SNP '{lead_snp}' not found in dataset", status_code=410)
         lead_snp_position_index = snp_list.index(lead_snp)
 
         return lead_snp_position_index
+
+
+    def _get_std_snp_list(self, payload: SessionPayload, gwas_data: pd.DataFrame) -> List[str]:
+        """
+        Return standardized list of SNPs with format CHR_POS_REF_ALT_build.
+
+        gwas_data needs to be subsetted in advance.
+        """
+        std_snp_list = []
+        buildstr = 'b37'
+        if payload.get_coordinate() == 'hg38':
+            buildstr = 'b38'
+
+        std_snp_list = [f"{str(row['CHROM']).replace('23', 'X')}_{str(row['POS'])}_{str(row['REF'])}_{str(row['ALT'])}_{buildstr}" for _, row in gwas_data.iterrows()]
+        return std_snp_list

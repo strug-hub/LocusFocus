@@ -68,13 +68,12 @@ class SimpleSumSubsetGWASStage(PipelineStage):
         regionstr = payload.get_locus()
         coordinate = payload.get_coordinate()
 
-        std_snp_list = clean_snps(list(ss_gwas_data["SNP"]), regionstr, coordinate)
-        payload.std_snp_list = std_snp_list
-        ss_std_snp_list = [e for i,e in enumerate(std_snp_list) if ss_indices[i]]  # TODO: Is this not redundant?
+        ss_snp_list = clean_snps(list(ss_gwas_data["SNP"]), regionstr, coordinate)
+        ss_std_snp_list = [e for i,e in enumerate(payload.std_snp_list) if ss_indices[i]]  # TODO: Is this not redundant?
 
         gwas_df = pd.DataFrame({
             'Position': list(ss_gwas_data["POS"]),
-            'SNP': std_snp_list,
+            'SNP': ss_snp_list,
             'variant_id': ss_std_snp_list,
             'P': list(ss_gwas_data["P"])
         })
