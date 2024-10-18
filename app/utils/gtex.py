@@ -111,7 +111,7 @@ def get_gtex_data(version, tissue, gene, snp_list, raiseErrors = False) -> pd.Da
         except:
             if raiseErrors:
                 raise InvalidUsage("No response for tissue " + tissue.replace("_"," ") + " and gene " + hugo_gene + " ( " + ensg_gene + " )", status_code=410)
-    return gtex_data
+    return gtex_data # type: ignore
 
 
 # This function simply merges the eqtl_data extracted with the snp_list,
@@ -133,7 +133,10 @@ def get_gtex_data_pvalues(eqtl_data, snp_list):
     return list(gtex_data['pval'])
 
 
-def verify_std_snps(stdsnplist, regiontxt, build):
+def get_gtex_snp_matches(stdsnplist, regiontxt, build):
+    """
+    Return the number of SNPs that can be found in the GTEx database for the given region.
+    """
     # Ensure valid region:
     chrom, startbp, endbp = parse_region_text(regiontxt, build)
     chrom = str(chrom).replace('23',"X")
