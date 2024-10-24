@@ -23,8 +23,8 @@ class ColocalizationPipeline(Pipeline):
             ReadGWASFileStage(enforce_one_chrom=True),
             ReadSecondaryDatasetsStage(),
             ReportGTExDataStage(),
-            GetLDMatrixStage(),
             SimpleSumSubsetGWASStage(),
+            GetLDMatrixStage(),
             ColocSimpleSumStage(),
             FinalizeResultsStage(),
         )

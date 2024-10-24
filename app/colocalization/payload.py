@@ -11,7 +11,7 @@ from app.colocalization.constants import (
     VALID_COORDINATES,
     VALID_POPULATIONS,
 )
-from app.utils.errors import InvalidUsage
+from app.utils.errors import InvalidUsage, ServerError
 from app.utils.gtex import get_gtex_snp_matches, gene_names
 from app.utils import (
     download_file,
@@ -105,7 +105,6 @@ class SessionPayload:
     # Other
     success: bool = False
     gwas_indices_kept: List[bool] = field(default_factory=list)
-    gwas_lead_snp_index: Optional[int] = None
     r2: List[float] = field(default_factory=list)
 
     # Simple Sum
@@ -351,6 +350,28 @@ class SessionPayload:
         """
         return download_file(self.request, ["ld"]) is not None
 
+    def get_current_lead_snp_index(self) -> int:
+        """
+        Determine and return the index of the lead SNP for the gwas dataset (ie. the SNP with the lowest P-value).
+
+        Prerequisite: gwas_data is loaded.
+        """
+        try:
+            assert self.gwas_data is not None
+        except AssertionError:
+            raise ServerError(message="Attempted to get lead SNP index before GWAS data was loaded")
+        lead_snp = self.get_lead_snp_name()
+        snp_list = list(self.gwas_data.loc[:,"SNP"])
+        # cleaning up the SNP names a bit
+        snp_list = [asnp.split(';')[0] for asnp in snp_list] # type: ignore
+        if lead_snp=='': 
+            lead_snp: str = list(gwas_data.loc[ gwas_data.loc[:,"P"] == gwas_data.loc[:,"P"].min() ].loc[:,"SNP"])[0].split(';')[0] # type: ignore
+        if lead_snp not in snp_list:
+            raise InvalidUsage(f"Lead SNP '{lead_snp}' not found in dataset", status_code=410)
+        lead_snp_position_index = snp_list.index(lead_snp)
+
+        return lead_snp_position_index
+
     def dump_session_data(self):
         """
         Create JSON dict of session data needed for form_data file.
@@ -366,7 +387,7 @@ class SessionPayload:
             list(self.gwas_data["P"]) if self.gwas_data is not None else []
         )
         data["lead_snp"] = (
-            self.gwas_data["SNP"].iloc(self.get_lead_snp_index())
+            self.gwas_data["SNP"].iloc(self.get_current_lead_snp_index())
             if self.gwas_data is not None
             else None
         )
