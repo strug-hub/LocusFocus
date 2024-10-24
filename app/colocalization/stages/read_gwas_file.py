@@ -62,10 +62,6 @@ class ReadGWASFileStage(PipelineStage):
         gwas_data = self._validate_gwas_file(payload, gwas_data)
         gwas_data = self._subset_gwas_file(payload, gwas_data)
 
-        # Update lead SNP based on user input
-        lead_snp_index = self._get_lead_snp(payload, gwas_data)
-        payload.gwas_lead_snp_index = lead_snp_index
-
         # Get standardized list of SNPs
         payload.std_snp_list = self._get_std_snp_list(payload, gwas_data)
 
@@ -261,24 +257,6 @@ class ReadGWASFileStage(PipelineStage):
         payload.gwas_indices_kept = gwas_indices_kept
 
         return gwas_data
-
-
-    def _get_lead_snp(self, payload: SessionPayload, gwas_data: pd.DataFrame) -> int:
-        """
-        Determine the lead SNP index for this gwas dataset. Might not be used but is handy to have stored ahead of time.
-        """
-
-        lead_snp = payload.get_lead_snp_name()
-        snp_list = list(gwas_data.loc[:,"SNP"])
-        # cleaning up the SNP names a bit
-        snp_list = [asnp.split(';')[0] for asnp in snp_list] # type: ignore
-        if lead_snp=='': 
-            lead_snp: str = list(gwas_data.loc[ gwas_data.loc[:,"P"] == gwas_data.loc[:,"P"].min() ].loc[:,"SNP"])[0].split(';')[0] # type: ignore
-        if lead_snp not in snp_list:
-            raise InvalidUsage(f"Lead SNP '{lead_snp}' not found in dataset", status_code=410)
-        lead_snp_position_index = snp_list.index(lead_snp)
-
-        return lead_snp_position_index
 
 
     def _get_std_snp_list(self, payload: SessionPayload, gwas_data: pd.DataFrame) -> List[str]:

@@ -1,5 +1,5 @@
 import os
-from typing import Optional
+from typing import Optional, Tuple
 
 import pandas as pd
 import numpy as np
@@ -23,6 +23,9 @@ class GetLDMatrixStage(PipelineStage):
 
     Will also determine lead SNP and R2 values for the gwas dataset.
 
+    In the case where an LD matrix is created, the gwas_data is subset
+    to only the SNPs in the generated LD matrix.
+
     Prerequisites:
     - Session is created.
     - `gwas_data` is defined in the session.
@@ -38,16 +41,18 @@ class GetLDMatrixStage(PipelineStage):
             raise ServerError(f"Cannot use GetLDMatrixStage; gwas_data is None")
 
         # Read from file if it exists. Otherwise, create with PLINK
-        ld_matrix = self._read_ld_matrix_file(payload)
+        ld_matrix, ld_snps_df = self._read_ld_matrix_file(payload)
         if ld_matrix is None:
-            ld_matrix = self._create_ld_matrix(payload)
+            ld_matrix, ld_snps_df = self._create_ld_matrix(payload)
+            # Update payload.gwas_data to include SNPs from LD matrix
+            payload.gwas_data = payload.gwas_data.merge(ld_snps_df[["CHROM", "POS"]], how="inner", on=["CHROM", "POS"])
 
         payload.ld_matrix = ld_matrix
 
         return payload
 
 
-    def _read_ld_matrix_file(self, payload: SessionPayload) -> Optional[np.matrix]:
+    def _read_ld_matrix_file(self, payload: SessionPayload) -> Tuple[Optional[np.matrix], Optional[pd.DataFrame]]:
         """
         Try to read in an LD matrix if one is provided by the user.
 
@@ -56,11 +61,11 @@ class GetLDMatrixStage(PipelineStage):
         If the user provided an LD matrix, but the format is invalid or otherwise unusable,
         then raise an error.
 
-        Otherwise, return the LD matrix as a DataFrame.
+        Otherwise, return the LD matrix, as well as the BIM file as a DataFrame.
         """
         ld_matrix_filepath = download_file(payload.request, ['ld'])
         if ld_matrix_filepath is None:
-            return None
+            return None, None
 
         if payload.gwas_data is None:
             raise ServerError(f"Cannot validate user-provided LD matrix; gwas_data is not defined")
@@ -76,7 +81,7 @@ class GetLDMatrixStage(PipelineStage):
         # We have a user-submitted LD matrix. We need to subset it to the GWAS indices that were kept
         ld_mat = ld_mat.loc[ payload.gwas_indices_kept, payload.gwas_indices_kept ]
 
-        payload.r2 = list(ld_mat.iloc[:, payload.gwas_lead_snp_index]) # type: ignore
+        payload.r2 = list(ld_mat.iloc[:, payload.get_current_lead_snp_index()]) # type: ignore
 
         ld_mat = np.matrix(ld_mat)
 
@@ -93,12 +98,14 @@ class GetLDMatrixStage(PipelineStage):
         ld_snps_df.iloc[:, 0] = x_to_23(list(ld_snps_df.iloc[:, 0])) # type: ignore
         payload.ld_snps_bim_df = ld_snps_df
 
-        return ld_mat
+        return ld_mat, ld_snps_df
 
 
-    def _create_ld_matrix(self, payload: SessionPayload) -> np.matrix:
+    def _create_ld_matrix(self, payload: SessionPayload) -> Tuple[np.matrix, pd.DataFrame]:
         """
         Try to create an LD matrix using PLINK.
+
+        Return the LD matrix, and the BIM file as a DataFrame.
         """
         if payload.gwas_data is None:
             raise ServerError(f"Cannot create LD matrix; gwas_data is not defined")
@@ -125,11 +132,6 @@ class GetLDMatrixStage(PipelineStage):
             outfilename=os.path.join(app.config["SESSION_FOLDER"], f"ld-{payload.session_id}")
         )
 
-        old_lead_snp_position = payload.gwas_data.iloc[payload.gwas_lead_snp_index, :]["POS"]
-
-        if new_lead_snp_position != old_lead_snp_position:
-            payload.gwas_lead_snp_index = list(payload.gwas_data["POS"]).index(new_lead_snp_position)
-
         # Rename to consistent naming structure (see plink .bim file format)
         ld_snps_df = ld_snps_df.rename(columns={
             0: "CHROM",
@@ -138,8 +140,8 @@ class GetLDMatrixStage(PipelineStage):
             4: "ALT",
             5: "REF"
         }).iloc[:, [0, 1, 3, 4, 5]] # drop third column (all zeroes)
- 
+
         payload.r2 = list(temp_ld_mat["R2"])
         payload.ld_snps_bim_df = ld_snps_df
 
-        return np.matrix(ldmat)
+        return np.matrix(ldmat), ld_snps_df

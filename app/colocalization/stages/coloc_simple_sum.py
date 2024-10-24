@@ -253,7 +253,7 @@ class ColocSimpleSumStage(PipelineStage):
         ld_matrix = payload.ld_matrix
         ld_mat_snps = payload.ld_snps_bim_df["CHROM_POS"].to_list()
         ld_mat_positions = payload.ld_snps_bim_df["POS"].to_list()
-        ld_matrix = ld_matrix[SS_indices][:, SS_indices]
+        # ld_matrix = ld_matrix[SS_indices][:, SS_indices]
 
         np.fill_diagonal(ld_matrix, np.diag(ld_matrix) + LD_MAT_DIAG_CONSTANT)
 
