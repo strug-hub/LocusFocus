@@ -107,13 +107,11 @@ class ColocSimpleSumStage(PipelineStage):
         coloc2eqtl_df = pd.DataFrame({})
 
         # 1. GWAS Data
-        p_value_matrix.append(list(payload.gwas_data["P"]))  # type: ignore
+        p_value_matrix.append(list(payload.gwas_data_kept["P"]))  # type: ignore
 
         # 2. GTEx secondary datasets
         std_snp_list = clean_snps(list(payload.std_snp_list), regionstr, coordinate)
-        ss_std_snp_list = [
-            e for i, e in enumerate(std_snp_list) if payload.ss_indices[i]
-        ]
+        ss_std_snp_list = payload.std_snp_list.loc[payload.gwas_indices_kept]
 
         gtex_tissues, gtex_genes = payload.get_gtex_selection()
         if len(gtex_tissues) > 0:
@@ -164,7 +162,7 @@ class ColocSimpleSumStage(PipelineStage):
                                     [coloc2eqtl_df, tempdf], axis=0
                                 )
                     else:
-                        pvalues = np.repeat(np.nan, len(std_snp_list))
+                        pvalues = np.repeat(np.nan, len(ss_std_snp_list))
                     p_value_matrix.append(pvalues)
 
         # 3. Uploaded secondary datasets
@@ -175,7 +173,7 @@ class ColocSimpleSumStage(PipelineStage):
                     secondary_dataset = pd.DataFrame(secondary_dataset)
                     if secondary_dataset.shape[0] == 0:
                         #print(f'No data for table {table_titles[i]}')
-                        pvalues = np.repeat(np.nan, len(std_snp_list))
+                        pvalues = np.repeat(np.nan, len(ss_std_snp_list))
                         p_value_matrix.append(pvalues)
                         continue
                     try:
@@ -201,7 +199,7 @@ class ColocSimpleSumStage(PipelineStage):
                     secondary_dataset = pd.DataFrame(secondary_dataset)
                     if secondary_dataset.shape[0] == 0:
                         #print(f'No data for table {table_titles[i]}')
-                        pvalues = np.repeat(np.nan, len(std_snp_list))
+                        pvalues = np.repeat(np.nan, len(ss_std_snp_list))
                         p_value_matrix.append(pvalues)
                         continue
                     # remove duplicate SNPs
@@ -243,17 +241,15 @@ class ColocSimpleSumStage(PipelineStage):
         if payload.coloc2 and coloc2eqtl_df is None:
             raise InvalidUsage("COLOC2 was selected but no coloc2eqtl_df was provided")
 
-        SS_indices = payload.ss_indices
-        if len(SS_indices) == 0:
+        if len(payload.gwas_data_kept) == 0:
             raise InvalidUsage("No SNPs in Simple Sum subset")
 
-        SS_positions = payload.gwas_data["POS"].to_list()
+        SS_positions = payload.gwas_data_kept["POS"].to_list()
 
         # Handle LD matrix
         ld_matrix = payload.ld_matrix
         ld_mat_snps = payload.ld_snps_bim_df["CHROM_POS"].to_list()
         ld_mat_positions = payload.ld_snps_bim_df["POS"].to_list()
-        # ld_matrix = ld_matrix[SS_indices][:, SS_indices]
 
         np.fill_diagonal(ld_matrix, np.diag(ld_matrix) + LD_MAT_DIAG_CONSTANT)
 
@@ -275,7 +271,7 @@ class ColocSimpleSumStage(PipelineStage):
                 payload.get_p_value_threshold(),
             )
         except ScriptError as e:
-            raise InvalidUsage(e.stdout, status_code=410)
+            raise InvalidUsage(e.message, status_code=410)
 
         # Save results
         payload.ss_result_df = SSdf
@@ -342,7 +338,7 @@ class ColocSimpleSumStage(PipelineStage):
                 'ALT': 'A1',
             }
 
-            coloc2_gwasdf = payload.gwas_data \
+            coloc2_gwasdf = payload.gwas_data_kept \
                 .rename(columns=gwas_to_coloc2_colnames) \
                 .reindex(columns=self.COLOC2_GWAS_COLNAMES)
 

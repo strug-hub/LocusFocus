@@ -18,6 +18,10 @@ class ScriptError(Exception):
         self.stderr = stderr
         super().__init__(f"Script returned non-zero exit code. Stdout: {stdout}, Stderr: {stderr}")
 
+    @property
+    def message(self):
+        return f"Script returned non-zero exit code.\nStdout: {self.stdout}\nStderr: {self.stderr}"
+
 
 def simple_sum(
     p_values_filepath: os.PathLike,

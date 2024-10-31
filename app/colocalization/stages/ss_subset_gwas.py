@@ -27,19 +27,19 @@ class SimpleSumSubsetGWASStage(PipelineStage):
         if payload.gwas_data is None:
             raise Exception("GWAS dataset not found")
 
-        SS_gwas_data, ss_indices = self._subset_gwas(payload, payload.gwas_data)
-        self._write_gwas_to_file(payload, SS_gwas_data, ss_indices) # type: ignore
-        self._check_pos_duplicates(SS_gwas_data)
+        ss_indices = self._subset_gwas(payload, payload.gwas_data)
+        payload.gwas_indices_kept &= ss_indices
+        self._write_gwas_to_file(payload)
+        self._check_pos_duplicates(payload)
 
-        payload.gwas_data = SS_gwas_data
         payload.ss_indices = ss_indices # type: ignore
 
         return payload
 
 
-    def _subset_gwas(self, payload: SessionPayload, gwas_data: pd.DataFrame) -> Tuple[pd.DataFrame, pd.Series]:
+    def _subset_gwas(self, payload: SessionPayload, gwas_data: pd.DataFrame) -> pd.Series:
         """
-        Given a GWAS dataset, return a new GWAS dataset that is ready for Simple Sum.
+        Given a GWAS dataset, return a boolean series representing a subset of the GWAS dataset that is ready for Simple Sum.
 
         SNPs are removed if they fall outside of the specified locus for Simple Sum.
         """
@@ -56,10 +56,10 @@ class SimpleSumSubsetGWASStage(PipelineStage):
         if SS_gwas_data.shape[0] == 0:
             raise InvalidUsage('No data points found for entered Simple Sum region', status_code=410)
 
-        return SS_gwas_data, SS_indices
+        return SS_indices
 
 
-    def _write_gwas_to_file(self, payload: SessionPayload, ss_gwas_data: pd.DataFrame, ss_indices: pd.Series):
+    def _write_gwas_to_file(self, payload: SessionPayload):
         """
         Writes data from subsetted GWAS dataset to file for reporting purposes.
         """
@@ -68,14 +68,14 @@ class SimpleSumSubsetGWASStage(PipelineStage):
         regionstr = payload.get_locus()
         coordinate = payload.get_coordinate()
 
-        ss_snp_list = clean_snps(list(ss_gwas_data["SNP"]), regionstr, coordinate)
-        ss_std_snp_list = [e for i,e in enumerate(payload.std_snp_list) if ss_indices[i]]  # TODO: Is this not redundant?
+        ss_snp_list = clean_snps(list(payload.gwas_data_kept["SNP"]), regionstr, coordinate)
+        ss_std_snp_list = payload.std_snp_list.loc[payload.gwas_indices_kept]
 
         gwas_df = pd.DataFrame({
-            'Position': list(ss_gwas_data["POS"]),
+            'Position': list(payload.gwas_data_kept["POS"]),
             'SNP': ss_snp_list,
             'variant_id': ss_std_snp_list,
-            'P': list(ss_gwas_data["P"])
+            'P': list(payload.gwas_data_kept["P"])
         })
         with app.app_context():
             gwas_df.to_csv(
@@ -86,15 +86,15 @@ class SimpleSumSubsetGWASStage(PipelineStage):
             )
 
 
-    def _check_pos_duplicates(self, subsetted_gwas_data: pd.DataFrame):
+    def _check_pos_duplicates(self, payload: SessionPayload):
         """
         Raise error if there are duplicate positions in the now-subsetted GWAS data.
 
         TODO: positions with different alt alleles count as duplicates if same position occurs.
         Determine if this is okay, or if there's a better way to check here.
         """
-
-        positions = subsetted_gwas_data["POS"]
+        assert payload.gwas_data is not None
+        positions = payload.gwas_data.loc[payload.gwas_indices_kept]["POS"]
         if len(positions) != len(set(positions)):
             # collect duplicates for error message
             dups = set([x for x in positions if positions.count(x) > 1])

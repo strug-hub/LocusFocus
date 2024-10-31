@@ -92,7 +92,9 @@ class SessionPayload:
     lead_snp_name: Optional[str] = None
 
     # File data
-    gwas_data: Optional[pd.DataFrame] = None
+    # GWAS data is user-uploaded, and we update gwas_indices_kept in each stage to "keep" or "discard" SNPs
+    gwas_data: Optional[pd.DataFrame] = None  # Original GWAS data
+    gwas_indices_kept: pd.Series = field(default_factory=pd.Series)  # Boolean Array of GWAS SNPs kept
     ld_matrix: Optional[np.matrix] = None
     secondary_datasets: Optional[Dict[str, dict]] = None
     file: SessionFiles = field(init=False)
@@ -104,12 +106,10 @@ class SessionPayload:
 
     # Other
     success: bool = False
-    gwas_indices_kept: List[bool] = field(default_factory=list)
     r2: List[float] = field(default_factory=list)
 
     # Simple Sum
     ss_locustext: Optional[str] = None
-    ss_indices: List[int] = field(default_factory=list)
     ss_result_df: Optional[pd.DataFrame] = None
 
     # GTEx
@@ -117,11 +117,22 @@ class SessionPayload:
         default_factory=dict
     )  # only used for reporting, use get_gtex_selection() instead
     gene: Optional[str] = None
-    std_snp_list: List[str] = field(default_factory=list)
+    std_snp_list: pd.Series = field(default_factory=pd.Series)
 
     def __post_init__(self):
         # Runs after init, initializes SessionFiles object
         self.file = SessionFiles(self.session_id)
+
+    @property
+    def gwas_data_kept(self) -> pd.DataFrame:
+        """
+        Returns the GWAS data that was kept for Simple Sum.
+
+        Shorthand for `payload.gwas_data.loc[payload.gwas_indices_kept]`
+        """
+        if self.gwas_data is None:
+            raise Exception("GWAS data not loaded")
+        return self.gwas_data.loc[self.gwas_indices_kept]
 
     def get_coordinate(self) -> str:
         """
@@ -408,7 +419,7 @@ class SessionPayload:
             self.std_snp_list, self.get_locus(), self.get_coordinate()
         )
         data["snp_warning"] = (
-            get_gtex_snp_matches(self.std_snp_list, self.get_locus(), self.get_coordinate())
+            num_GTEx_matches
             / len(self.std_snp_list)
             < 0.8
         )
@@ -438,7 +449,7 @@ class SessionPayload:
         # simple sum
         _, ss_start, ss_end = self.get_ss_locus_tuple()
         data["SS_region"] = [ss_start, ss_end]
-        data["num_SS_snps"] = len(self.std_snp_list)
+        data["num_SS_snps"] = len(self.std_snp_list.loc[self.gwas_indices_kept])
         if self.ss_result_df is None:
             data["first_stages"] = []
             data["first_stage_Pvalues"] = []
