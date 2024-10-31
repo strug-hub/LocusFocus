@@ -3,11 +3,12 @@ from typing import List
 
 import pandas as pd
 import numpy as np
+from flask import current_app as app
 
 from app.colocalization.payload import SessionPayload
 from app.utils import download_file, standardize_snps, decompose_variant_list, x_to_23
 from app.pipeline import PipelineStage
-from app.utils.errors import InvalidUsage
+from app.utils.errors import InvalidUsage, ServerError
 
 
 @dataclass
@@ -62,10 +63,11 @@ class ReadGWASFileStage(PipelineStage):
         gwas_data = self._validate_gwas_file(payload, gwas_data)
         gwas_data = self._subset_gwas_file(payload, gwas_data)
 
+        payload.gwas_data = gwas_data
+        payload.gwas_indices_kept = pd.Series(True, index=gwas_data.index)
+
         # Get standardized list of SNPs
         payload.std_snp_list = self._get_std_snp_list(payload, gwas_data)
-
-        payload.gwas_data = gwas_data
 
         return payload
 
@@ -241,12 +243,13 @@ class ReadGWASFileStage(PipelineStage):
         bool2 = [x>=start and x<=end for x in list(gwas_data["POS"])]
         bool3 = [not x for x in list(gwas_data.isnull().any(axis=1))]
         bool4 = [str(x) != '.' for x in list(gwas_data["CHROM"])]
-        gwas_indices_kept = [ all(conditions) for conditions in zip(bool1,bool2,bool3,bool4)]
+        gwas_indices_kept = pd.Series([ all(conditions) for conditions in zip(bool1,bool2,bool3,bool4)])
+        if not all(gwas_indices_kept):
+            app.logger.warning(f"Some SNPs were removed from GWAS dataset during format check: {[i for i, x in enumerate(list(gwas_indices_kept)) if not x]}")
         gwas_data = gwas_data.loc[ gwas_indices_kept ].copy()
         gwas_data.sort_values(by=[ "POS" ], inplace=True)
-        chromcolnum = list(gwas_data.columns).index("CHROM")
         gwas_data.reset_index(drop=True, inplace=True)
-        gwas_data.iloc[:,chromcolnum] = x_to_23(list(gwas_data["CHROM"])) # type: ignore
+        gwas_data["CHROM"] = x_to_23(list(gwas_data["CHROM"])) # type: ignore
         if gwas_data.shape[0] == 0:
             raise InvalidUsage(f"No data found for entered region: '{chrom}:{start}-{end}'", status_code=410)
         # Check for invalid p=0 rows:
@@ -254,12 +257,12 @@ class ReadGWASFileStage(PipelineStage):
         if len(zero_p)>0:
             raise InvalidUsage(f'P-values of zero detected; please replace with a non-zero p-value: {", ".join(f"Row {i+1}: {x}" for i, x in enumerate(zero_p) if x==0)}', status_code=410)
 
-        payload.gwas_indices_kept = gwas_indices_kept
+        # payload.gwas_indices_kept = gwas_indices_kept
 
         return gwas_data
 
 
-    def _get_std_snp_list(self, payload: SessionPayload, gwas_data: pd.DataFrame) -> List[str]:
+    def _get_std_snp_list(self, payload: SessionPayload, gwas_data: pd.DataFrame) -> pd.Series:
         """
         Return standardized list of SNPs with format CHR_POS_REF_ALT_build.
 
@@ -270,5 +273,12 @@ class ReadGWASFileStage(PipelineStage):
         if payload.get_coordinate() == 'hg38':
             buildstr = 'b38'
 
-        std_snp_list = [f"{str(row['CHROM']).replace('23', 'X')}_{str(row['POS'])}_{str(row['REF'])}_{str(row['ALT'])}_{buildstr}" for _, row in gwas_data.iterrows()]
+        std_snp_list = pd.Series([f"{str(row['CHROM']).replace('23', 'X')}_{str(row['POS'])}_{str(row['REF'])}_{str(row['ALT'])}_{buildstr}" for _, row in gwas_data.iterrows()])
+        # Sanity check
+        try:
+            assert len(std_snp_list) == len(gwas_data)
+            assert len(std_snp_list) == len(payload.gwas_indices_kept)
+        except AssertionError:
+            raise ServerError("GWAS data and indices are not in sync")
+
         return std_snp_list

@@ -41,11 +41,9 @@ class GetLDMatrixStage(PipelineStage):
             raise ServerError(f"Cannot use GetLDMatrixStage; gwas_data is None")
 
         # Read from file if it exists. Otherwise, create with PLINK
-        ld_matrix, ld_snps_df = self._read_ld_matrix_file(payload)
+        ld_matrix, _ = self._read_ld_matrix_file(payload)
         if ld_matrix is None:
-            ld_matrix, ld_snps_df = self._create_ld_matrix(payload)
-            # Update payload.gwas_data to include SNPs from LD matrix
-            payload.gwas_data = payload.gwas_data.merge(ld_snps_df[["CHROM", "POS"]], how="inner", on=["CHROM", "POS"])
+            ld_matrix, _ = self._create_ld_matrix(payload)
 
         payload.ld_matrix = ld_matrix
 
@@ -71,15 +69,25 @@ class GetLDMatrixStage(PipelineStage):
             raise ServerError(f"Cannot validate user-provided LD matrix; gwas_data is not defined")
 
         ld_mat = pd.read_csv(ld_matrix_filepath, sep="\t", encoding='utf-8', header=None)
-        if not (len(ld_mat.shape) == 2 and ld_mat.shape[0] == ld_mat.shape[1] and ld_mat.shape[0] == payload.gwas_data.shape[0]):
-            raise InvalidUsage(f"GWAS and LD matrix input have different dimensions:\nGWAS Length: {payload.gwas_data.shape[0]}\nLD matrix shape: {ld_mat.shape}", status_code=410)
+        # Dimensions check
+        if not len(ld_mat.shape) == 2:
+            raise InvalidUsage(f"LD matrix input is not a 2D matrix", status_code=410)
+
+        if not ld_mat.shape[0] == ld_mat.shape[1]:
+            raise InvalidUsage(f"LD matrix input is not square", status_code=410)
+
+        # Compare LD matrix dimensions to GWAS data
+        if not ld_mat.shape[0] == payload.gwas_data_kept.shape[0]:
+            if ld_mat.shape[0] == payload.gwas_data.shape[0]:
+                # Special case: user uploaded LD matrix matches GWAS data exactly, but not after subsetting
+                app.logger.warning(f"LD matrix input has same dimensions as GWAS data, but not after subsetting. LD matrix will be subsetted to match current GWAS data.")
+                ld_mat = ld_mat.loc[ payload.gwas_indices_kept, payload.gwas_indices_kept ]
+            else:
+                raise InvalidUsage(f"GWAS and LD matrix input have different dimensions:\nRaw GWAS Length: {payload.gwas_data.shape[0]}\nGWAS Length after format check: {payload.gwas_data_kept.shape[0]}\nLD matrix shape: {ld_mat.shape}", status_code=410)
 
         # Ensure custom LD matrix and GWAS files are sorted for accurate matching
-        if not np.all(payload.gwas_data["POS"][:-1] <= payload.gwas_data["POS"][1:]):
+        if not np.all(payload.gwas_data_kept["POS"][:-1] <= payload.gwas_data_kept["POS"][1:]):
             raise InvalidUsage('GWAS data input is not sorted and may not match with the LD matrix', status_code=410)
-
-        # We have a user-submitted LD matrix. We need to subset it to the GWAS indices that were kept
-        ld_mat = ld_mat.loc[ payload.gwas_indices_kept, payload.gwas_indices_kept ]
 
         payload.r2 = list(ld_mat.iloc[:, payload.get_current_lead_snp_index()]) # type: ignore
 
@@ -88,11 +96,11 @@ class GetLDMatrixStage(PipelineStage):
         # Recreate BIM file from PLINK
         # since the user provided their own LD, we assume they correspond to the provided SNPs
         ld_snps_df = pd.DataFrame({
-            "CHROM": payload.gwas_data["CHROM"],
-            "CHROM_POS": payload.gwas_data["CHROM_POS"],
-            "POS": payload.gwas_data["POS"],
-            "ALT": payload.gwas_data["ALT"],
-            "REF": payload.gwas_data["REF"],
+            "CHROM": payload.gwas_data_kept["CHROM"],
+            "CHROM_POS": payload.gwas_data_kept["CHROM_POS"],
+            "POS": payload.gwas_data_kept["POS"],
+            "ALT": payload.gwas_data_kept["ALT"],
+            "REF": payload.gwas_data_kept["REF"],
         })
 
         ld_snps_df.iloc[:, 0] = x_to_23(list(ld_snps_df.iloc[:, 0])) # type: ignore
@@ -117,7 +125,7 @@ class GetLDMatrixStage(PipelineStage):
             build=payload.get_coordinate(),
             pop=payload.get_ld_population(),
             chrom=chrom,
-            snp_positions=list(payload.gwas_data["POS"]),
+            snp_positions=list(payload.gwas_data_kept["POS"]),
             outfilename=os.path.join(app.config["SESSION_FOLDER"], f"ld-{payload.session_id}"),
             region=payload.get_locus_tuple()
         )
@@ -127,8 +135,8 @@ class GetLDMatrixStage(PipelineStage):
             build=payload.get_coordinate(),
             pop=payload.get_ld_population(),
             chrom=chrom,
-            snp_positions=list(payload.gwas_data["POS"]),
-            snp_pvalues=list(payload.gwas_data["P"]),
+            snp_positions=list(payload.gwas_data_kept["POS"]),
+            snp_pvalues=list(payload.gwas_data_kept["P"]),
             outfilename=os.path.join(app.config["SESSION_FOLDER"], f"ld-{payload.session_id}")
         )
 
@@ -140,6 +148,10 @@ class GetLDMatrixStage(PipelineStage):
             4: "ALT",
             5: "REF"
         }).iloc[:, [0, 1, 3, 4, 5]] # drop third column (all zeroes)
+
+        # Generated LD matrix, need to update GWAS indices
+        ld_indices = payload.gwas_data["POS"].isin(ld_snps_df["POS"])
+        payload.gwas_indices_kept &= ld_indices
 
         payload.r2 = list(temp_ld_mat["R2"])
         payload.ld_snps_bim_df = ld_snps_df
