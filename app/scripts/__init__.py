@@ -39,7 +39,7 @@ def simple_sum(
     Raise error if the script fails to run.
     """
     SCRIPT_PATH = os.path.join(BASE_DIR, "getSimpleSumStats.R")
-    ARGS = [
+    args = [
         "Rscript",
         SCRIPT_PATH,
         p_values_filepath,
@@ -48,7 +48,7 @@ def simple_sum(
         "--outfilename", results_filepath
     ]
 
-    process_runner = subprocess.run(ARGS, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+    process_runner = subprocess.run(args=args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
     if process_runner.returncode != 0:
         raise ScriptError(process_runner.stdout, process_runner.stderr)
 
@@ -69,7 +69,7 @@ def coloc2(
     with the provided parameters.
     """
     SCRIPT_PATH = os.path.join(BASE_DIR, "run_coloc2.R")
-    ARGS = [
+    args = [
         "Rscript",
         SCRIPT_PATH,
         coloc2_gwas_filepath,
@@ -77,7 +77,7 @@ def coloc2(
         "--outfilename", results_filepath,
     ]
 
-    process_runner = subprocess.run(ARGS, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+    process_runner = subprocess.run(args=args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
     if process_runner.returncode != 0:
         raise ScriptError(process_runner.stdout, process_runner.stderr)
     
