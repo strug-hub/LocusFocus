@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from uuid import uuid4, UUID
 from typing import List, Dict, Optional, Tuple, Union
+import os
 
 import numpy as np
 import pandas as pd
@@ -57,11 +58,30 @@ class SessionFiles:
             f"coloc2result_df-{session_id}.txt"
         )
 
-    def write_to_file(self, filename: str, data: str):
-        # TODO: Implement in data-agnostic way.
-        # Fail if file already exists and is not empty.
-        # Write data to file. Writing method depends on data type.
-        pass
+    def get_plot_template_paths(self, session_id: Optional[str] = None) -> Dict[str, str]:
+        """
+        Get the filepaths in format needed for the `plot.html` render template.
+
+        Can be passed directly to render_template as kwargs.
+        """
+        paths = {
+            "sessionfile": str(self.session_filepath),
+            "genesfile": str(self.genes_session_filepath),
+            "SSPvalues_file": str(self.SSPvalues_filepath),
+            "coloc2_file": str(self.coloc2_filepath),
+            "metadata_file": str(self.metadata_filepath),
+        }
+
+        adjusted_paths = {}
+
+        # Adjust paths to be relative to the session data folder
+        for key, value in paths.items():
+            adjusted_paths[key] = f"session_data/{os.path.basename(value)}"
+
+        if session_id is not None:
+            adjusted_paths["session_id"] = session_id
+
+        return adjusted_paths
 
 
 @dataclass
@@ -361,28 +381,6 @@ class SessionPayload:
         """
         return download_file(self.request, ["ld"]) is not None
 
-    def get_current_lead_snp_index(self) -> int:
-        """
-        Determine and return the index of the lead SNP for the gwas dataset (ie. the SNP with the lowest P-value).
-
-        Prerequisite: gwas_data is loaded.
-        """
-        try:
-            assert self.gwas_data is not None
-        except AssertionError:
-            raise ServerError(message="Attempted to get lead SNP index before GWAS data was loaded")
-        lead_snp = self.get_lead_snp_name()
-        snp_list = list(self.gwas_data.loc[:,"SNP"])
-        # cleaning up the SNP names a bit
-        snp_list = [asnp.split(';')[0] for asnp in snp_list] # type: ignore
-        if lead_snp=='': 
-            lead_snp: str = list(gwas_data.loc[ gwas_data.loc[:,"P"] == gwas_data.loc[:,"P"].min() ].loc[:,"SNP"])[0].split(';')[0] # type: ignore
-        if lead_snp not in snp_list:
-            raise InvalidUsage(f"Lead SNP '{lead_snp}' not found in dataset", status_code=410)
-        lead_snp_position_index = snp_list.index(lead_snp)
-
-        return lead_snp_position_index
-
     def dump_session_data(self):
         """
         Create JSON dict of session data needed for form_data file.
@@ -398,7 +396,7 @@ class SessionPayload:
             list(self.gwas_data["P"]) if self.gwas_data is not None else []
         )
         data["lead_snp"] = (
-            self.gwas_data["SNP"].iloc(self.get_current_lead_snp_index())
+            self.gwas_data_kept["SNP"].loc[self.get_lead_snp_index()]
             if self.gwas_data is not None
             else None
         )
@@ -413,7 +411,7 @@ class SessionPayload:
         data["gtex_version"] = self.get_gtex_version()
         data["coordinate"] = self.get_coordinate()
         data["set_based_p"] = self.set_based_p
-        data["std_snp_list"] = self.std_snp_list
+        data["std_snp_list"] = list(self.std_snp_list)
         data["runcoloc2"] = self.coloc2 is True
         num_GTEx_matches = get_gtex_snp_matches(
             self.std_snp_list, self.get_locus(), self.get_coordinate()

@@ -1653,12 +1653,7 @@ def index():
 
     return render_template(
         "plot.html", 
-        sessionfile = payload.file.session_filepath, # "data" dictionary, "form_data-{session_id}.json" file
-        genesfile = payload.file.genes_session_filepath, # "gene_data" dictionary, "genes_data-{session_id}.json" file
-        SSPvalues_file = payload.file.SSPvalues_filepath, # "SSPvalues-{session_id}.json" file
-        coloc2_file = payload.file.coloc2_filepath, # "coloc2result-{session_id}.json" file
-        sessionid = payload.session_id, # session ID
-        metadata_file = payload.file.metadata_filepath # "metadata-{session_id}.json" file
+        **payload.file.get_plot_template_paths(session_id=str(payload.session_id))
     )
 
 ALLOWED_SBT_EXTENSIONS = set(['txt', 'tsv', 'ld'])
