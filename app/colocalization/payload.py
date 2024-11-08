@@ -79,7 +79,7 @@ class SessionFiles:
             adjusted_paths[key] = f"session_data/{os.path.basename(value)}"
 
         if session_id is not None:
-            adjusted_paths["session_id"] = session_id
+            adjusted_paths["sessionid"] = session_id
 
         return adjusted_paths
 
@@ -391,7 +391,7 @@ class SessionPayload:
         data["success"] = self.success
         data["sessionid"] = str(self.session_id)
         data["snps"] = list(self.gwas_data["SNP"]) if self.gwas_data is not None else []
-        data["infervariant"] = self.get_infer_variant()
+        data["inferVariant"] = self.get_infer_variant()
         data["pvalues"] = (
             list(self.gwas_data["P"]) if self.gwas_data is not None else []
         )
@@ -427,22 +427,32 @@ class SessionPayload:
         # secondary datasets
         if self.secondary_datasets is not None:
             data["secondary_dataset_titles"] = list(self.secondary_datasets.keys())
-            if self.coloc2:
-                data["secondary_dataset_colnames"] = [
-                    "CHR",
-                    "POS",
-                    "SNPID",
-                    "PVAL",
-                    "BETA",
-                    "SE",
-                    "N",
-                    "A1",
-                    "A2",
-                    "MAF",
-                    "ProbeID",
-                ]
-            else:
-                data["secondary_dataset_colnames"] = ["CHROM", "BP", "SNP", "P"]
+            for dataset_title, table in self.secondary_datasets.items():
+                data[dataset_title] = table
+        else:
+            data["secondary_dataset_titles"] = []
+
+        # gtex data
+        if self.reported_gtex_data is not None:
+            for tissue, table in self.reported_gtex_data.items():
+                data[tissue] = table
+
+        if self.coloc2:
+            data["secondary_dataset_colnames"] = [
+                "CHR",
+                "POS",
+                "SNPID",
+                "PVAL",
+                "BETA",
+                "SE",
+                "N",
+                "A1",
+                "A2",
+                "MAF",
+                "ProbeID",
+            ]
+        else:
+            data["secondary_dataset_colnames"] = ["CHROM", "BP", "SNP", "P"]
 
         # simple sum
         _, ss_start, ss_end = self.get_ss_locus_tuple()

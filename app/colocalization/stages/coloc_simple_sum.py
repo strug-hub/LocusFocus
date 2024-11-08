@@ -110,8 +110,8 @@ class ColocSimpleSumStage(PipelineStage):
         p_value_matrix.append(list(payload.gwas_data_kept["P"]))  # type: ignore
 
         # 2. GTEx secondary datasets
-        std_snp_list = clean_snps(list(payload.std_snp_list), regionstr, coordinate)
-        ss_std_snp_list = payload.std_snp_list.loc[payload.gwas_indices_kept]
+        std_snp_list = pd.Series(clean_snps(list(payload.std_snp_list), regionstr, coordinate))
+        ss_std_snp_list = std_snp_list.loc[payload.gwas_indices_kept]
 
         gtex_tissues, gtex_genes = payload.get_gtex_selection()
         if len(gtex_tissues) > 0:
