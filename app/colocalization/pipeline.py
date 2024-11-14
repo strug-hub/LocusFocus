@@ -68,8 +68,11 @@ class ColocalizationPipeline(Pipeline):
             f.write("-----------------------------------------------------------\n")
             f.write(" Times Report\n")
             f.write("-----------------------------------------------------------\n")
+
             for stage_name, timer in self.timers.items():
-                f.write(f"'{stage_name}': {timer}\n")
+                percentage = round(timer / self.timers["pipeline"] * 100, 2)
+
+                f.write(f"'{stage_name}': {timer} ({percentage}%)\n")
             f.write(f"Total time: {self.timers['pipeline']}\n")
 
         return super().post_pipeline(payload)
