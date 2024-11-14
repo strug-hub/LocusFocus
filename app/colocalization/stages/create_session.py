@@ -28,6 +28,8 @@ class CreateSessionStage(PipelineStage):
     def _create_metadata_file(self, payload: SessionPayload):
         """
         Create JSON dict of session data needed for metadata file.
+
+        The existence of the metadata file is what we use to check whether a session has been started.
         """
 
         metadata = {}
