@@ -245,7 +245,7 @@ class ReadGWASFileStage(PipelineStage):
         bool4 = [str(x) != '.' for x in list(gwas_data["CHROM"])]
         gwas_indices_kept = pd.Series([ all(conditions) for conditions in zip(bool1,bool2,bool3,bool4)])
         if not all(gwas_indices_kept):
-            app.logger.warning(f"Some SNPs were removed from GWAS dataset during format check: {[i for i, x in enumerate(list(gwas_indices_kept)) if not x]}")
+            app.logger.debug(f"Some SNPs were removed from GWAS dataset during format check: {[i for i, x in enumerate(list(gwas_indices_kept)) if not x]}")
         gwas_data = gwas_data.loc[ gwas_indices_kept ].copy()
         gwas_data.sort_values(by=[ "POS" ], inplace=True)
         gwas_data.reset_index(drop=True, inplace=True)
