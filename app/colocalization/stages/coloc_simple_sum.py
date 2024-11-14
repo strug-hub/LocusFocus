@@ -22,9 +22,20 @@ class ColocSimpleSumStage(PipelineStage):
     - gtex_data is reported
     """
 
-    COLOC2_COLNAMES = ['CHR','POS','SNPID','A2','A1','BETA','SE','PVAL','MAF', 'N']
-    COLOC2_EQTL_COLNAMES = COLOC2_COLNAMES + ['ProbeID']
-    COLOC2_GWAS_COLNAMES = COLOC2_COLNAMES + ['type']
+    COLOC2_COLNAMES = [
+        "CHR",
+        "POS",
+        "SNPID",
+        "A2",
+        "A1",
+        "BETA",
+        "SE",
+        "PVAL",
+        "MAF",
+        "N",
+    ]
+    COLOC2_EQTL_COLNAMES = COLOC2_COLNAMES + ["ProbeID"]
+    COLOC2_GWAS_COLNAMES = COLOC2_COLNAMES + ["type"]
 
     def name(self) -> str:
         return "simple-sum"
@@ -39,7 +50,10 @@ class ColocSimpleSumStage(PipelineStage):
             errors.append("LD Matrix is not loaded")
         if payload.ld_snps_bim_df is None:
             errors.append("LD Matrix BIM file is missing")
-        if payload.reported_gtex_data == {} and payload.get_gtex_selection() != ([], []):
+        if payload.reported_gtex_data == {} and payload.get_gtex_selection() != (
+            [],
+            [],
+        ):
             # reported_gtex_data isn't actually used, but it's just a proxy for whether GTEx was fetched
             errors.append(
                 "GTEx genes/tissues were selected but data has not been reported"
@@ -53,14 +67,14 @@ class ColocSimpleSumStage(PipelineStage):
         p_value_matrix, coloc2eqtl_df = self._build_pvalue_matrix(payload)
 
         self._run_simple_sum(
-            p_value_matrix,
-            payload,
-            coloc2eqtl_df,
+            p_value_matrix, payload, coloc2eqtl_df,
         )
 
         return payload
 
-    def _build_pvalue_matrix(self, payload: SessionPayload) -> Tuple[np.matrix, Optional[pd.DataFrame]]:
+    def _build_pvalue_matrix(
+        self, payload: SessionPayload
+    ) -> Tuple[np.matrix, Optional[pd.DataFrame]]:
         """
         Create a P-value matrix required for Simple Sum colocalization,
         as well as a COLOC2 dataframe if COLOC2 is enabled.
@@ -110,7 +124,9 @@ class ColocSimpleSumStage(PipelineStage):
         p_value_matrix.append(list(payload.gwas_data_kept["P"]))  # type: ignore
 
         # 2. GTEx secondary datasets
-        std_snp_list = pd.Series(clean_snps(list(payload.std_snp_list), regionstr, coordinate))
+        std_snp_list = pd.Series(
+            clean_snps(list(payload.std_snp_list), regionstr, coordinate)
+        )
         ss_std_snp_list = std_snp_list.loc[payload.gwas_indices_kept]
 
         gtex_tissues, gtex_genes = payload.get_gtex_selection()
@@ -157,7 +173,9 @@ class ColocSimpleSumStage(PipelineStage):
                                     [tempdf, pd.Series(probeidlist, name="ProbeID")],
                                     axis=1,
                                 )
-                                tempdf = tempdf.reindex(columns=self.COLOC2_EQTL_COLNAMES)
+                                tempdf = tempdf.reindex(
+                                    columns=self.COLOC2_EQTL_COLNAMES
+                                )
                                 coloc2eqtl_df = pd.concat(
                                     [coloc2eqtl_df, tempdf], axis=0
                                 )
@@ -166,53 +184,120 @@ class ColocSimpleSumStage(PipelineStage):
                     p_value_matrix.append(pvalues)
 
         # 3. Uploaded secondary datasets
-        if payload.secondary_datasets is not None and len(payload.secondary_datasets) > 0:
+        if (
+            payload.secondary_datasets is not None
+            and len(payload.secondary_datasets) > 0
+        ):
             if payload.coloc2:
                 # Saving uploaded secondary datasets for coloc2 run
-                for dataset_title, secondary_dataset in payload.secondary_datasets.items():
+                for (
+                    dataset_title,
+                    secondary_dataset,
+                ) in payload.secondary_datasets.items():
                     secondary_dataset = pd.DataFrame(secondary_dataset)
                     if secondary_dataset.shape[0] == 0:
-                        #print(f'No data for table {table_titles[i]}')
+                        # print(f'No data for table {table_titles[i]}')
                         pvalues = np.repeat(np.nan, len(ss_std_snp_list))
                         p_value_matrix.append(pvalues)
                         continue
                     try:
-                        if not set(self.COLOC2_EQTL_COLNAMES).issubset(secondary_dataset):
-                            raise InvalidUsage(f'You have chosen to run COLOC2. COLOC2 assumes eQTL data as secondary dataset, and you must have all of the following column names: {self.COLOC2_EQTL_COLNAMES}')
-                        secondary_dataset['SNPID'] = clean_snps(secondary_dataset['SNPID'].tolist(),regionstr,coordinate)
-                        #secondary_dataset.set_index('SNPID', inplace=True)
-                        idx = pd.Index(list(secondary_dataset['SNPID']))
-                        secondary_dataset = secondary_dataset.loc[~idx.duplicated()].reset_index().drop(columns=['index'])
+                        if not set(self.COLOC2_EQTL_COLNAMES).issubset(
+                            secondary_dataset
+                        ):
+                            raise InvalidUsage(
+                                f"You have chosen to run COLOC2. COLOC2 assumes eQTL data as secondary dataset, and you must have all of the following column names: {self.COLOC2_EQTL_COLNAMES}"
+                            )
+                        secondary_dataset["SNPID"] = clean_snps(
+                            secondary_dataset["SNPID"].tolist(), regionstr, coordinate
+                        )
+                        # secondary_dataset.set_index('SNPID', inplace=True)
+                        idx = pd.Index(list(secondary_dataset["SNPID"]))
+                        secondary_dataset = (
+                            secondary_dataset.loc[~idx.duplicated()]
+                            .reset_index()
+                            .drop(columns=["index"])
+                        )
                         # merge to keep only SNPs already present in the GWAS/primary dataset (SS subset):
-                        secondary_data_std_snplist = standardize_snps(secondary_dataset['SNPID'].tolist(), regionstr, coordinate)
-                        secondary_dataset = pd.concat([secondary_dataset, pd.DataFrame(secondary_data_std_snplist, columns=['SNPID.tmp'])], axis=1)
-                        snp_df = pd.DataFrame(ss_std_snp_list, columns=['SNPID.tmp'])
-                        secondary_data = snp_df.reset_index().merge(secondary_dataset, on='SNPID.tmp', how='left', sort=False).sort_values('index')
-                        pvalues = list(secondary_data['PVAL'])
+                        secondary_data_std_snplist = standardize_snps(
+                            secondary_dataset["SNPID"].tolist(), regionstr, coordinate
+                        )
+                        secondary_dataset = pd.concat(
+                            [
+                                secondary_dataset,
+                                pd.DataFrame(
+                                    secondary_data_std_snplist, columns=["SNPID.tmp"]
+                                ),
+                            ],
+                            axis=1,
+                        )
+                        snp_df = pd.DataFrame(ss_std_snp_list, columns=["SNPID.tmp"])
+                        secondary_data = (
+                            snp_df.reset_index()
+                            .merge(
+                                secondary_dataset,
+                                on="SNPID.tmp",
+                                how="left",
+                                sort=False,
+                            )
+                            .sort_values("index")
+                        )
+                        pvalues = list(secondary_data["PVAL"])
                         p_value_matrix.append(pvalues)
-                        coloc2eqtl_df = pd.concat([coloc2eqtl_df, secondary_data.reindex(columns = self.COLOC2_EQTL_COLNAMES)], axis=0)
+                        coloc2eqtl_df = pd.concat(
+                            [
+                                coloc2eqtl_df,
+                                secondary_data.reindex(
+                                    columns=self.COLOC2_EQTL_COLNAMES
+                                ),
+                            ],
+                            axis=0,
+                        )
                     except InvalidUsage as e:
                         e.message = f"[secondary dataset '{dataset_title}'] {e.message}"
                         raise e
             else:
-                for dataset_title, secondary_dataset in payload.secondary_datasets.items():
+                for (
+                    dataset_title,
+                    secondary_dataset,
+                ) in payload.secondary_datasets.items():
                     secondary_dataset = pd.DataFrame(secondary_dataset)
                     if secondary_dataset.shape[0] == 0:
-                        #print(f'No data for table {table_titles[i]}')
+                        # print(f'No data for table {table_titles[i]}')
                         pvalues = np.repeat(np.nan, len(ss_std_snp_list))
                         p_value_matrix.append(pvalues)
                         continue
                     # remove duplicate SNPs
                     try:
-                        secondary_dataset["SNP"] = clean_snps(secondary_dataset["SNP"].tolist(),regionstr,coordinate)
+                        secondary_dataset["SNP"] = clean_snps(
+                            secondary_dataset["SNP"].tolist(), regionstr, coordinate
+                        )
                         idx = pd.Index(list(secondary_dataset["SNP"]))
-                        secondary_dataset = secondary_dataset.loc[~idx.duplicated()].reset_index().drop(columns=['index'])
+                        secondary_dataset = (
+                            secondary_dataset.loc[~idx.duplicated()]
+                            .reset_index()
+                            .drop(columns=["index"])
+                        )
                         # merge to keep only SNPs already present in the GWAS/primary dataset (SS subset):
-                        secondary_data_std_snplist = standardize_snps(secondary_dataset["SNP"].tolist(), regionstr, coordinate)
-                        std_snplist_df =  pd.DataFrame(secondary_data_std_snplist, columns=["SNP"+'.tmp'])
-                        secondary_dataset = pd.concat([secondary_dataset,std_snplist_df], axis=1)
-                        snp_df = pd.DataFrame(ss_std_snp_list, columns=["SNP"+'.tmp'])
-                        secondary_data = snp_df.reset_index().merge(secondary_dataset, on="SNP"+'.tmp', how='left', sort=False).sort_values('index')
+                        secondary_data_std_snplist = standardize_snps(
+                            secondary_dataset["SNP"].tolist(), regionstr, coordinate
+                        )
+                        std_snplist_df = pd.DataFrame(
+                            secondary_data_std_snplist, columns=["SNP" + ".tmp"]
+                        )
+                        secondary_dataset = pd.concat(
+                            [secondary_dataset, std_snplist_df], axis=1
+                        )
+                        snp_df = pd.DataFrame(ss_std_snp_list, columns=["SNP" + ".tmp"])
+                        secondary_data = (
+                            snp_df.reset_index()
+                            .merge(
+                                secondary_dataset,
+                                on="SNP" + ".tmp",
+                                how="left",
+                                sort=False,
+                            )
+                            .sort_values("index")
+                        )
                         pvalues = list(secondary_data["P"])
                         p_value_matrix.append(pvalues)
                     except InvalidUsage as e:
@@ -253,8 +338,10 @@ class ColocSimpleSumStage(PipelineStage):
 
         np.fill_diagonal(ld_matrix, np.diag(ld_matrix) + LD_MAT_DIAG_CONSTANT)
 
-        p_matrix_indices = [i for i, e in enumerate(SS_positions) if e in ld_mat_positions]
-        p_value_matrix = p_value_matrix[:, p_matrix_indices] # type: ignore
+        p_matrix_indices = [
+            i for i, e in enumerate(SS_positions) if e in ld_mat_positions
+        ]
+        p_value_matrix = p_value_matrix[:, p_matrix_indices]  # type: ignore
 
         write_matrix(p_value_matrix, payload.file.p_value_filepath)
         write_matrix(ld_matrix, payload.file.ld_matrix_filepath)
@@ -277,15 +364,15 @@ class ColocSimpleSumStage(PipelineStage):
         payload.ss_result_df = SSdf
 
         # Gather results
-        SSPvalues = SSdf['Pss'].tolist()
-        num_SNP_used_for_SS = SSdf['n'].tolist()
-        comp_used = SSdf['comp_used'].tolist()
-        first_stages = SSdf['first_stages'].tolist()
-        first_stage_p = SSdf['first_stage_p'].tolist()
+        SSPvalues = SSdf["Pss"].tolist()
+        num_SNP_used_for_SS = SSdf["n"].tolist()
+        comp_used = SSdf["comp_used"].tolist()
+        first_stages = SSdf["first_stages"].tolist()
+        first_stage_p = SSdf["first_stage_p"].tolist()
 
         for i in np.arange(len(SSPvalues)):
             if SSPvalues[i] > 0:
-                SSPvalues[i] = np.format_float_scientific((-np.log10(SSPvalues[i])), precision=2) # type: ignore
+                SSPvalues[i] = np.format_float_scientific((-np.log10(SSPvalues[i])), precision=2)  # type: ignore
         SSPvaluesMatGTEx = np.empty(0)
         num_SNP_used_for_SSMat = np.empty(0)
         comp_usedMat = np.empty(0)
@@ -300,28 +387,41 @@ class ColocSimpleSumStage(PipelineStage):
             table_titles = list(payload.secondary_datasets.keys())
 
         if len(gtex_tissues) > 0:
-            SSPvaluesMatGTEx = np.array(SSPvalues[0:(len(gtex_tissues) * len(gtex_genes))]).reshape(len(gtex_tissues), len(gtex_genes))
-            num_SNP_used_for_SSMat = np.array(num_SNP_used_for_SS[0:(len(gtex_tissues) * len(gtex_genes))]).reshape(len(gtex_tissues), len(gtex_genes))
-            comp_usedMat = np.array(comp_used[0:(len(gtex_tissues) * len(gtex_genes))]).reshape(len(gtex_tissues), len(gtex_genes))
+            SSPvaluesMatGTEx = np.array(
+                SSPvalues[0 : (len(gtex_tissues) * len(gtex_genes))]
+            ).reshape(len(gtex_tissues), len(gtex_genes))
+            num_SNP_used_for_SSMat = np.array(
+                num_SNP_used_for_SS[0 : (len(gtex_tissues) * len(gtex_genes))]
+            ).reshape(len(gtex_tissues), len(gtex_genes))
+            comp_usedMat = np.array(
+                comp_used[0 : (len(gtex_tissues) * len(gtex_genes))]
+            ).reshape(len(gtex_tissues), len(gtex_genes))
         if len(SSPvalues) > len(gtex_tissues) * len(gtex_genes):
-            SSPvaluesSecondary = SSPvalues[(len(gtex_tissues) * len(gtex_genes)) : (len(SSPvalues))]
-            numSNPsSSPSecondary = num_SNP_used_for_SS[(len(gtex_tissues) * len(gtex_genes)) : (len(SSPvalues))]
-            compUsedSecondary = comp_used[(len(gtex_tissues) * len(gtex_genes)) : (len(SSPvalues))]
+            SSPvaluesSecondary = SSPvalues[
+                (len(gtex_tissues) * len(gtex_genes)) : (len(SSPvalues))
+            ]
+            numSNPsSSPSecondary = num_SNP_used_for_SS[
+                (len(gtex_tissues) * len(gtex_genes)) : (len(SSPvalues))
+            ]
+            compUsedSecondary = comp_used[
+                (len(gtex_tissues) * len(gtex_genes)) : (len(SSPvalues))
+            ]
         SSPvalues_dict = {
-            'Genes': gtex_genes
-            ,'Tissues': gtex_tissues
-            ,'Secondary_dataset_titles': table_titles
-            ,'SSPvalues': SSPvaluesMatGTEx.tolist() # GTEx pvalues
-            #,'Num_SNPs_Used_for_SS': [int(x) for x in num_SNP_used_for_SS]
-            ,'Num_SNPs_Used_for_SS': num_SNP_used_for_SSMat.tolist()
-            ,'Computation_method': comp_usedMat.tolist()
-            ,'SSPvalues_secondary': SSPvaluesSecondary
-            ,'Num_SNPs_Used_for_SS_secondary': numSNPsSSPSecondary
-            ,'Computation_method_secondary': compUsedSecondary
-            ,'First_stages': first_stages
-            ,'First_stage_Pvalues': first_stage_p
+            "Genes": gtex_genes,
+            "Tissues": gtex_tissues,
+            "Secondary_dataset_titles": table_titles,
+            "SSPvalues": SSPvaluesMatGTEx.tolist()  # GTEx pvalues
+            # ,'Num_SNPs_Used_for_SS': [int(x) for x in num_SNP_used_for_SS]
+            ,
+            "Num_SNPs_Used_for_SS": num_SNP_used_for_SSMat.tolist(),
+            "Computation_method": comp_usedMat.tolist(),
+            "SSPvalues_secondary": SSPvaluesSecondary,
+            "Num_SNPs_Used_for_SS_secondary": numSNPsSSPSecondary,
+            "Computation_method_secondary": compUsedSecondary,
+            "First_stages": first_stages,
+            "First_stage_Pvalues": first_stage_p,
         }
-        json.dump(SSPvalues_dict, open(payload.file.SSPvalues_filepath, 'w'))
+        json.dump(SSPvalues_dict, open(payload.file.SSPvalues_filepath, "w"))
 
         ####################################################################################################
 
@@ -332,39 +432,52 @@ class ColocSimpleSumStage(PipelineStage):
             # COLOC2
             gwas_to_coloc2_colnames = {
                 "CHROM": "CHR",
-                'SNP': 'SNPID',
-                'P': 'PVAL',
-                'REF': 'A2',
-                'ALT': 'A1',
+                "SNP": "SNPID",
+                "P": "PVAL",
+                "REF": "A2",
+                "ALT": "A1",
             }
 
-            coloc2_gwasdf = payload.gwas_data_kept \
-                .rename(columns=gwas_to_coloc2_colnames) \
-                .reindex(columns=self.COLOC2_GWAS_COLNAMES)
+            coloc2_gwasdf = payload.gwas_data_kept.rename(
+                columns=gwas_to_coloc2_colnames
+            ).reindex(columns=self.COLOC2_GWAS_COLNAMES)
 
             # Calculating COLOC2 stats
-            coloc2_gwasdf.dropna().to_csv(payload.file.coloc2_gwas_filepath, index=False, encoding='utf-8', sep="\t")
+            coloc2_gwasdf.dropna().to_csv(
+                payload.file.coloc2_gwas_filepath,
+                index=False,
+                encoding="utf-8",
+                sep="\t",
+            )
             if coloc2_gwasdf.shape[0] == 0 or coloc2eqtl_df.shape[0] == 0:
-                raise InvalidUsage(f'Empty datasets for coloc2. Cannot proceed. GWAS numRows: {coloc2_gwasdf.shape[0]}; eQTL numRows: {coloc2eqtl_df.shape[0]}. May be due to inability to match with GTEx variants. Please check position, REF/ALT allele correctness, and or SNP names.')
-            coloc2eqtl_df.dropna().to_csv(payload.file.coloc2_eqtl_filepath, index=False, encoding='utf-8', sep="\t")
+                raise InvalidUsage(
+                    f"Empty datasets for coloc2. Cannot proceed. GWAS numRows: {coloc2_gwasdf.shape[0]}; eQTL numRows: {coloc2eqtl_df.shape[0]}. May be due to inability to match with GTEx variants. Please check position, REF/ALT allele correctness, and or SNP names."
+                )
+            coloc2eqtl_df.dropna().to_csv(
+                payload.file.coloc2_eqtl_filepath,
+                index=False,
+                encoding="utf-8",
+                sep="\t",
+            )
 
             # Run COLOC2
             try:
-                coloc2df = coloc2(payload.file.coloc2_gwas_filepath, payload.file.coloc2_eqtl_filepath, payload.file.coloc2_results_filepath)
+                coloc2df = coloc2(
+                    payload.file.coloc2_gwas_filepath,
+                    payload.file.coloc2_eqtl_filepath,
+                    payload.file.coloc2_results_filepath,
+                )
             except ScriptError as e:
                 raise InvalidUsage(e.stdout, status_code=410)
 
             # save as json:
             coloc2_dict = {
-                'ProbeID': coloc2df['ProbeID'].tolist()
-                ,'PPH4abf': coloc2df['PPH4abf'].tolist()
+                "ProbeID": coloc2df["ProbeID"].tolist(),
+                "PPH4abf": coloc2df["PPH4abf"].tolist(),
             }
         else:
-            coloc2_dict = {
-                'ProbeID': []
-                ,'PPH4abf': []
-            }
+            coloc2_dict = {"ProbeID": [], "PPH4abf": []}
 
-        json.dump(coloc2_dict, open(payload.file.coloc2_filepath,'w'))
+        json.dump(coloc2_dict, open(payload.file.coloc2_filepath, "w"))
 
         return

@@ -32,12 +32,13 @@ class SimpleSumSubsetGWASStage(PipelineStage):
         self._write_gwas_to_file(payload)
         self._check_pos_duplicates(payload)
 
-        payload.ss_indices = ss_indices # type: ignore
+        payload.ss_indices = ss_indices  # type: ignore
 
         return payload
 
-
-    def _subset_gwas(self, payload: SessionPayload, gwas_data: pd.DataFrame) -> pd.Series:
+    def _subset_gwas(
+        self, payload: SessionPayload, gwas_data: pd.DataFrame
+    ) -> pd.Series:
         """
         Given a GWAS dataset, return a boolean series representing a subset of the GWAS dataset that is ready for Simple Sum.
 
@@ -45,19 +46,31 @@ class SimpleSumSubsetGWASStage(PipelineStage):
         """
         chrom, SS_start, SS_end = payload.get_ss_locus_tuple()
 
-        chromList = [('chr' + str(chrom).replace('23','X')), str(chrom).replace('23','X')]
-        if 'X' in chromList:
-            chromList.extend(['chr23','23'])
+        chromList = [
+            ("chr" + str(chrom).replace("23", "X")),
+            str(chrom).replace("23", "X"),
+        ]
+        if "X" in chromList:
+            chromList.extend(["chr23", "23"])
         gwas_chrom_col = pd.Series([str(x) for x in list(gwas_data["CHROM"])])
-        SS_chrom_bool = [str(x).replace('23','X') for x in gwas_chrom_col.isin(chromList) if x == True]
-        SS_indices = SS_chrom_bool & (gwas_data["POS"] >= SS_start) & (gwas_data["POS"] <= SS_end)
-        SS_gwas_data = gwas_data.loc[ SS_indices ]
+        SS_chrom_bool = [
+            str(x).replace("23", "X")
+            for x in gwas_chrom_col.isin(chromList)
+            if x == True
+        ]
+        SS_indices = (
+            SS_chrom_bool
+            & (gwas_data["POS"] >= SS_start)
+            & (gwas_data["POS"] <= SS_end)
+        )
+        SS_gwas_data = gwas_data.loc[SS_indices]
 
         if SS_gwas_data.shape[0] == 0:
-            raise InvalidUsage('No data points found for entered Simple Sum region', status_code=410)
+            raise InvalidUsage(
+                "No data points found for entered Simple Sum region", status_code=410
+            )
 
         return SS_indices
-
 
     def _write_gwas_to_file(self, payload: SessionPayload):
         """
@@ -68,23 +81,28 @@ class SimpleSumSubsetGWASStage(PipelineStage):
         regionstr = payload.get_locus()
         coordinate = payload.get_coordinate()
 
-        ss_snp_list = clean_snps(list(payload.gwas_data_kept["SNP"]), regionstr, coordinate)
+        ss_snp_list = clean_snps(
+            list(payload.gwas_data_kept["SNP"]), regionstr, coordinate
+        )
         ss_std_snp_list = payload.std_snp_list.loc[payload.gwas_indices_kept]
 
-        gwas_df = pd.DataFrame({
-            'Position': list(payload.gwas_data_kept["POS"]),
-            'SNP': ss_snp_list,
-            'variant_id': ss_std_snp_list,
-            'P': list(payload.gwas_data_kept["P"])
-        })
+        gwas_df = pd.DataFrame(
+            {
+                "Position": list(payload.gwas_data_kept["POS"]),
+                "SNP": ss_snp_list,
+                "variant_id": ss_std_snp_list,
+                "P": list(payload.gwas_data_kept["P"]),
+            }
+        )
         with app.app_context():
             gwas_df.to_csv(
-                os.path.join(app.config["SESSION_FOLDER"], f'gwas_df-{payload.session_id}.txt'),
+                os.path.join(
+                    app.config["SESSION_FOLDER"], f"gwas_df-{payload.session_id}.txt"
+                ),
                 index=False,
-                encoding='utf-8',
-                sep="\t"
+                encoding="utf-8",
+                sep="\t",
             )
-
 
     def _check_pos_duplicates(self, payload: SessionPayload):
         """
@@ -99,5 +117,7 @@ class SimpleSumSubsetGWASStage(PipelineStage):
             # collect duplicates for error message
             dups = set([x for x in positions if positions.count(x) > 1])
             dup_counts = [(x, positions.count(x)) for x in dups]
-            raise InvalidUsage(f'Duplicate chromosome basepair positions detected: {[f"bp: {dup[0]}, num. duplicates: {dup[1]}" for dup in dup_counts]}')
+            raise InvalidUsage(
+                f'Duplicate chromosome basepair positions detected: {[f"bp: {dup[0]}, num. duplicates: {dup[1]}" for dup in dup_counts]}'
+            )
         return None

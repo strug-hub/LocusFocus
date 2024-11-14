@@ -58,7 +58,9 @@ class SessionFiles:
             f"coloc2result_df-{session_id}.txt"
         )
 
-    def get_plot_template_paths(self, session_id: Optional[str] = None) -> Dict[str, str]:
+    def get_plot_template_paths(
+        self, session_id: Optional[str] = None
+    ) -> Dict[str, str]:
         """
         Get the filepaths in format needed for the `plot.html` render template.
 
@@ -114,7 +116,9 @@ class SessionPayload:
     # File data
     # GWAS data is user-uploaded, and we update gwas_indices_kept in each stage to "keep" or "discard" SNPs
     gwas_data: Optional[pd.DataFrame] = None  # Original GWAS data
-    gwas_indices_kept: pd.Series = field(default_factory=pd.Series)  # Boolean Array of GWAS SNPs kept
+    gwas_indices_kept: pd.Series = field(
+        default_factory=pd.Series
+    )  # Boolean Array of GWAS SNPs kept
     ld_matrix: Optional[np.matrix] = None
     secondary_datasets: Optional[Dict[str, dict]] = None
     file: SessionFiles = field(init=False)
@@ -416,11 +420,7 @@ class SessionPayload:
         num_GTEx_matches = get_gtex_snp_matches(
             self.std_snp_list, self.get_locus(), self.get_coordinate()
         )
-        data["snp_warning"] = (
-            num_GTEx_matches
-            / len(self.std_snp_list)
-            < 0.8
-        )
+        data["snp_warning"] = num_GTEx_matches / len(self.std_snp_list) < 0.8
         data["thresh"] = 0.8
         data["numGTExMatches"] = num_GTEx_matches
 

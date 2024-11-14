@@ -92,12 +92,7 @@ def decompose_variant_list(variant_list):
     reflist = [x.split("_")[2] if len(x.split("_")) == 5 else x for x in variant_list]
     altlist = [x.split("_")[3] if len(x.split("_")) == 5 else x for x in variant_list]
     df = pd.DataFrame(
-        {
-            "CHROM": chromlist,
-            "POS": poslist,
-            "REF": reflist,
-            "ALT": altlist,
-        }
+        {"CHROM": chromlist, "POS": poslist, "REF": reflist, "ALT": altlist,}
     )
     return df
 
@@ -436,7 +431,9 @@ def getLeadSNPindex(leadsnpname, summaryStats, snpcol, pcol):
             ].loc[:, snpcol]
         )[0].split(";")[0]
     if lead_snp not in snp_list:
-        raise InvalidUsage(f"Lead SNP '{lead_snp}' not found in dataset", status_code=410)
+        raise InvalidUsage(
+            f"Lead SNP '{lead_snp}' not found in dataset", status_code=410
+        )
     lead_snp_position_index = snp_list.index(lead_snp)
     return lead_snp_position_index
 

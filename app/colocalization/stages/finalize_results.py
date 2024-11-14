@@ -16,5 +16,5 @@ class FinalizeResultsStage(PipelineStage):
         # Indicate that the request was a success
         payload.success = True
 
-        json.dump(payload.dump_session_data(), open(payload.file.session_filepath, 'w'))
+        json.dump(payload.dump_session_data(), open(payload.file.session_filepath, "w"))
         return payload

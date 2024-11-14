@@ -1,8 +1,8 @@
-from typing import List # type: ignore
+from typing import List  # type: ignore
 from .pipeline_stage import PipelineStage
 
 
-class Pipeline():
+class Pipeline:
     """
     Generic pipeline class for creating an 
     ordered series of stages to execute on a given payload.
@@ -42,7 +42,7 @@ class Pipeline():
             payload (object): The payload that was processed by the stage.
         """
         return payload
-    
+
     def pre_pipeline(self, payload: object) -> object:
         """
         Operations performed before the pipeline's `process` method is called.

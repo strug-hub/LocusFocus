@@ -24,13 +24,13 @@ from .finalize_results import FinalizeResultsStage
 
 
 __all__ = [
-    'CreateSessionStage',
-    'CollectUserInputStage',
-    'ReadGWASFileStage',
-    'ReadSecondaryDatasetsStage',
-    'ReportGTExDataStage',
-    'GetLDMatrixStage',
-    'SimpleSumSubsetGWASStage',
-    'ColocSimpleSumStage',
-    'FinalizeResultsStage',
+    "CreateSessionStage",
+    "CollectUserInputStage",
+    "ReadGWASFileStage",
+    "ReadSecondaryDatasetsStage",
+    "ReportGTExDataStage",
+    "GetLDMatrixStage",
+    "SimpleSumSubsetGWASStage",
+    "ColocSimpleSumStage",
+    "FinalizeResultsStage",
 ]
