@@ -32,7 +32,7 @@ class ColocalizationPipeline(Pipeline):
         self.timers = {f"{stage.name()}": 0.0 for stage in self.stages}
 
     def process(self, payload: Request) -> SessionPayload:
-        return super().process(payload) # type: ignore
+        return super().process(payload)  # type: ignore
 
     def pre_stage(self, stage: PipelineStage, payload: object):
         # Timer for each stage (start time)
@@ -82,7 +82,7 @@ class ColocalizationPipeline(Pipeline):
             return super().invoke_stage(stage, payload)
         except LocusFocusError as e:
             # Expected errors
-            payload = self.post_pipeline(payload) # type: ignore
+            payload = self.post_pipeline(payload)  # type: ignore
             e.message = f"[{stage.name()}] {e.message}"
             raise e
         except Exception as e:

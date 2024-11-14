@@ -1,4 +1,4 @@
-class PipelineStage():
+class PipelineStage:
     """
     An abstract pipeline stage. 
     

@@ -16,7 +16,9 @@ class ScriptError(Exception):
     def __init__(self, stdout: str, stderr: str):
         self.stdout = stdout
         self.stderr = stderr
-        super().__init__(f"Script returned non-zero exit code. Stdout: {stdout}, Stderr: {stderr}")
+        super().__init__(
+            f"Script returned non-zero exit code. Stdout: {stdout}, Stderr: {stderr}"
+        )
 
     @property
     def message(self):
@@ -44,11 +46,18 @@ def simple_sum(
         SCRIPT_PATH,
         p_values_filepath,
         ldmatrix_filepath,
-        "--set_based_p", str(set_based_p_threshold),
-        "--outfilename", results_filepath
+        "--set_based_p",
+        str(set_based_p_threshold),
+        "--outfilename",
+        results_filepath,
     ]
 
-    process_runner = subprocess.run(args=args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+    process_runner = subprocess.run(
+        args=args,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        universal_newlines=True,
+    )
     if process_runner.returncode != 0:
         raise ScriptError(process_runner.stdout, process_runner.stderr)
 
@@ -60,7 +69,7 @@ def simple_sum(
 def coloc2(
     coloc2_gwas_filepath: os.PathLike,
     coloc2_eqtl_filepath: os.PathLike,
-    results_filepath: os.PathLike
+    results_filepath: os.PathLike,
 ):
     """
     Run COLOC2 colocalization using the run_coloc2.R script.
@@ -74,13 +83,19 @@ def coloc2(
         SCRIPT_PATH,
         coloc2_gwas_filepath,
         coloc2_eqtl_filepath,
-        "--outfilename", results_filepath,
+        "--outfilename",
+        results_filepath,
     ]
 
-    process_runner = subprocess.run(args=args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+    process_runner = subprocess.run(
+        args=args,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        universal_newlines=True,
+    )
     if process_runner.returncode != 0:
         raise ScriptError(process_runner.stdout, process_runner.stderr)
-    
+
     coloc2_df = pd.read_csv(results_filepath, sep="\t", encoding="utf-8").fillna(-1)
 
     return coloc2_df
