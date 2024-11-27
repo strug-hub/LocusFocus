@@ -78,7 +78,7 @@ class ReadGWASFileStage(PipelineStage):
 
         Save the file and return the dataframe.
         """
-        gwas_filepath = download_file(payload.request, self.VALID_GWAS_EXTENSIONS)
+        gwas_filepath = download_file(payload.request_files, self.VALID_GWAS_EXTENSIONS)
 
         if gwas_filepath is None:
             raise InvalidUsage(
@@ -126,12 +126,12 @@ class ReadGWASFileStage(PipelineStage):
 
         for column in self.GWAS_COLUMNS:
             column_input_list.append(
-                payload.request.form.get(column.form_id, column.default)
+                payload.request_form.get(column.form_id, column.default)
             )
             column_mapper[
-                payload.request.form.get(column.form_id, column.default)
+                payload.request_form.get(column.form_id, column.default)
             ] = column.default
-            column_inputs[column.default] = payload.request.form.get(column.form_id, "")
+            column_inputs[column.default] = payload.request_form.get(column.form_id, "")
 
         # Column uniqueness check
         if len(set(column_input_list)) != len(column_input_list):
@@ -147,7 +147,7 @@ class ReadGWASFileStage(PipelineStage):
                 f"P value column not found in provided GWAS file. Found columns: '{', '.join(old_gwas_columns)}'. Please verify that your GWAS file contains a P value column."
             )
 
-        infer_variant = bool(payload.request.form.get("markerCheckbox"))
+        infer_variant = bool(payload.request_form.get("markerCheckbox"))
 
         # Get CHROM, POS, REF, ALT, SNP
         if infer_variant:

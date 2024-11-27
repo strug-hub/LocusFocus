@@ -1,6 +1,9 @@
+from collections import namedtuple
 import timeit
+from uuid import uuid4
 
-from flask import Request, current_app as app
+from flask import current_app as app
+from werkzeug.datastructures import ImmutableMultiDict
 
 from app.colocalization.payload import SessionPayload
 from app.utils import get_session_filepath
@@ -28,11 +31,28 @@ class ColocalizationPipeline(Pipeline):
             ColocSimpleSumStage(),
             FinalizeResultsStage(),
         )
+        self.id = uuid4()
 
         self.timers = {f"{stage.name()}": 0.0 for stage in self.stages}
 
-    def process(self, payload: Request) -> SessionPayload:
-        return super().process(payload)  # type: ignore
+    def process(self, request_form: ImmutableMultiDict, request_files: ImmutableMultiDict) -> SessionPayload:
+        """
+        Run the colocalization pipeline with the provided Request form and file upload dicts.
+
+        Args:
+            request_form: The form data from the request.
+            request_files: The uploaded file data from the request.
+
+        Returns:
+            SessionPayload: The final payload object that has been processed by all stages in this pipeline.
+        """
+        initial_payload = SessionPayload(
+            request_form=request_form, 
+            request_files=request_files, 
+            session_id=self.id,
+        )
+        
+        return super().process(initial_payload)  # type: ignore
 
     def pre_stage(self, stage: PipelineStage, payload: object):
         # Timer for each stage (start time)

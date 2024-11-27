@@ -8,9 +8,10 @@ from typing import List, Optional
 import pysam
 import pandas as pd
 import numpy as np
-from flask import Request, current_app as app
+from flask import current_app as app
 from werkzeug.utils import secure_filename
 from werkzeug.exceptions import RequestEntityTooLarge
+from werkzeug.datastructures import ImmutableMultiDict
 
 from app import mongo
 from app.utils.errors import InvalidUsage
@@ -37,7 +38,7 @@ def get_upload_filepath(filename: str) -> os.PathLike:
 
 
 def download_file(
-    request: Request, extensions: List[str], check_only: bool = False
+    request_files: ImmutableMultiDict, extensions: List[str], check_only: bool = False
 ) -> Optional[str]:
     """
     Download the first file at 'files[]' that matches the given extensions,
@@ -47,10 +48,10 @@ def download_file(
 
     Extensions should not include the period. eg. `["html", "tsv", "txt"]`
     """
-    if not ("files[]" in request.files):
+    if not ("files[]" in request_files):
         raise InvalidUsage(f"No files found in request")
 
-    filenames = request.files.getlist("files[]")
+    filenames = request_files.getlist("files[]")
 
     saved_filepath = None
     for file in filenames:

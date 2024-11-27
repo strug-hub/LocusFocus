@@ -5,7 +5,7 @@ import os
 
 import numpy as np
 import pandas as pd
-from flask import Request
+from werkzeug.datastructures import ImmutableMultiDict
 
 from app.colocalization.constants import (
     ONE_SIDED_SS_WINDOW_SIZE,
@@ -96,8 +96,9 @@ class SessionPayload:
     """
 
     # Request object
-    request: Request
-    session_id: UUID = field(default_factory=uuid4)
+    request_form: ImmutableMultiDict
+    request_files: ImmutableMultiDict
+    session_id: UUID
 
     # Form Inputs
     coordinate: Optional[str] = None
@@ -165,12 +166,12 @@ class SessionPayload:
         Return either 'hg19' or 'hg38'.
         """
         if self.coordinate is None:
-            if self.request.form.get("coordinate") not in VALID_COORDINATES:
+            if self.request_form.get("coordinate") not in VALID_COORDINATES:
                 raise InvalidUsage(
-                    f"Invalid coordinate: '{self.request.form.get('coordinate')}'"
+                    f"Invalid coordinate: '{self.request_form.get('coordinate')}'"
                 )
 
-            self.coordinate = self.request.form.get("coordinate")
+            self.coordinate = self.request_form.get("coordinate")
         return self.coordinate  # type: ignore
 
     def get_locus(self) -> str:
@@ -178,7 +179,7 @@ class SessionPayload:
         Gets the form input for plot locus (aka. 'regionstr' or 'regiontxt') for this session.
         """
         if self.plot_locus is None:
-            self.plot_locus = self.request.form.get("locus", "1:205500000-206000000")
+            self.plot_locus = self.request_form.get("locus", "1:205500000-206000000")
         return self.plot_locus
 
     def get_locus_tuple(self) -> Tuple[int, int, int]:
@@ -196,7 +197,7 @@ class SessionPayload:
         False if they provide such columns themselves.
         """
         if self.infer_variant is None:
-            self.infer_variant = bool(self.request.form.get("markerCheckbox"))
+            self.infer_variant = bool(self.request_form.get("markerCheckbox"))
         return self.infer_variant
 
     def get_is_coloc2(self) -> bool:
@@ -206,7 +207,7 @@ class SessionPayload:
         False otherwise.
         """
         if self.coloc2 is None:
-            self.coloc2 = bool(self.request.form.get("coloc2check"))
+            self.coloc2 = bool(self.request_form.get("coloc2check"))
         return self.coloc2
 
     def get_coloc2_study_type(self) -> str:
@@ -214,10 +215,10 @@ class SessionPayload:
         Get study type for COLOC2. Assumes that coloc2 is requested.
         """
         if self.study_type is None:
-            study_type = self.request.form.get("studytype")
+            study_type = self.request_form.get("studytype")
             if study_type not in ["quant", "cc"]:
                 raise InvalidUsage(
-                    f"Study type form value is invalid: {self.request.form.get('studytype')}"
+                    f"Study type form value is invalid: {self.request_form.get('studytype')}"
                 )
             self.study_type = study_type
         return self.study_type  # type: ignore
@@ -229,7 +230,7 @@ class SessionPayload:
         """
         if self.num_cases is None:
             try:
-                num_cases = self.request.form.get("numcases", type=int)
+                num_cases = self.request_form.get("numcases", type=int)
             except ValueError:
                 raise InvalidUsage(
                     "Number of cases entered must be an integer", status_code=410
@@ -244,7 +245,7 @@ class SessionPayload:
         If the user did not specify LD population, then use default "EUR".
         """
         if self.ld_population is None:
-            pop = self.request.form.get("LD-populations", "EUR")
+            pop = self.request_form.get("LD-populations", "EUR")
             if pop not in VALID_POPULATIONS:
                 raise InvalidUsage(
                     f"Invalid population provided: '{pop}'. Population must be one of '{', '.join(VALID_POPULATIONS)}'"
@@ -258,7 +259,7 @@ class SessionPayload:
         """
 
         if self.lead_snp_name is None:
-            self.lead_snp_name = self.request.form.get("leadsnp", "")
+            self.lead_snp_name = self.request_form.get("leadsnp", "")
 
         return self.lead_snp_name
 
@@ -288,7 +289,7 @@ class SessionPayload:
         if self.ss_locustext is not None:
             return self.ss_locustext
 
-        SSlocustext = self.request.form.get("SSlocus", "")
+        SSlocustext = self.request_form.get("SSlocus", "")
 
         if SSlocustext != "":
             SSchrom, SS_start, SS_end = parse_region_text(
@@ -327,9 +328,9 @@ class SessionPayload:
         Format: (tissues, genes)
         """
         if self.gtex_genes is None:
-            self.gtex_genes = self.request.form.getlist("region-genes")
+            self.gtex_genes = self.request_form.getlist("region-genes")
         if self.gtex_tissues is None:
-            self.gtex_tissues = self.request.form.getlist("GTEx-tissues")
+            self.gtex_tissues = self.request_form.getlist("GTEx-tissues")
 
         if len(self.gtex_tissues) > 0 and len(self.gtex_genes) == 0:
             raise InvalidUsage(
@@ -360,7 +361,7 @@ class SessionPayload:
         """
 
         if self.set_based_p is None:
-            set_based_p = self.request.form["setbasedP"]  # type: ignore
+            set_based_p = self.request_form["setbasedP"]  # type: ignore
             if set_based_p == "":
                 set_based_p = "default"
             else:
@@ -383,7 +384,7 @@ class SessionPayload:
         """
         Return True if the user has uploaded their own LD matrix, False otherwise.
         """
-        return download_file(self.request, ["ld"]) is not None
+        return download_file(self.request_files, ["ld"]) is not None
 
     def dump_session_data(self):
         """

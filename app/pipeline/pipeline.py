@@ -1,4 +1,7 @@
 from typing import List  # type: ignore
+
+from uuid import uuid4
+
 from .pipeline_stage import PipelineStage
 
 
@@ -14,6 +17,7 @@ class Pipeline:
 
     def __init__(self):
         self.stages: List[PipelineStage] = []
+        self.id = uuid4()
 
     def invoke_stage(self, stage: PipelineStage, payload: object) -> object:
         payload = self.pre_stage(stage, payload)
