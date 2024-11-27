@@ -1174,7 +1174,7 @@ def find_plink_1kg_overlap(
     in the provided 1000 Genomes dataset.
 
     Args:
-        plink_filepath (str): Absolute path to a filename (no extension) for a given 1000Genomes dataset. 
+        plink_filepath (str): Absolute path to a filename (no extension) for a given 1000Genomes dataset.
             Returned by `resolve_plink_filepath`.
         snp_positions (List[int]): List of SNP positions. Must be the same length as `snp_pvalues`.
         snp_pvalues (List[float] | None): List of SNP P values. Must be the same length as `snp_positions`. If none, then we ignore it.
@@ -2021,7 +2021,7 @@ def index():
         return render_template("index.html")
 
     pipeline = ColocalizationPipeline()
-    payload = pipeline.process(request)
+    payload = pipeline.process(request.form, request.files)
 
     return render_template(
         "plot.html",

@@ -31,7 +31,7 @@ class ReadSecondaryDatasetsStage(PipelineStage):
         Read if it exists. #TODO write this comment better
         """
 
-        html_filepath = download_file(payload.request, ["html"])
+        html_filepath = download_file(payload.request_files, ["html"])
 
         if html_filepath is None or html_filepath == "":
             return None

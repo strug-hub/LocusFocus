@@ -62,7 +62,7 @@ class GetLDMatrixStage(PipelineStage):
 
         Otherwise, return the LD matrix, as well as the BIM file as a DataFrame.
         """
-        ld_matrix_filepath = download_file(payload.request, ["ld"])
+        ld_matrix_filepath = download_file(payload.request_files, ["ld"])
         if ld_matrix_filepath is None:
             return None, None
 
