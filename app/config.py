@@ -69,6 +69,10 @@ class BaseConfig:
         "data",
     )
 
+    CELERY = {
+        "timezone": "America/Toronto",
+    }
+
 
 class DevConfig(BaseConfig):
     """
@@ -76,7 +80,6 @@ class DevConfig(BaseConfig):
     """
 
     MONGO_URI = "mongodb://localhost:27017"
-    pass
 
 
 class ProdConfig(BaseConfig):
@@ -85,4 +88,3 @@ class ProdConfig(BaseConfig):
     """
 
     MONGO_URI = "mongodb://localhost:27017"
-    pass
