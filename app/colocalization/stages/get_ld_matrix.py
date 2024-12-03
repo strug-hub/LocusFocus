@@ -98,9 +98,7 @@ class GetLDMatrixStage(PipelineStage):
                 )
 
         # Ensure custom LD matrix and GWAS files are sorted for accurate matching
-        if not np.all(
-            payload.gwas_data_kept["POS"][:-1] <= payload.gwas_data_kept["POS"][1:]
-        ):
+        if not payload.gwas_data_kept["POS"].is_monotonic_increasing:
             raise InvalidUsage(
                 "GWAS data input is not sorted and may not match with the LD matrix",
                 status_code=410,
