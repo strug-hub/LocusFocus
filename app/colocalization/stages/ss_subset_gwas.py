@@ -112,7 +112,7 @@ class SimpleSumSubsetGWASStage(PipelineStage):
         Determine if this is okay, or if there's a better way to check here.
         """
         assert payload.gwas_data is not None
-        positions = payload.gwas_data.loc[payload.gwas_indices_kept]["POS"]
+        positions = list(payload.gwas_data.loc[payload.gwas_indices_kept]["POS"])
         if len(positions) != len(set(positions)):
             # collect duplicates for error message
             dups = set([x for x in positions if positions.count(x) > 1])
