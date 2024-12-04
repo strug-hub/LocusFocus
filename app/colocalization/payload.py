@@ -270,9 +270,9 @@ class SessionPayload:
         if self.gwas_data is None:
             raise Exception("Cannot get lead SNP index when GWAS dataset is undefined.")
 
-        snps = [snp.split(";")[0] for snp in self.gwas_data.loc[:, "SNP"]]  # type: ignore
+        snps = [snp.split(";")[0] for snp in self.gwas_data_kept.loc[:, "SNP"]]  # type: ignore
         if lead_snp == "":
-            lead_snp = list(self.gwas_data.loc[self.gwas_data.loc[:, "P"] == self.gwas_data.loc[:, "P"].min()].loc[:, "SNP"])[0].split(";")[0]  # type: ignore
+            lead_snp = list(self.gwas_data_kept.loc[self.gwas_data_kept.loc[:, "P"] == self.gwas_data_kept.loc[:, "P"].min()].loc[:, "SNP"])[0].split(";")[0]  # type: ignore
         if lead_snp not in snps:
             raise InvalidUsage("Lead SNP not found", status_code=410)
         return snps.index(lead_snp)
@@ -394,10 +394,10 @@ class SessionPayload:
         data = {}
         data["success"] = self.success
         data["sessionid"] = str(self.session_id)
-        data["snps"] = list(self.gwas_data["SNP"]) if self.gwas_data is not None else []
+        data["snps"] = list(self.gwas_data_kept["SNP"]) if self.gwas_data is not None else []
         data["inferVariant"] = self.get_infer_variant()
         data["pvalues"] = (
-            list(self.gwas_data["P"]) if self.gwas_data is not None else []
+            list(self.gwas_data_kept["P"]) if self.gwas_data is not None else []
         )
         data["lead_snp"] = (
             self.gwas_data_kept["SNP"].loc[self.get_lead_snp_index()]
@@ -406,7 +406,7 @@ class SessionPayload:
         )
         data["ld_values"] = self.r2
         data["positions"] = (
-            list(self.gwas_data["POS"]) if self.gwas_data is not None else []
+            list(self.gwas_data_kept["POS"]) if self.gwas_data is not None else []
         )
         data["chrom"], data["startbp"], data["endbp"] = self.get_locus_tuple()
         data["ld_populations"] = self.get_ld_population()
