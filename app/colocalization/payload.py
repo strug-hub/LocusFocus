@@ -272,10 +272,10 @@ class SessionPayload:
 
         snps = [snp.split(";")[0] for snp in self.gwas_data_kept.loc[:, "SNP"]]  # type: ignore
         if lead_snp == "":
-            lead_snp = list(self.gwas_data_kept.loc[self.gwas_data_kept.loc[:, "P"] == self.gwas_data_kept.loc[:, "P"].min()].loc[:, "SNP"])[0].split(";")[0]  # type: ignore
+            lead_snp = str(self.gwas_data_kept.iloc[self.gwas_data_kept["P"].argmin()]["SNP"]).split(";")[0]  # type: ignore
         if lead_snp not in snps:
             raise InvalidUsage("Lead SNP not found", status_code=410)
-        return snps.index(lead_snp)
+        return self.gwas_data_kept["P"].argmin()  # type: ignore
 
     def get_ss_locus(self) -> str:
         """
@@ -400,7 +400,7 @@ class SessionPayload:
             list(self.gwas_data_kept["P"]) if self.gwas_data is not None else []
         )
         data["lead_snp"] = (
-            self.gwas_data_kept["SNP"].loc[self.get_lead_snp_index()]
+            self.gwas_data_kept["SNP"].iloc[self.get_lead_snp_index()]
             if self.gwas_data is not None
             else None
         )
