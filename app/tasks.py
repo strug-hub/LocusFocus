@@ -23,4 +23,7 @@ def _pipeline_task(pipeline: Pipeline, initial_payload: object) -> object:
     
     Do not call this function directly. Instead, use `run_pipeline_async`.
     """
-    return pipeline.process(initial_payload)
+
+    result = pipeline.process(initial_payload)
+
+    return result
