@@ -1,6 +1,6 @@
 import os
 from uuid import UUID
-from flask import Blueprint, jsonify, request, current_app as app
+from flask import Blueprint, jsonify, current_app as app
 
 from app.utils import get_session_filepath
 

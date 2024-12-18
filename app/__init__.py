@@ -49,5 +49,8 @@ def create_app(config_class=ProdConfig):
 
     with app.app_context():
         from . import routes
+        from .jobs import routes as jobs_routes
+        
+        app.register_blueprint(jobs_routes.jobs_bp)
 
         return app
