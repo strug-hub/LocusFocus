@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  {% include "lib/google-analytics.html" %}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>LocusFocus: A Colocalization Tool to Prioritize Genes and Tissues from GWAS and eQTL Integration</title>
+  <link rel="shortcut icon" href="#" />
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.0/css/all.css">
+  <!-- JQuery-UI -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/jquery-ui.css') }}" />
+  <!-- JQuery -->
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+  <!-- JQuery-UI -->
+  <script type="text/javascript" src="{{ url_for('static', filename='js/lib/jquery-ui.js') }}"></script>
+  <!-- Bootstrap core CSS -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+    integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+  <!-- Material Design Bootstrap -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/mdbootstrap/4.7.4/css/mdb.min.css" rel="stylesheet">
+  <!-- DataTables -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/jquery.dataTables.min.css') }}" />
+  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/bootstrap-multiselect.css') }}" />
+  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/d3Style.css') }}">
+</head>
+
+<body>
+  {% include "components/navigation-bar.html" %}
+  <div class="container">
+    <div class="row">
+      <div class="col-md-12 d-flex justify-content-center align-items-center">
+        <div class="card border-primary mb-9" style="max-width: 60rem">
+          <div class="card-header">Session ID</div>
+          <div class="card-body">
+            <h4 class="card-title" id="sessionid"></h4>
+            <p class="card-text">
+              Save the above string for your records to load or share your
+              plot.
+            </p>
+            <p class="card-text">Plots older than 7 days are deleted.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <br />
+    <div class="row">
+      <div class="col-md-12 d-flex justify-content-center align-items-center">
+        <div class="card border-secondary h-100" style="max-width: 60rem">
+          <div class="card-body">
+            <h5 id="job-status" class="card-title text-center"></h5>
+            <p class="card-text">
+              <i>Your job has been submitted. This page will automatically check the status of your job.</i>
+            </p>
+            <div class="progress">
+              <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <br />
+    <div class="d-flex justify-content-center" id="loading-spinner">
+      <div class="spinner-border" role="status">
+        <span class="sr-only">Loading...</span>
+      </div>
+    </div>
+  </div> <!-- container closing div -->
+
+  <!-- Bootstrap tooltips -->
+  <script type="text/javascript"
+    src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.4/umd/popper.min.js"></script>
+  <!-- Bootstrap core JavaScript -->
+  <script type="text/javascript"
+    src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.3.1/js/bootstrap.min.js"></script>
+  <!-- MDB core JavaScript -->
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mdbootstrap/4.7.4/js/mdb.min.js"></script>
+  <!-- DataTables -->
+  <script type="text/javascript" src="{{ url_for('static', filename='js/lib/jquery.dataTables.min.js') }}"></script>
+  <!-- Multiselect -->
+  <script src="{{ url_for('static', filename='js/lib/bootstrap-multiselect.js') }}"></script>
+
+  <script type="text/javascript">
+    var sessionId = "{{ session_id }}";
+    var checks = 0;
+    do {
+      checks += 1;
+      let response = await fetch("{{ url_for('get_job_status', job_id=session_id) }}");
+      let data = await response.json();
+      var status = data.status;
+      if (status == "RUNNING") {
+        let percent = 100 - (1 / (checks + Math.random())) * 100;
+        if (percent > 95) {
+          percent = 95;
+        }
+        document.getElementById("progress-bar").style.width = percent + "%";
+        document.getElementById("job-status").innerHTML = "Job status: " + status;
+        // wait 10 seconds
+        await new Promise(resolve => setTimeout(resolve, 10000));
+      }
+    } while (status == "RUNNING");
+
+  </script>            
+</body>
+
+</html>
