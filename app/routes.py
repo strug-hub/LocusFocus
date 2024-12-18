@@ -29,6 +29,7 @@ from werkzeug.utils import secure_filename
 from pymongo.errors import ConnectionFailure
 
 from app.colocalization.pipeline import ColocalizationPipeline
+from app.tasks import run_pipeline_async
 from app.utils.errors import InvalidUsage, ServerError
 from numpy_encoder import NumpyEncoder
 
@@ -2021,7 +2022,9 @@ def index():
         return render_template("index.html")
 
     pipeline = ColocalizationPipeline()
-    payload = pipeline.process(request.form, request.files)
+    session_id = str(pipeline.id)
+    job_result = run_pipeline_async(pipeline, [request.form, request.files])
+
 
     return render_template(
         "plot.html",
