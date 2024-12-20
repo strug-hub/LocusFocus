@@ -36,22 +36,13 @@
         <div class="card border-primary mb-9" style="max-width: 60rem">
           <div class="card-header">Session ID</div>
           <div class="card-body">
-            <h4 class="card-title" id="sessionid"></h4>
+            <h4 class="card-title" id="sessionid">087704b9-3926-474a-8c45-1e2e7c9ea8a0</h4>
             <p class="card-text">
               Save the above string for your records to load or share your
               plot.
             </p>
             <p class="card-text">Plots older than 7 days are deleted.</p>
-          </div>
-        </div>
-      </div>
-    </div>
-    <br />
-    <div class="row">
-      <div class="col-md-12 d-flex justify-content-center align-items-center">
-        <div class="card border-secondary h-100" style="max-width: 60rem">
-          <div class="card-body">
-            <h5 id="job-status" class="card-title text-center"></h5>
+            <hr />
             <p class="card-text">
               <i>Your job has been submitted. This page will automatically check the status of your job.</i>
             </p>
@@ -92,7 +83,7 @@
       let data = await response.json();
       var status = data.status;
       if (status == "RUNNING") {
-        let percent = 100 - (1 / (checks + Math.random())) * 100;
+        let percent = 100 - (1 / (1 + ((checks + Math.random())*0.2))) * 100;
         if (percent > 95) {
           percent = 95;
         }
