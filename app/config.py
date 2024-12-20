@@ -71,6 +71,8 @@ class BaseConfig:
 
     CELERY = {
         "timezone": "America/Toronto",
+        "broker_url": "redis://localhost:6379/0",
+        "result_backend": f"file://{os.path.join(SESSION_FOLDER, 'celery_results')}",
     }
 
 

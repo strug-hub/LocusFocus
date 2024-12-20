@@ -15,6 +15,7 @@ def get_job_status(job_id):
 
     Args:
         job_id (str): The ID of the job to get or update the status of.
+                      One of "INVALID", "PENDING", "RUNNING", "COMPLETE".
     """
     # We currently check job status by checking for created session files.
     # In the future, we should use a database to store job results.
@@ -26,6 +27,8 @@ def get_job_status(job_id):
             return jsonify({"status": "INVALID"}), 400
     except ValueError:
         return jsonify({"status": "INVALID"}), 400
+    
+
 
     status = "PENDING"
     if os.path.exists(get_session_filepath(f"metadata-{job_id}.json")):

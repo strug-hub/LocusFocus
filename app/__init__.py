@@ -20,6 +20,7 @@ def celery_init_app(app: Flask) -> Celery:
     Create a Celery app instance for LocusFocus.
     """
     # Copied from https://flask.palletsprojects.com/en/stable/patterns/celery/
+    # ensures that tasks are executed in the Flask application context
     class FlaskTask(Task):
         def __call__(self, *args: object, **kwargs: object) -> object:
             with app.app_context():

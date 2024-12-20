@@ -2025,10 +2025,9 @@ def index():
     session_id = str(pipeline.id)
     job_result = run_pipeline_async(pipeline, [request.form, request.files])
 
-
     return render_template(
-        "plot.html",
-        **payload.file.get_plot_template_paths(session_id=str(payload.session_id)),
+        "waiting_page.html", 
+        session_id=session_id, 
     )
 
 
