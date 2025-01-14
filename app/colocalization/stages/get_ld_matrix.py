@@ -104,7 +104,7 @@ class GetLDMatrixStage(PipelineStage):
                 status_code=410,
             )
 
-        payload.r2 = list(ld_mat.iloc[:, payload.get_current_lead_snp_index()])  # type: ignore
+        payload.r2 = list(ld_mat.iloc[:, payload.get_lead_snp_index()])  # type: ignore
 
         ld_mat = np.matrix(ld_mat)
 
