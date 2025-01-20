@@ -4,6 +4,7 @@ services:
     volumes:
       - ./app:/code/app
       - ./misc:/code/misc
+      - ./data:/code/data
       - ./pyproject.toml:/code/pyproject.toml
       - ./poetry.lock:/code/poetry.lock
     ports:
@@ -15,10 +16,12 @@ services:
     environment:
       - APP_ENV
       - FLASK_APP_DEBUG=true
+      - FLASK_DEBUG=1
+      - FLASK_SECRET_KEY
       - MONGO_USERNAME
       - MONGO_PASSWORD
       - MONGO_DATABASE
-    # entrypoint: ["flask","--app", "api.app", "--debug", "run", "--host=0.0.0.0", "--port=${FLASK_PORT}"]
+    entrypoint: ["python3", "-m", "app.wsgi"]
   mongo:
     image:  mongo:6
     volumes:

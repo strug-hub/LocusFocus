@@ -2,11 +2,10 @@ from typing import Dict
 from bs4 import BeautifulSoup as bs
 import numpy as np
 
-import htmltableparser
-
 from app.colocalization.payload import SessionPayload
-from app.utils import download_file
+import app.colocalization.stages.htmltableparser
 from app.pipeline.pipeline_stage import PipelineStage
+from app.utils import download_file
 from app.utils.errors import InvalidUsage
 
 

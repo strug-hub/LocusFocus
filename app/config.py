@@ -1,6 +1,7 @@
 """
 Config classes for LocusFocus
 """
+
 import os
 from dotenv import load_dotenv
 
@@ -50,6 +51,9 @@ class BaseConfig:
             "https://*.googletagmanager.com",
         ],
     }
+
+    APP_ENV = os.environ["APP_ENV"]
+
     UPLOAD_FOLDER = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "static", "upload")
     )
@@ -75,7 +79,9 @@ class DevConfig(BaseConfig):
     Configuration options for development environment only.
     """
 
-    MONGO_URI = "mongodb://localhost:27017"
+    # Assumes we're running in Docker and mongo is running in a container called `mongo` and listening on the default port
+
+    MONGO_URI = f"mongodb://{os.environ['MONGO_USERNAME']}:{os.environ['MONGO_PASSWORD']}@mongo:27017/{os.environ['MONGO_DATABASE']}?authSource=admin"
     pass
 
 

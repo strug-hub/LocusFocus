@@ -1,21 +1,19 @@
 import json
-
-# import requests
-import pandas as pd
-import numpy as np
 import os
-from tqdm import tqdm
 import uuid
 import subprocess
 from datetime import datetime
-from bs4 import BeautifulSoup as bs
 import re
-import pysam
+import gc
 import glob
 import tarfile
 from typing import Dict, Optional, Tuple, List
-import gc
 
+import pandas as pd
+import numpy as np
+from tqdm import tqdm
+from bs4 import BeautifulSoup as bs
+import pysam
 from flask import (
     request,
     jsonify,
@@ -25,14 +23,12 @@ from flask import (
     current_app as app,
 )
 from werkzeug.utils import secure_filename
-
 from pymongo.errors import ConnectionFailure
 
+from app import ext, mongo
 from app.colocalization.pipeline import ColocalizationPipeline
 from app.utils.errors import InvalidUsage, ServerError
-from numpy_encoder import NumpyEncoder
-
-from . import ext, mongo
+from app.utils.numpy_encoder import NumpyEncoder
 
 client = mongo.cx
 db = client.GTEx_V7
@@ -47,6 +43,7 @@ MYDIR = os.path.dirname(__file__)  # app directory
 APP_STATIC = os.path.join(MYDIR, "static")
 ALLOWED_EXTENSIONS = set(["txt", "tsv", "ld", "html"])
 ALLOWED_SBT_EXTENSIONS = set(["txt", "tsv", "ld"])
+
 
 ##################
 # Default settings
@@ -141,6 +138,7 @@ LD_MAT_DIAG_CONSTANT = 1e-6
 
 available_gtex_versions = ["V7", "V8"]
 valid_populations = ["EUR", "AFR", "EAS", "SAS", "AMR", "ASN", "NFE"]
+
 
 ####################################
 # Helper functions
@@ -1174,7 +1172,7 @@ def find_plink_1kg_overlap(
     in the provided 1000 Genomes dataset.
 
     Args:
-        plink_filepath (str): Absolute path to a filename (no extension) for a given 1000Genomes dataset. 
+        plink_filepath (str): Absolute path to a filename (no extension) for a given 1000Genomes dataset.
             Returned by `resolve_plink_filepath`.
         snp_positions (List[int]): List of SNP positions. Must be the same length as `snp_pvalues`.
         snp_pvalues (List[float] | None): List of SNP P values. Must be the same length as `snp_positions`. If none, then we ignore it.
@@ -1421,6 +1419,7 @@ def plink_ld_pairwise(build, pop, chrom, snp_positions, snp_pvalues, outfilename
 ####################################
 # Getting GTEx Data from Local MongoDB Database
 ####################################
+
 
 # This is the main function to extract the data for a tissue and gene_id:
 def get_gtex(version, tissue, gene_id):
@@ -1962,9 +1961,9 @@ def regionCheck(build, regiontext):
     if not re.search(
         r"^\d+:\d+-\d+$", regiontext.replace("X", "23").replace("x", "23")
     ):
-        message[
-            "response"
-        ] = "Invalid coordinate format. e.g. 1:205,000,000-206,000,000"
+        message["response"] = (
+            "Invalid coordinate format. e.g. 1:205,000,000-206,000,000"
+        )
         return jsonify(message)
     chrom = regiontext.split(":")[0].lower().replace("chr", "").upper()
     pos = regiontext.split(":")[1]
@@ -2000,15 +1999,15 @@ def regionCheck(build, regiontext):
     if chrom < 1 or chrom > 23:
         message["response"] = "Chromosome input must be between 1 and 23"
     elif startbp > endbp:
-        message[
-            "response"
-        ] = "Starting chromosome basepair position is greater than ending basepair position"
+        message["response"] = (
+            "Starting chromosome basepair position is greater than ending basepair position"
+        )
     elif startbp > maxChromLength or endbp > maxChromLength:
         message["response"] = "Start or end coordinates are out of range"
     elif (endbp - startbp) > genomicWindowLimit:
-        message[
-            "response"
-        ] = f"Entered region size is larger than {genomicWindowLimit/10**6} Mbp"
+        message["response"] = (
+            f"Entered region size is larger than {genomicWindowLimit/10**6} Mbp"
+        )
         return jsonify(message)
     else:
         return jsonify(message)
@@ -2017,6 +2016,7 @@ def regionCheck(build, regiontext):
 
 @app.route("/", methods=["GET", "POST"])
 def index():
+
     if request.method == "GET":
         return render_template("index.html")
 
@@ -2559,13 +2559,13 @@ def downloaddata(my_session_id):
     return send_file(downloadfilepath, as_attachment=True)
 
 
-app.config["SITEMAP_URL_SCHEME"] = "https"
+app.config["SITEMAP_URL_SCHEME"] = "http"
 
 
 @ext.register_generator
 def index():
     # Not needed if you set SITEMAP_INCLUDE_RULES_WITHOUT_PARAMS=True
-    # yield 'index', {}
+    # yield "index", {}
     urls = [
         "locusfocus.research.sickkids.ca",
         "https://locusfocus.research.sickkids.ca/session_id/00dfdb4d-c86a-423b-adc7-4740b7b43695",
@@ -2575,7 +2575,6 @@ def index():
 
 
 # temporary route for Angela's CFTR graph:
-@app.route("/cftr_graph")
 @app.route("/cftr_graph")
 def hello_world():
     img = os.path.join(

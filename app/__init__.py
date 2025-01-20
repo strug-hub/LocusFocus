@@ -6,15 +6,16 @@ from flask import Flask
 from flask_pymongo import PyMongo
 from flask_sitemap import Sitemap
 from flask_talisman import Talisman
-from .config import ProdConfig
+from app.config import BaseConfig, ProdConfig, DevConfig
 
+ConfigClass = ProdConfig if BaseConfig.APP_ENV == "production" else DevConfig
 
 ext = Sitemap()
 talisman = Talisman()
 mongo = PyMongo()
 
 
-def create_app(config_class=ProdConfig):
+def create_app(config_class=ConfigClass):
     """
     Create an instance of a Flask app for LocusFocus.
     """
