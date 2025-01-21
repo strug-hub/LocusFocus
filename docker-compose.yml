@@ -5,6 +5,7 @@ services:
       - ./app:/code/app
       - ./misc:/code/misc
       - ./data:/code/data
+      - ./tests:/code/tests
       - ./pyproject.toml:/code/pyproject.toml
       - ./poetry.lock:/code/poetry.lock
     ports:
