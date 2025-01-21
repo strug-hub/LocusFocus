@@ -2,7 +2,8 @@
 Flask application factory.
 """
 
-from celery import Celery, Task
+from celery.app import Celery
+from celery.app.task import Task
 from flask import Flask
 from flask_pymongo import PyMongo
 from flask_sitemap import Sitemap

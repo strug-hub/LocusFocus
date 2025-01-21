@@ -2021,9 +2021,8 @@ def index():
     if request.method == "GET":
         return render_template("index.html")
 
-    pipeline = ColocalizationPipeline()
-    session_id = str(pipeline.id)
-    job_result = run_pipeline_async(pipeline, [request.form, request.files])
+    session_id = uuid.uuid4()
+    job_result = run_pipeline_async(session_id, "colocalization", (request.form, request.files))
 
     return render_template(
         "waiting_page.html", 
