@@ -12,7 +12,6 @@ from typing import Dict, Optional, Tuple, List
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
-from bs4 import BeautifulSoup as bs
 import pysam
 from flask import (
     request,
@@ -29,6 +28,7 @@ from app import ext, mongo
 from app.colocalization.pipeline import ColocalizationPipeline
 from app.utils.errors import InvalidUsage, ServerError
 from app.utils.numpy_encoder import NumpyEncoder
+from app.utils.util import fetch_and_format_variants
 
 client = mongo.cx
 db = client.GTEx_V7
@@ -388,43 +388,27 @@ def fetchSNV(chrom, bp, ref, build):
         regiontxt = str(chrom) + ":" + str(bp) + "-" + str(int(bp) + 1)
     except:
         raise InvalidUsage(f"Invalid input for {str(chrom):str(bp)}")
-    chrom, startbp, endbp = parseRegionText(regiontxt, build)
+    chrom, _, _ = parseRegionText(regiontxt, build)
     chrom = str(chrom).replace("chr", "").replace("23", "X")
 
     # Load dbSNP151 SNP names from region indicated
-    dbsnp_filepath = ""
     if build.lower() in ["hg38", "grch38"]:
         suffix = "b38"
-        dbsnp_filepath = os.path.join(
-            app.config["LF_DATA_FOLDER"], "dbSNP151", "GRCh38p7", "All_20180418.vcf.gz"
-        )
     else:
         suffix = "b37"
-        dbsnp_filepath = os.path.join(
-            app.config["LF_DATA_FOLDER"], "dbSNP151", "GRCh37p13", "All_20180423.vcf.gz"
-        )
 
     # Load variant info from dbSNP151
-    tbx = pysam.TabixFile(dbsnp_filepath)
-    varlist = []
-    for row in tbx.fetch(str(chrom), bp - 1, bp):
-        rowlist = str(row).split("\t")
-        chromi = rowlist[0].replace("chr", "")
-        posi = rowlist[1]
-        idi = rowlist[2]
-        refi = rowlist[3]
-        alti = rowlist[4]
-        varstr = "_".join([chromi, posi, refi, alti, suffix])
-        varlist.append(varstr)
+    varlist = fetch_and_format_variants(build, chrom, bp, suffix)
 
     # Check if there is a match to an SNV with the provided info
     if len(varlist) == 1:
-        variantid = varstr
+        variantid = varlist[0]
     elif len(varlist) > 1 and ref != "":
         for v in varlist:
             if v.split("_")[2] == ref:
                 variantid = v
                 break
+
     return variantid
 
 
@@ -628,88 +612,6 @@ def cleanSNPs(variantlist, regiontext, build):
     ]
 
     return final_varlist
-
-
-def torsid(variantlist, regiontext, build):
-    """
-    Parameters
-    ----------
-    variantlist : list
-        List of variants in either rs id or other chr_pos, chr_pos_ref, chr_pos_ref_alt, chr_pos_ref_alt_build format.
-
-    Returns
-    -------
-    rsidlist : list
-        Corresponding rs id in the region if found.
-        Otherwise returns '.'
-    """
-
-    if all(x == "." for x in variantlist):
-        raise InvalidUsage("No variants provided")
-
-    variantlist = cleanSNPs(variantlist, regiontext, build)
-
-    chrom, startbp, endbp = parseRegionText(regiontext, build)
-    chrom = str(chrom).replace("23", "X")
-
-    # Load dbSNP151 SNP names from region indicated
-    dbsnp_filepath = ""
-    suffix = "b37"
-    if build.lower() in ["hg38", "grch38"]:
-        suffix = "b38"
-        dbsnp_filepath = os.path.join(
-            app.config["LF_DATA_FOLDER"], "dbSNP151", "GRCh38p7", "All_20180418.vcf.gz"
-        )
-    else:
-        suffix = "b37"
-        dbsnp_filepath = os.path.join(
-            app.config["LF_DATA_FOLDER"], "dbSNP151", "GRCh37p13", "All_20180423.vcf.gz"
-        )
-
-    # Load dbSNP file
-    tbx = pysam.TabixFile(dbsnp_filepath)
-    #    print('Compiling list of known variants in the region from dbSNP151')
-    chromcol = []
-    poscol = []
-    idcol = []
-    refcol = []
-    altcol = []
-    rsid = dict({})  # chr_pos_ref_alt_build (keys) for rsid output (values)
-    for row in tbx.fetch(str(chrom), startbp, endbp):
-        rowlist = str(row).split("\t")
-        chromi = rowlist[0].replace("chr", "")
-        posi = rowlist[1]
-        idi = rowlist[2]
-        refi = rowlist[3]
-        alti = rowlist[4]
-        varstr = "_".join([chromi, posi, refi, alti, suffix])
-        chromcol.append(chromi)
-        poscol.append(posi)
-        idcol.append(idi)
-        refcol.append(refi)
-        altcol.append(alti)
-        rsid[varstr] = idi
-        altalleles = alti.split(
-            ","
-        )  # could have more than one alt allele (multi-allelic)
-        if len(altalleles) > 1:
-            varstr = "_".join([chromi, posi, refi, altalleles[0], suffix])
-            rsid[varstr] = idi
-            for i in np.arange(len(altalleles) - 1):
-                varstr = "_".join([chromi, posi, refi, altalleles[i + 1], suffix])
-                rsid[varstr] = idi
-
-    finalvarlist = []
-    for variant in variantlist:
-        if not variant.startswith("rs"):
-            try:
-                finalvarlist.append(rsid[variant])
-            except:
-                finalvarlist.append(".")
-        else:
-            finalvarlist.append(variant)
-
-    return finalvarlist
 
 
 def decomposeVariant(variant_list):
