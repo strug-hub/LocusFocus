@@ -7,7 +7,6 @@ from dotenv import load_dotenv
 
 load_dotenv(os.path.dirname(__file__))
 
-
 class BaseConfig:
     """
     Common configuration options for all environments.

@@ -18,7 +18,7 @@ class ColocalizationPipeline(Pipeline):
     Pipeline class for handling colocalization.
     """
 
-    def __init__(self):
+    def __init__(self, id=None):
         super().__init__()
         self.pipe(
             CreateSessionStage(),
@@ -31,7 +31,7 @@ class ColocalizationPipeline(Pipeline):
             ColocSimpleSumStage(),
             FinalizeResultsStage(),
         )
-        self.id = uuid4()
+        self.id = id or uuid4()
 
         self.timers = {f"{stage.name()}": 0.0 for stage in self.stages}
 
