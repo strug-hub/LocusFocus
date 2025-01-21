@@ -148,7 +148,8 @@ locusfocusR.tar.gz
 !templates/lib/
 !*set_based_test*
 app/static/session_data/
-app/static/upload/
+app/static/upload/*
+!app/static/upload/.gitkeep
 
 # for small test import
 
