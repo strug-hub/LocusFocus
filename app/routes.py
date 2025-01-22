@@ -1,3 +1,4 @@
+from copy import deepcopy
 import json
 import os
 import uuid
@@ -12,7 +13,6 @@ from typing import Dict, Optional, Tuple, List
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
-import pysam
 from flask import (
     request,
     jsonify,
@@ -28,7 +28,11 @@ from app import ext, mongo
 from app.colocalization.pipeline import ColocalizationPipeline
 from app.utils.errors import InvalidUsage, ServerError
 from app.utils.numpy_encoder import NumpyEncoder
-from app.utils.util import fetch_and_format_variants
+from app.utils.util import (
+    fetch_and_format_ensembl_variants,
+    format_ensembl_variant,
+)
+from app.utils.apis.ensembl import fetch_ensembl_variant_info
 
 client = mongo.cx
 db = client.GTEx_V7
@@ -398,7 +402,7 @@ def fetchSNV(chrom, bp, ref, build):
         suffix = "b37"
 
     # Load variant info from dbSNP151
-    varlist = fetch_and_format_variants(build, chrom, bp, suffix)
+    varlist = fetch_and_format_ensembl_variants(build, chrom, bp, suffix)
 
     # Check if there is a match to an SNV with the provided info
     if len(varlist) == 1:
@@ -418,28 +422,6 @@ def standardizeSNPs(variantlist, regiontxt, build):
     Output: chrom_pos_ref_alt_b37/b38 variant ID format, but looks at GTEx variant lookup table first.
     In the case of multi-allelic variants (e.g. rs2211330(T/A,C)), formats such as 1_205001063_T_A,C_b37 are accepted
     If variant ID format is chr:pos, and the chr:pos has a unique biallelic SNV, then it will be assigned that variant
-    """
-
-    """
-        CCK temp notes:
-        1. retrieve variant info based on pos from mongo ("variant_table")
-            - gtex lookup table (can use API -- we should upgrade to v10)
-            - saved in `variants_df`
-        2. grab the variants from the dbsnp file
-            - the data is all appended to `cols` (chromcol,etc.), but never used?
-            - varstr is most important
-            - this we append to the `rsids` dict using rsid as key
-            - then, if we have multiple alts, these are pushed into the same dictionary
-                - all of this is messy and has redundancies
-            - then some redundant cleaning
-            - this is `variantlist`
-        3. Then we loop through variantlist to make stdvariantlist
-            - unbelievable how many times we replace "chr" with ""
-            - switch 23 BACK to X
-            - check if ID starts with `rs`, which seems impossible, since they're in the
-                gtex _-separated format, but this converts them to the _-separated format
-                which is the gtex `variant_id` format
-
     """
 
     if all(x == "." for x in variantlist):
@@ -472,53 +454,27 @@ def standardizeSNPs(variantlist, regiontxt, build):
     )
     variants_list = list(variants_query)
     variants_df = pd.DataFrame(variants_list)
-    variants_df = variants_df.drop(["_id"], axis=1)
 
-    # Load dbSNP151 SNP names from region indicated
-    dbsnp_filepath = ""
     suffix = "b37"
     if build.lower() in ["hg38", "grch38"]:
         suffix = "b38"
-        dbsnp_filepath = os.path.join(
-            app.config["LF_DATA_FOLDER"], "dbSNP151", "GRCh38p7", "All_20180418.vcf.gz"
-        )
     else:
         suffix = "b37"
-        dbsnp_filepath = os.path.join(
-            app.config["LF_DATA_FOLDER"], "dbSNP151", "GRCh37p13", "All_20180423.vcf.gz"
-        )
 
-    # Load dbSNP file
-    # delayeddf = delayed(pd.read_csv)(dbsnp_filepath,skiprows=getNumHeaderLines(dbsnp_filepath),sep='\t')
-    # dbsnp = dd.from_delayed(delayeddf)
-    tbx = pysam.TabixFile(dbsnp_filepath)
+    fetched_variants = fetch_ensembl_variant_info(build, chrom, startbp, endbp)
     #    print('Compiling list of known variants in the region from dbSNP151')
     rsids = dict(
         {}
     )  # a multi-allelic variant rsid (key) can be represented in several variantid formats (values)
-    for row in tbx.fetch(str(chrom), startbp, endbp):
-        rowlist = str(row).split("\t")
-        chromi = rowlist[0].replace("chr", "")
-        posi = rowlist[1]
-        idi = rowlist[2]
-        refi = rowlist[3]
-        alti = rowlist[4]
-        varstr = "_".join([chromi, posi, refi, alti, suffix])
-        rsids[idi] = [varstr]
-        altalleles = alti.split(
-            ","
-        )  # could have more than one alt allele (multi-allelic)
-        if len(altalleles) > 1:
-            varstr = "_".join([chromi, posi, refi, altalleles[0], suffix])
-            rsids[idi].append(varstr)
-            for i in np.arange(len(altalleles) - 1):
-                varstr = "_".join([chromi, posi, refi, altalleles[i + 1], suffix])
-                rsids[idi].append(varstr)
-
-    #    print('Cleaning and mapping list of variants')
-    variantlist = [
-        asnp.split(";")[0].replace(":", "_").replace(".", "") for asnp in variantlist
-    ]  # cleaning up the SNP names a bit
+    for variant in fetched_variants:
+        varstr = format_ensembl_variant(variant, suffix)
+        rsids[variant["id"]] = [varstr]
+        altalleles = variant["alleles"][1:]
+        variant_ = deepcopy(variant)
+        for alt in altalleles:
+            variant_["alleles"] = [variant_["alleles"][0], alt]
+            varstr = format_ensembl_variant(variant_, suffix)
+            rsids[variant["id"]].append(varstr)
     stdvariantlist = []
     for variant in variantlist:
         if variant == "":
