@@ -1,4 +1,5 @@
 FROM python:3.7.7-buster
+#FROM python:3.10-buster
 
 ARG USERNAME=flask
 ARG USER_UID=1000

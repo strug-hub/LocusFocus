@@ -420,6 +420,28 @@ def standardizeSNPs(variantlist, regiontxt, build):
     If variant ID format is chr:pos, and the chr:pos has a unique biallelic SNV, then it will be assigned that variant
     """
 
+    """
+        CCK temp notes:
+        1. retrieve variant info based on pos from mongo ("variant_table")
+            - gtex lookup table (can use API -- we should upgrade to v10)
+            - saved in `variants_df`
+        2. grab the variants from the dbsnp file
+            - the data is all appended to `cols` (chromcol,etc.), but never used?
+            - varstr is most important
+            - this we append to the `rsids` dict using rsid as key
+            - then, if we have multiple alts, these are pushed into the same dictionary
+                - all of this is messy and has redundancies
+            - then some redundant cleaning
+            - this is `variantlist`
+        3. Then we loop through variantlist to make stdvariantlist
+            - unbelievable how many times we replace "chr" with ""
+            - switch 23 BACK to X
+            - check if ID starts with `rs`, which seems impossible, since they're in the
+                gtex _-separated format, but this converts them to the _-separated format
+                which is the gtex `variant_id` format
+
+    """
+
     if all(x == "." for x in variantlist):
         raise InvalidUsage("No variants provided")
 
@@ -435,7 +457,7 @@ def standardizeSNPs(variantlist, regiontxt, build):
 
     # Load GTEx variant lookup table for region indicated
     db = client.GTEx_V7
-    rsid_colname = "rs_id_dbSNP147_GRCh37p13"
+    rsid_colname = "rs_id_dbSNP147_GRCh37p14753"
     if build.lower() in ["hg38", "grch38"]:
         db = client.GTEx_V8
         rsid_colname = "rs_id_dbSNP151_GRCh38p7"
@@ -471,12 +493,6 @@ def standardizeSNPs(variantlist, regiontxt, build):
     # dbsnp = dd.from_delayed(delayeddf)
     tbx = pysam.TabixFile(dbsnp_filepath)
     #    print('Compiling list of known variants in the region from dbSNP151')
-    chromcol = []
-    poscol = []
-    idcol = []
-    refcol = []
-    altcol = []
-    variantid = []  # in chr_pos_ref_alt_build format
     rsids = dict(
         {}
     )  # a multi-allelic variant rsid (key) can be represented in several variantid formats (values)
@@ -488,12 +504,6 @@ def standardizeSNPs(variantlist, regiontxt, build):
         refi = rowlist[3]
         alti = rowlist[4]
         varstr = "_".join([chromi, posi, refi, alti, suffix])
-        chromcol.append(chromi)
-        poscol.append(posi)
-        idcol.append(idi)
-        refcol.append(refi)
-        altcol.append(alti)
-        variantid.append(varstr)
         rsids[idi] = [varstr]
         altalleles = alti.split(
             ","
