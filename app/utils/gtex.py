@@ -26,6 +26,7 @@ with app.app_context():
         encoding="utf-8",
     )
 
+
 # This is the main function to extract the data for a tissue and gene_id:
 def get_gtex(version, tissue, gene_id):
     if version.upper() == "V8":

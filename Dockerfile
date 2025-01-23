@@ -36,6 +36,8 @@ ENV EDITOR vim
 ENV R_BASE_VERSION 3.6.3
 ENV R_LIBS_USER /home/${USERNAME}/Rlibs
 
+
+
 RUN apt-get update && \
   apt-get install -y libblas-dev \
   build-essential \
@@ -54,7 +56,14 @@ RUN apt-get update && \
   pkg-config \
   xauth \
   vim \
-  zlib1g-dev
+  zlib1g-dev \
+  wget
+
+# install plink
+RUN wget -O /tmp/plink.zip https://s3.amazonaws.com/plink1-assets/plink_linux_x86_64_20241022.zip \
+  && unzip -d /tmp /tmp/plink.zip \
+  && mv /tmp/plink /usr/local/bin/plink \
+  && rm /tmp/*
 
 # Install Poetry
 # https://github.com/python-poetry/poetry/issues/6397#issuecomment-1236327500
@@ -99,10 +108,9 @@ RUN R -e "BiocManager::install('biomaRt')"
 COPY --chown=$USERNAME:$USERNAME ./pyproject.toml /code/pyproject.toml
 COPY --chown=$USERNAME:$USERNAME ./poetry.lock /code/poetry.lock
 COPY --chown=$USERNAME:$USERNAME ./README.md /code/README.md
-
-RUN poetry install --with dev
-
 COPY --chown=$USERNAME:$USERNAME ./app /code/app
 COPY --chown=$USERNAME:$USERNAME ./data /code/app
 COPY --chown=$USERNAME:$USERNAME ./misc /code/app
 COPY --chown=$USERNAME:$USERNAME ./tests /code/app
+
+RUN poetry install --with dev

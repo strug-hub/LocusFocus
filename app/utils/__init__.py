@@ -1,6 +1,8 @@
 """
 Common utility functions and classes shared by multiple routes in LocusFocus.
 """
+
+from copy import deepcopy
 import os
 import re
 from typing import List, Optional
@@ -14,6 +16,8 @@ from werkzeug.exceptions import RequestEntityTooLarge
 
 from app import mongo
 from app.utils.errors import InvalidUsage
+from app.utils.apis.ensembl import fetch_ensembl_variant_info
+from app.utils.util import format_ensembl_variant
 
 GENOMIC_WINDOW_LIMIT = 2e6
 
@@ -92,7 +96,12 @@ def decompose_variant_list(variant_list):
     reflist = [x.split("_")[2] if len(x.split("_")) == 5 else x for x in variant_list]
     altlist = [x.split("_")[3] if len(x.split("_")) == 5 else x for x in variant_list]
     df = pd.DataFrame(
-        {"CHROM": chromlist, "POS": poslist, "REF": reflist, "ALT": altlist,}
+        {
+            "CHROM": chromlist,
+            "POS": poslist,
+            "REF": reflist,
+            "ALT": altlist,
+        }
     )
     return df
 
@@ -135,65 +144,24 @@ def standardize_snps(variantlist, regiontxt, build):
     )
     variants_list = list(variants_query)
     variants_df = pd.DataFrame(variants_list)
-    variants_df = variants_df.drop(["_id"], axis=1)
 
-    # Load dbSNP151 SNP names from region indicated
-    dbsnp_filepath = ""
     suffix = "b37"
-    if build.lower() in ["hg38", "grch38"]:
-        suffix = "b38"
-        dbsnp_filepath = os.path.join(
-            app.config["LF_DATA_FOLDER"], "dbSNP151", "GRCh38p7", "All_20180418.vcf.gz"
-        )
-    else:
-        suffix = "b37"
-        dbsnp_filepath = os.path.join(
-            app.config["LF_DATA_FOLDER"], "dbSNP151", "GRCh37p13", "All_20180423.vcf.gz"
-        )
-
-    # Load dbSNP file
-    # delayeddf = delayed(pd.read_csv)(dbsnp_filepath,skiprows=getNumHeaderLines(dbsnp_filepath),sep='\t')
-    # dbsnp = dd.from_delayed(delayeddf)
-    tbx = pysam.TabixFile(dbsnp_filepath)  # type: ignore
-    #    print('Compiling list of known variants in the region from dbSNP151')
-    chromcol = []
-    poscol = []
-    idcol = []
-    refcol = []
-    altcol = []
-    variantid = []  # in chr_pos_ref_alt_build format
     rsids = dict(
         {}
     )  # a multi-allelic variant rsid (key) can be represented in several variantid formats (values)
-    for row in tbx.fetch(str(chrom), startbp, endbp):
-        rowlist = str(row).split("\t")
-        chromi = rowlist[0].replace("chr", "")
-        posi = rowlist[1]
-        idi = rowlist[2]
-        refi = rowlist[3]
-        alti = rowlist[4]
-        varstr = "_".join([chromi, posi, refi, alti, suffix])
-        chromcol.append(chromi)
-        poscol.append(posi)
-        idcol.append(idi)
-        refcol.append(refi)
-        altcol.append(alti)
-        variantid.append(varstr)
-        rsids[idi] = [varstr]
-        altalleles = alti.split(
-            ","
-        )  # could have more than one alt allele (multi-allelic)
-        if len(altalleles) > 1:
-            varstr = "_".join([chromi, posi, refi, altalleles[0], suffix])
-            rsids[idi].append(varstr)
-            for i in np.arange(len(altalleles) - 1):
-                varstr = "_".join([chromi, posi, refi, altalleles[i + 1], suffix])
-                rsids[idi].append(varstr)
 
-    #    print('Cleaning and mapping list of variants')
-    variantlist = [
-        asnp.split(";")[0].replace(":", "_").replace(".", "") for asnp in variantlist
-    ]  # cleaning up the SNP names a bit
+    fetched_variants = fetch_ensembl_variant_info(build, chrom, startbp, endbp)
+
+    for variant in fetched_variants:
+        varstr = format_ensembl_variant(variant, suffix)
+        rsids[variant["id"]] = [varstr]
+        altalleles = variant["alleles"][1:]
+        variant_ = deepcopy(variant)
+        for alt in altalleles:
+            variant_["alleles"] = [variant_["alleles"][0], alt]
+            varstr = format_ensembl_variant(variant_, suffix)
+            rsids[variant["id"]].append(varstr)
+
     stdvariantlist = []
     for variant in variantlist:
         if variant == "":

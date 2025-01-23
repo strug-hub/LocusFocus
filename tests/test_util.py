@@ -62,22 +62,22 @@ def test_format_variant():
 
 def test_standardizeSNPs(app):
     with app.app_context():
-        from app.routes import standardizeSNPs
+        from app.utils import standardize_snps
 
-        varlist = ["chr1_16896_GT_G_b38"]
-        snps = standardizeSNPs(varlist, "chr1:16896-16896", "hg38")
+        varlist = ["chr1_16896_GT_G_b37"]
+        snps = standardize_snps(varlist, "chr1:16896-16896", "hg19")
         assert len(snps) == 1
-        assert snps[0] == "1_16896_GT_G_b38"
+        assert snps[0] == "1_16896_GT_G_b37"
 
         # biallelic
-        varlist = ["chr12_120881839_A_G,T_b38"]
-        snps = standardizeSNPs(varlist, "chr12:120881839-120881839", "hg38")
+        varlist = ["chr12_120881839_A_G,T_b37"]
+        snps = standardize_snps(varlist, "chr12:120881839-120881839", "hg19")
         assert len(snps) == 1
-        assert snps[0] == "12_120881839_A_G,T_b38"
+        assert snps[0] == "12_120881839_A_G,T_b37"
 
         # rsid (not in gtex)
         varlist = ["rs1873295566"]
-        snps = standardizeSNPs(varlist, "chr12:120881839-120881839", "hg38")
+        snps = standardize_snps(varlist, "chr12:120881839-120881839", "hg19")
         assert len(snps) == 1
         assert snps[0] == "."
 
@@ -91,7 +91,6 @@ def test_standardizeSNPs(app):
         # yeah, so can replace that lookup, then grab the right ID based on build
         # and this removes it!
         varlist = ["rs533210981"]
-        snps = standardizeSNPs(varlist, "chr1:16911-16911", "hg38")
+        snps = standardize_snps(varlist, "chr1:16911-16911", "hg19")
         assert len(snps) == 1
         assert snps[0] == "1_16911_CA_C_b37"
-
