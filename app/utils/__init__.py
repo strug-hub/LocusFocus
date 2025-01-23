@@ -11,7 +11,7 @@ import numpy as np
 from flask import current_app as app
 from werkzeug.utils import secure_filename
 from werkzeug.exceptions import RequestEntityTooLarge
-from werkzeug.datastructures import ImmutableMultiDict
+from werkzeug.datastructures import ImmutableMultiDict, FileStorage
 
 from app import mongo
 from app.utils.errors import InvalidUsage
@@ -37,7 +37,29 @@ def get_upload_filepath(filename: str) -> os.PathLike:
         return os.path.join(app.config["UPLOAD_FOLDER"], filename)  # type: ignore
 
 
-def download_file(
+def download_file(file: FileStorage, check_only: bool = False) -> Optional[os.PathLike]:
+    """
+    Download the given file (from a request.files MultiDict) to a temporary file in the UPLOAD folder.
+
+    If check_only is True, do not download the file.
+
+    Return the path to the saved file.
+    Raises an error if the file is too large.
+    """
+    if file.filename is None:
+        # What causes this?
+        return None
+    filename = secure_filename(file.filename)
+    filepath = get_upload_filepath(filename)
+    if not check_only:
+        file.save(filepath)
+    if not os.path.isfile(filepath):
+        raise RequestEntityTooLarge(f"File '{filename}' too large")
+
+    return filepath
+
+
+def download_file_with_ext(
     request_files: ImmutableMultiDict, extensions: List[str], check_only: bool = False
 ) -> Optional[str]:
     """
@@ -61,14 +83,7 @@ def download_file(
         ):
             continue
 
-        filename = secure_filename(file.filename)
-        filepath = get_upload_filepath(filename)
-        if not check_only:
-            file.save(filepath)
-        if not os.path.isfile(filepath):
-            raise RequestEntityTooLarge(f"File '{filename}' too large")
-
-        saved_filepath = filepath
+        saved_filepath = download_file(file, check_only)
         break
 
     return saved_filepath  # type: ignore

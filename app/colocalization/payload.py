@@ -15,7 +15,7 @@ from app.colocalization.constants import (
 from app.utils.errors import InvalidUsage, ServerError
 from app.utils.gtex import get_gtex_snp_matches, gene_names
 from app.utils import (
-    download_file,
+    download_file_with_ext,
     get_session_filepath,
     parse_region_text,
 )
@@ -384,7 +384,7 @@ class SessionPayload:
         """
         Return True if the user has uploaded their own LD matrix, False otherwise.
         """
-        return download_file(self.request_files, ["ld"]) is not None
+        return download_file_with_ext(self.request_files, ["ld"]) is not None
 
     def dump_session_data(self):
         """
