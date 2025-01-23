@@ -82,6 +82,14 @@ def test_standardizeSNPs(app):
         assert snps[0] == "."
 
         # rsid (in gtex) (todo, one of these needs to work with db before porting over)
+        # problem is my local variant db is evidently misnamed (has hg37 but labeled 38)
+        # anyway, it seems 7 is old anyway
+        # in any case, might want to use ensemble rest API to convert from gh19 to 38
+        # but this is failing b/c w/ those that start w/ rs, it uses the lookup, which has
+        # the wrong column name for rs id
+        # however, with the gtex API we can query on rsid and get the b37 and 38 ids...
+        # yeah, so can replace that lookup, then grab the right ID based on build
+        # and this removes it!
         varlist = ["rs533210981"]
         snps = standardizeSNPs(varlist, "chr1:16911-16911", "hg38")
         assert len(snps) == 1
