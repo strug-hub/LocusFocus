@@ -1,5 +1,4 @@
 import os
-from typing import Tuple
 import pandas as pd
 from flask import current_app as app
 from app.colocalization.payload import SessionPayload
