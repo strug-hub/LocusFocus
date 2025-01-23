@@ -5,7 +5,7 @@ import numpy as np
 import htmltableparser
 
 from app.colocalization.payload import SessionPayload
-from app.utils import download_file
+from app.utils import download_file_with_ext
 from app.pipeline.pipeline_stage import PipelineStage
 from app.utils.errors import InvalidUsage
 
@@ -31,7 +31,7 @@ class ReadSecondaryDatasetsStage(PipelineStage):
         Read if it exists. #TODO write this comment better
         """
 
-        html_filepath = download_file(payload.request_files, ["html"])
+        html_filepath = download_file_with_ext(payload.request_files, ["html"])
 
         if html_filepath is None or html_filepath == "":
             return None
