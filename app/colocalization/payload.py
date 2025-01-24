@@ -15,7 +15,6 @@ from app.colocalization.constants import (
 from app.utils.errors import InvalidUsage, ServerError
 from app.utils.gtex import get_gtex_snp_matches, gene_names
 from app.utils import (
-    download_file_with_ext,
     get_session_filepath,
     parse_region_text,
 )
@@ -97,7 +96,8 @@ class SessionPayload:
 
     # Request object
     request_form: ImmutableMultiDict
-    request_files: ImmutableMultiDict
+    uploaded_files: List[os.PathLike]  # Save files in advance
+    # request_files: ImmutableMultiDict
     session_id: UUID
 
     # Form Inputs
@@ -384,7 +384,7 @@ class SessionPayload:
         """
         Return True if the user has uploaded their own LD matrix, False otherwise.
         """
-        return download_file_with_ext(self.request_files, ["ld"]) is not None
+        return any(str(filepath).endswith("ld") for filepath in self.uploaded_files)
 
     def dump_session_data(self):
         """

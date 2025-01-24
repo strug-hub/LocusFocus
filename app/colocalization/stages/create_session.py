@@ -34,10 +34,7 @@ class CreateSessionStage(PipelineStage):
         metadata.update(
             {
                 "datetime": datetime.now().isoformat(),
-                "files_uploaded": [
-                    file.filename or ""
-                    for file in payload.request_files.getlist("files[]")
-                ],
+                "files_uploaded": payload.uploaded_files,
                 "session_id": str(payload.session_id),
                 "type": "default",
             }
@@ -50,6 +47,6 @@ class CreateSessionStage(PipelineStage):
         """
         Check if the user has uploaded any files.
         """
-        if "files[]" not in payload.request_files:
+        if payload.uploaded_files is None or len(payload.uploaded_files) == 0:
             raise InvalidUsage(f"No files found in request")
         return None
