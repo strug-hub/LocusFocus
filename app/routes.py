@@ -2028,8 +2028,8 @@ def index():
         if filepath is not None and any(str(filepath).endswith(ext) for ext in ["txt", "tsv", "ld", "html"]):
             filepaths.append(filepath)
 
-    session_id = uuid.uuid4()
-    job_result = run_pipeline_async(session_id, "colocalization", (request.form, filepaths))
+    job_result = run_pipeline_async("colocalization", request.form, filepaths)
+    session_id = job_result.id
 
     return render_template(
         "waiting_page.html", 
