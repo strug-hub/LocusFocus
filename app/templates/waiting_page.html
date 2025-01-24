@@ -74,12 +74,12 @@
   <!-- Multiselect -->
   <script src="{{ url_for('static', filename='js/lib/bootstrap-multiselect.js') }}"></script>
 
-  <script type="text/javascript">
+  <script type="text/javascript" async>
     var sessionId = "{{ session_id }}";
     var checks = 0;
     do {
       checks += 1;
-      let response = await fetch("{{ url_for('get_job_status', job_id=session_id) }}");
+      let response = await fetch("{{ url_for('jobs.get_job_status', job_id=session_id) }}");
       let data = await response.json();
       var status = data.status;
       if (status == "RUNNING") {
@@ -94,6 +94,10 @@
       }
     } while (status == "RUNNING");
     
+    document.getElementById("loading-spinner").style.display = "none";
+    document.getElementById("progress-bar").style.width = "100%";
+    document.getElementById("progress-bar").classList.add("bg-success");
+    document.getElementById("job-status").innerHTML = "Job status: " + status;
 
   </script>            
 </body>
