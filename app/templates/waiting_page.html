@@ -36,7 +36,7 @@
         <div class="card border-primary mb-9" style="max-width: 60rem">
           <div class="card-header">Session ID</div>
           <div class="card-body">
-            <h4 class="card-title" id="sessionid">087704b9-3926-474a-8c45-1e2e7c9ea8a0</h4>
+            <h4 class="card-title" id="sessionid">{{ session_id }}</h4>
             <p class="card-text">
               Save the above string for your records to load or share your
               plot.
@@ -47,7 +47,7 @@
               <i>Your job has been submitted. This page will automatically check the status of your job.</i>
             </p>
             <div class="progress">
-              <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+              <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" width="0%"></div>
             </div>
           </div>
         </div>
@@ -74,32 +74,12 @@
   <!-- Multiselect -->
   <script src="{{ url_for('static', filename='js/lib/bootstrap-multiselect.js') }}"></script>
 
-  <script type="text/javascript" async>
-    var sessionId = "{{ session_id }}";
-    var checks = 0;
-    do {
-      checks += 1;
-      let response = await fetch("{{ url_for('jobs.get_job_status', job_id=session_id) }}");
-      let data = await response.json();
-      var status = data.status;
-      if (status == "RUNNING") {
-        let percent = 100 - (1 / (1 + ((checks + Math.random())*0.2))) * 100;
-        if (percent > 95) {
-          percent = 95;
-        }
-        document.getElementById("progress-bar").style.width = percent + "%";
-        document.getElementById("job-status").innerHTML = "Job status: " + status;
-        // wait 10 seconds
-        await new Promise(resolve => setTimeout(resolve, 10000));
-      }
-    } while (status == "RUNNING");
-    
-    document.getElementById("loading-spinner").style.display = "none";
-    document.getElementById("progress-bar").style.width = "100%";
-    document.getElementById("progress-bar").classList.add("bg-success");
-    document.getElementById("job-status").innerHTML = "Job status: " + status;
+  <script src="{{ url_for('static', filename='js/waiting-page/progress-bar.js') }}"></script>
 
-  </script>            
+  <script>
+    const JOB_STATUS_URL = "{{ url_for('jobs.get_job_status', job_id=session_id) }}";
+    handleJobStatus(JOB_STATUS_URL);
+  </script>
 </body>
 
 </html>
