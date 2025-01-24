@@ -59,34 +59,20 @@ def download_file(file: FileStorage, check_only: bool = False) -> Optional[os.Pa
     return filepath
 
 
-def download_file_with_ext(
-    request_files: ImmutableMultiDict, extensions: List[str], check_only: bool = False
-) -> Optional[str]:
+def get_file_with_ext(filepaths: List[os.PathLike], extensions: List[str]) -> Optional[os.PathLike]:
     """
-    Download the first file at 'files[]' that matches the given extensions,
-    and return the filepath to the saved file. Return None if no such file exists.
+    Grab the first file in the list that matches the given extensions. This assumes that the 
+    files are already uploaded and stored in the upload folder.
 
-    If check_only is True, do not download the file.
+    Return None if no such file exists.
 
-    Extensions should not include the period. eg. `["html", "tsv", "txt"]`
+    Extensions should not include the period. eg. `["html", "tsv", "txt"]`.
     """
-    if not ("files[]" in request_files):
-        raise InvalidUsage(f"No files found in request")
 
-    filenames = request_files.getlist("files[]")
-
-    saved_filepath = None
-    for file in filenames:
-        if (
-            file.filename is None
-            or file.filename.rsplit(".", 1)[-1].lower() not in extensions
-        ):
-            continue
-
-        saved_filepath = download_file(file, check_only)
-        break
-
-    return saved_filepath  # type: ignore
+    for filepath in filepaths:
+        if os.path.isfile(filepath) and str(filepath).endswith(tuple(extensions)):
+            return filepath
+    return None
 
 
 def decompose_variant_list(variant_list):

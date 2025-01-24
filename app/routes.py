@@ -14,7 +14,7 @@ import pysam
 import glob
 import tarfile
 from typing import Dict, Optional, Tuple, List
-import gc
+import gc 
 
 from flask import (
     request,
@@ -28,8 +28,8 @@ from werkzeug.utils import secure_filename
 
 from pymongo.errors import ConnectionFailure
 
-from app.colocalization.pipeline import ColocalizationPipeline
 from app.tasks import run_pipeline_async
+from app.utils import download_file
 from app.utils.errors import InvalidUsage, ServerError
 from numpy_encoder import NumpyEncoder
 
@@ -2021,8 +2021,15 @@ def index():
     if request.method == "GET":
         return render_template("index.html")
 
+    # Download all files in advance
+    filepaths = []
+    for file in request.files.getlist("files[]"):
+        filepath = download_file(file)
+        if filepath is not None and any(str(filepath).endswith(ext) for ext in ["txt", "tsv", "ld", "html"]):
+            filepaths.append(filepath)
+
     session_id = uuid.uuid4()
-    job_result = run_pipeline_async(session_id, "colocalization", (request.form, request.files))
+    job_result = run_pipeline_async(session_id, "colocalization", (request.form, filepaths))
 
     return render_template(
         "waiting_page.html", 

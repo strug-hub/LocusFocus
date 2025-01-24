@@ -6,7 +6,7 @@ import numpy as np
 from flask import current_app as app
 
 from app.colocalization.payload import SessionPayload
-from app.utils import download_file_with_ext, standardize_snps, decompose_variant_list, x_to_23
+from app.utils import get_file_with_ext, standardize_snps, decompose_variant_list, x_to_23
 from app.pipeline import PipelineStage
 from app.utils.errors import InvalidUsage, ServerError
 
@@ -78,7 +78,7 @@ class ReadGWASFileStage(PipelineStage):
 
         Save the file and return the dataframe.
         """
-        gwas_filepath = download_file_with_ext(payload.request_files, self.VALID_GWAS_EXTENSIONS)
+        gwas_filepath = get_file_with_ext(payload.uploaded_files, self.VALID_GWAS_EXTENSIONS)
 
         if gwas_filepath is None:
             raise InvalidUsage(
