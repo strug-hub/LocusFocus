@@ -2,7 +2,7 @@ from typing import Dict
 from bs4 import BeautifulSoup as bs
 import numpy as np
 
-import htmltableparser
+import app.utils.htmltableparser as htmltableparser
 
 from app.colocalization.payload import SessionPayload
 from app.utils import get_file_with_ext
@@ -28,7 +28,7 @@ class ReadSecondaryDatasetsStage(PipelineStage):
 
     def _read_dataset_file(self, payload: SessionPayload):
         """
-        Read if it exists. #TODO write this comment better
+        Read if it exists. # TODO: write this comment better
         """
 
         html_filepath = get_file_with_ext(payload.uploaded_files, ["html"])
