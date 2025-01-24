@@ -2030,6 +2030,7 @@ def index():
 
     job_result = run_pipeline_async("colocalization", request.form, filepaths)
     session_id = job_result.id
+    app.logger.debug(f"Session ID: {session_id}")
 
     return render_template(
         "waiting_page.html", 
