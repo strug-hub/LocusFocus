@@ -5,6 +5,7 @@ services:
       - ./app:/code/app
       - ./misc:/code/misc
       - ./data:/code/data
+      - /media/conor/T7/uoft_large/locus_focus/data/1000Genomes_GRCh37:/code/data/1000Genomes_GRCh37
       - ./tests:/code/tests
       - ./pyproject.toml:/code/pyproject.toml
       - ./poetry.lock:/code/poetry.lock

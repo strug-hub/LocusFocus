@@ -17,7 +17,7 @@ from werkzeug.exceptions import RequestEntityTooLarge
 from app import mongo
 from app.utils.errors import InvalidUsage
 from app.utils.apis.ensembl import fetch_ensembl_variant_info
-from app.utils.util import format_ensembl_variant
+from app.utils.util import format_ensembl_variant, fetch_and_format_ensembl_variants
 
 GENOMIC_WINDOW_LIMIT = 2e6
 
@@ -312,40 +312,22 @@ def fetch_snv(chrom, bp, ref, build):
     chrom, startbp, endbp = parse_region_text(regiontxt, build)
     chrom = str(chrom).replace("chr", "").replace("23", "X")
 
-    # Load dbSNP151 SNP names from region indicated
-    dbsnp_filepath = ""
     if build.lower() in ["hg38", "grch38"]:
         suffix = "b38"
-        dbsnp_filepath = os.path.join(
-            app.config["LF_DATA_FOLDER"], "dbSNP151", "GRCh38p7", "All_20180418.vcf.gz"
-        )
     else:
         suffix = "b37"
-        dbsnp_filepath = os.path.join(
-            app.config["LF_DATA_FOLDER"], "dbSNP151", "GRCh37p13", "All_20180423.vcf.gz"
-        )
 
-    # Load variant info from dbSNP151
-    tbx = pysam.TabixFile(dbsnp_filepath)  # type: ignore
-    varlist = []
-    for row in tbx.fetch(str(chrom), bp - 1, bp):
-        rowlist = str(row).split("\t")
-        chromi = rowlist[0].replace("chr", "")
-        posi = rowlist[1]
-        idi = rowlist[2]
-        refi = rowlist[3]
-        alti = rowlist[4]
-        varstr = "_".join([chromi, posi, refi, alti, suffix])
-        varlist.append(varstr)
+    varlist = fetch_and_format_ensembl_variants(build, chrom, suffix, startbp)
 
-    # Check if there is a match to an SNV with the provided info
-    if len(varlist) == 1:
-        variantid = varstr
-    elif len(varlist) > 1 and ref != "":
-        for v in varlist:
-            if v.split("_")[2] == ref:
-                variantid = v
-                break
+    for varstr in varlist:
+        # Check if there is a match to an SNV with the provided info
+        if len(varlist) == 1:
+            variantid = varstr
+        elif len(varlist) > 1 and ref != "":
+            for v in varlist:
+                if v.split("_")[2] == ref:
+                    variantid = v
+                    break
     return variantid
 
 
