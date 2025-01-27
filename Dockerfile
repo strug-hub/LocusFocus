@@ -10,8 +10,6 @@ RUN mkdir code \
   && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME \
   && chown -R ${USER_UID}:${USER_GID} /code
 
-# we probably don't need the exact versions, and this install might be weird,
-# but important thing is getting correct package vesions when we install them
 # can upgrade R to something sensible later, once we have the package lists and versions set
 # https://github.com/rocker-org/rocker/blob/2f92c6c8b8da7b3e61aabc44cacc0439bf267d31/r-base/3.6.3/Dockerfile
 
@@ -36,28 +34,16 @@ ENV EDITOR vim
 ENV R_BASE_VERSION 3.6.3
 ENV R_LIBS_USER /home/${USERNAME}/Rlibs
 
-
-
 RUN apt-get update && \
-  apt-get install -y libblas-dev \
+  apt-get install -y \
+  libblas-dev \
   build-essential \
-  g++ \
   gfortran \
   libblas-dev \
-  libbz2-dev \
-  libicu-dev \
-  libjpeg-dev \
   liblapack-dev \
-  liblzma-dev \
-  libncurses5-dev \
   libpcre2-dev \
-  libpcre3-dev \
-  libpng-dev \
-  pkg-config \
   xauth \
-  vim \
-  zlib1g-dev \
-  wget
+  vim
 
 # install plink
 RUN wget -O /tmp/plink.zip https://s3.amazonaws.com/plink1-assets/plink_linux_x86_64_20241022.zip \
@@ -102,16 +88,16 @@ RUN install2.r --error \
 
 RUN R -e "BiocManager::install('GenomicRanges')"
 RUN R -e "BiocManager::install('biomaRt')"
+
 # this seems not to respect user install path, might need to install as root and copy over
-# RUN R -e "remotes::install_version('Matrix', version = '1.2')" # this seems to be already installed via other deps
+# RUN R -e "remotes::install_version('Matrix', version = '1.2')" # this seems to be already installed via other deps, however
 
 COPY --chown=$USERNAME:$USERNAME ./pyproject.toml /code/pyproject.toml
 COPY --chown=$USERNAME:$USERNAME ./poetry.lock /code/poetry.lock
 COPY --chown=$USERNAME:$USERNAME ./README.md /code/README.md
 COPY --chown=$USERNAME:$USERNAME ./app /code/app
-# These sould be volume mounted
+COPY --chown=$USERNAME:$USERNAME ./tests /code/app
 COPY --chown=$USERNAME:$USERNAME ./data /code/app
 COPY --chown=$USERNAME:$USERNAME ./misc /code/app
-COPY --chown=$USERNAME:$USERNAME ./tests /code/app
 
 RUN poetry install --with dev
