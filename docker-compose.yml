@@ -5,7 +5,7 @@ services:
       - ./app:/code/app
       - ./misc:/code/misc
       - ./data:/code/data
-      - /media/conor/T7/uoft_large/locus_focus/data/1000Genomes_GRCh37:/code/data/1000Genomes_GRCh37
+      - ${GTEX_DIR_PATH}:/code/data/1000Genomes_GRCh37
       - ./tests:/code/tests
       - ./pyproject.toml:/code/pyproject.toml
       - ./poetry.lock:/code/poetry.lock
@@ -17,7 +17,9 @@ services:
       - lf-net
     environment:
       - APP_ENV
+      # for vscode debugger
       - FLASK_APP_DEBUG=true
+      # for flask debug mode
       - FLASK_DEBUG=1
       - FLASK_SECRET_KEY
       - MONGO_USERNAME

@@ -53,6 +53,7 @@ class BaseConfig:
     }
 
     APP_ENV = os.environ["APP_ENV"]
+    FLASK_APP_DEBUG = os.environ["FLASK_APP_DEBUG"]
 
     UPLOAD_FOLDER = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "static", "upload")
