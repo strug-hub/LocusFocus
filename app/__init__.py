@@ -30,6 +30,6 @@ def create_app(config_class=ConfigClass):
     mongo.init_app(app)
 
     with app.app_context():
-        from . import routes
+        from app import routes
 
         return app

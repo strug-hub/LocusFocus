@@ -1,10 +1,10 @@
 from typing import List  # type: ignore
-from .pipeline_stage import PipelineStage
+from app.pipeline.pipeline_stage import PipelineStage
 
 
 class Pipeline:
     """
-    Generic pipeline class for creating an 
+    Generic pipeline class for creating an
     ordered series of stages to execute on a given payload.
 
     Similar implementation as the Chain of Responsibility design pattern.
@@ -25,7 +25,7 @@ class Pipeline:
         """
         Operations performed before the stage's `invoke` method is called.
         Executes before every stage in the pipeline, and can be extended.
-        
+
         Parameters:
             stage (PipelineStage): The stage that's about to be invoked.
             payload (object): The payload to be processed by the stage.
@@ -51,14 +51,14 @@ class Pipeline:
         return payload
 
     def post_pipeline(self, payload: object) -> object:
-        """ 
+        """
         Operations performed after the pipeline's `process` method is called.
         Can be extended.
         """
         return payload
 
     def pipe(self, *stages: PipelineStage):
-        """Add new stage(s) to the pipeline. 
+        """Add new stage(s) to the pipeline.
         Serves as a builder function for the pipeline, and can be chain-called.
 
         Args:
