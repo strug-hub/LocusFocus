@@ -13,7 +13,7 @@ import re
 import pysam
 import glob
 import tarfile
-from typing import Dict, Optional, Tuple, List
+from typing import Dict, Optional, Tuple, List, Union
 import gc 
 
 from flask import (
@@ -2028,18 +2028,24 @@ def index():
         if filepath is not None and any(str(filepath).endswith(ext) for ext in ["txt", "tsv", "ld", "html"]):
             filepaths.append(filepath)
 
+    # Convert request.form to dict
+    request_form: Dict[str, Union[str, List[str]]] = request.form.to_dict(flat=False)  # type: ignore
+    for key in request_form.keys():
+        if key not in ["multiselect[]", "GTEx-tissues", "region-genes"]:
+            request_form[key] = request_form[key][0]
+
     if app.config["DISABLE_CELERY"]:
         session_id = uuid.uuid4()
         from app.colocalization.pipeline import ColocalizationPipeline
         pipeline = ColocalizationPipeline(id=session_id)
-        result = pipeline.process(request.form, filepaths)
+        result = pipeline.process(request_form, filepaths)
 
         return render_template(
             "plot.html",
             **result.file.get_plot_template_paths(session_id=str(result.session_id)),
         )
 
-    job_result = run_pipeline_async("colocalization", request.form, filepaths)
+    job_result = run_pipeline_async("colocalization", request_form, filepaths)
     session_id = job_result.id
     app.logger.debug(f"Session ID: {session_id}")
 
