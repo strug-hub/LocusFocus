@@ -53,8 +53,8 @@ class CollectUserInputStage(PipelineStage):
         payload.simple_sum_locus = payload.request_form.get("SSlocus", "")
 
         # GTEx
-        payload.gtex_tissues = payload.request_form.getlist("GTEx-tissues")
-        payload.gtex_genes = payload.request_form.getlist("region-genes")
+        payload.gtex_tissues = payload.request_form.get("GTEx-tissues")  # type: ignore
+        payload.gtex_genes = payload.request_form.get("region-genes")  # type: ignore
         if len(payload.gtex_tissues) > 0 and len(payload.gtex_genes) == 0:
             errors.append(
                 "Please select one or more genes to complement your GTEx tissue(s) selection"

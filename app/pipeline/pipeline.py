@@ -1,8 +1,10 @@
 from typing import List  # type: ignore
 
 from uuid import uuid4
+from flask import current_app as app
 
 from .pipeline_stage import PipelineStage
+from app.utils.errors import InvalidUsage, ServerError, LocusFocusError
 
 
 class Pipeline:
@@ -85,6 +87,31 @@ class Pipeline:
         """
         self.pre_pipeline(payload)
         for stage in self.stages:
-            payload = self.invoke_stage(stage, payload)
+            try:
+                payload = self.invoke_stage(stage, payload)
+            except BaseException as e:
+                raise self.handle_error(e, payload)
         self.post_pipeline(payload)
         return payload
+
+    def handle_error(self, error: BaseException, payload: object) -> LocusFocusError:
+        """
+        Logs errors that occur during pipeline execution, 
+        and returns a new error without stack trace (ie. safe to show on the front-end).
+
+        Args:
+            error (Exception): The error that occurred during pipeline execution.
+            payload (object): The payload that was being processed when the error occurred.
+        """
+
+        if isinstance(error, InvalidUsage):
+            app.logger.warning(error.message, exc_info=True)
+            return error
+        if isinstance(error, ServerError):
+            app.logger.error(error.message, exc_info=True)
+            return error
+        else:
+            app.logger.error(error.__repr__(), exc_info=True)
+            new_error = ServerError("An unexpected error occurred")  # type: ignore
+
+            return new_error

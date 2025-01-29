@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from uuid import uuid4, UUID
+from uuid import UUID
 from typing import List, Dict, Optional, Tuple, Union
 import os
 
@@ -12,7 +12,7 @@ from app.colocalization.constants import (
     VALID_COORDINATES,
     VALID_POPULATIONS,
 )
-from app.utils.errors import InvalidUsage, ServerError
+from app.utils.errors import InvalidUsage
 from app.utils.gtex import get_gtex_snp_matches, gene_names
 from app.utils import (
     get_session_filepath,
@@ -95,7 +95,7 @@ class SessionPayload:
     """
 
     # Request object
-    request_form: ImmutableMultiDict
+    request_form: dict
     uploaded_files: List[os.PathLike]  # Save files in advance
     # request_files: ImmutableMultiDict
     session_id: UUID
@@ -328,9 +328,9 @@ class SessionPayload:
         Format: (tissues, genes)
         """
         if self.gtex_genes is None:
-            self.gtex_genes = self.request_form.getlist("region-genes")
+            self.gtex_genes: List[str] = self.request_form.get("region-genes")  # type: ignore
         if self.gtex_tissues is None:
-            self.gtex_tissues = self.request_form.getlist("GTEx-tissues")
+            self.gtex_tissues: List[str] = self.request_form.get("GTEx-tissues")  # type: ignore
 
         if len(self.gtex_tissues) > 0 and len(self.gtex_genes) == 0:
             raise InvalidUsage(
