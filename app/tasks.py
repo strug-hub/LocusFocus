@@ -10,19 +10,19 @@ from werkzeug.datastructures import ImmutableMultiDict
 from flask import current_app as app
 
 
-def run_pipeline_async(pipeline_type: str, request_form: ImmutableMultiDict, uploaded_files: List[PathLike]) -> AsyncResult:
+def run_pipeline_async(pipeline_type: str, request_form: ImmutableMultiDict, uploaded_filepaths: List[PathLike]) -> AsyncResult:
     """
     Run a pipeline asynchronously using Celery.
     Return the task ID, which can be used to check the task status.
 
     pipeline must be one of: "colocalization"
     """
-    result = _pipeline_task.apply_async((pipeline_type, request_form, uploaded_files))  # type: ignore
+    result = _pipeline_task.apply_async((pipeline_type, request_form, uploaded_filepaths))  # type: ignore
     return result
 
 
 @shared_task(ignore_result=False, bind=True)
-def _pipeline_task(self, pipeline_type: str, request_form: ImmutableMultiDict, uploaded_files: List[PathLike]) -> object:
+def _pipeline_task(self, pipeline_type: str, request_form: ImmutableMultiDict, uploaded_filepaths: List[PathLike]) -> object:
     """
     Celery task for running a pipeline.
 
@@ -40,6 +40,6 @@ def _pipeline_task(self, pipeline_type: str, request_form: ImmutableMultiDict, u
 
     app.logger.debug(f"Running pipeline '{session_id}' with type '{pipeline_type}'")
 
-    result = pipeline.process(request_form, uploaded_files)
+    result = pipeline.process(request_form, uploaded_filepaths)
 
     return result

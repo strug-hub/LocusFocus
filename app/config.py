@@ -74,6 +74,8 @@ class BaseConfig:
         "result_backend": f"file://{os.path.join(SESSION_FOLDER, 'celery_results')}",
     }
 
+    DISABLE_CELERY = os.environ.get("DISABLE_CELERY", "False").lower() == "true"
+
 
 class DevConfig(BaseConfig):
     """
