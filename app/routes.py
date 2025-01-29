@@ -2028,6 +2028,17 @@ def index():
         if filepath is not None and any(str(filepath).endswith(ext) for ext in ["txt", "tsv", "ld", "html"]):
             filepaths.append(filepath)
 
+    if app.config["DISABLE_CELERY"]:
+        session_id = uuid.uuid4()
+        from app.colocalization.pipeline import ColocalizationPipeline
+        pipeline = ColocalizationPipeline(id=session_id)
+        result = pipeline.process(request.form, filepaths)
+
+        return render_template(
+            "plot.html",
+            **result.file.get_plot_template_paths(session_id=str(result.session_id)),
+        )
+
     job_result = run_pipeline_async("colocalization", request.form, filepaths)
     session_id = job_result.id
     app.logger.debug(f"Session ID: {session_id}")
