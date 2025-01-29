@@ -107,6 +107,6 @@ class ColocalizationPipeline(Pipeline):
             payload = self.post_pipeline(payload)  # type: ignore
             e.message = f"[{stage.name()}] {e.message}"
             raise e
-        except Exception as e:
+        except BaseException as e:
             # Unexpected errors
             raise e

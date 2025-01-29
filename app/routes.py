@@ -2033,7 +2033,7 @@ def index():
     app.logger.debug(f"Session ID: {session_id}")
 
     return render_template(
-        "waiting_page.html", 
+        "waiting_page.html",
         session_id=session_id, 
     )
 
