@@ -401,7 +401,7 @@ class SessionPayload:
             list(self.gwas_data_kept["P"]) if self.gwas_data is not None else []
         )
         data["lead_snp"] = (
-            self.gwas_data_kept["SNP"].loc[self.get_lead_snp_index()]
+            self.gwas_data_kept["SNP"].iloc[self.get_lead_snp_index()]
             if self.gwas_data is not None
             else None
         )
