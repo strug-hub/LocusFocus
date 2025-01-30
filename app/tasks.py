@@ -40,6 +40,7 @@ def _pipeline_task(self, pipeline_type: str, request_form: ImmutableMultiDict, u
 
     app.logger.debug(f"Running pipeline '{session_id}' with type '{pipeline_type}'")
 
+    self.update_state(state="RUNNING")
     result = pipeline.process(request_form, uploaded_filepaths)
 
-    return result
+    return result.file.get_plot_template_paths(session_id=str(session_id))
