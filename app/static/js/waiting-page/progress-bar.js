@@ -2,9 +2,10 @@
  * Handle checking the status of a job and
  * updating the progress bar on the waiting page.
  */
-async function handleJobStatus(jobStatusURL) {
+async function handleJobStatus(jobStatusURL, sessionId) {
   let checks = 0;
   let jobStatus = "PENDING";
+  let redirectUrl = "";
 
   // Wait 2 seconds before checking the status
   await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -26,6 +27,7 @@ async function handleJobStatus(jobStatusURL) {
     let response = await fetch(jobStatusURL);
     let data = await response.json();
     jobStatus = data.status;
+    redirectUrl = data.redirect_url ? data.redirect_url : "";
     if (jobStatus == "RUNNING") {
       let percent = 100 - (1 / (1 + (checks + Math.random()) * 0.1)) * 100;
       if (percent > 95) {
@@ -44,11 +46,17 @@ async function handleJobStatus(jobStatusURL) {
     document.getElementById("progress-bar").style.width = "100%";
     document.getElementById("progress-bar").ariaValueNow = 100;
     document.getElementById("progress-bar").classList.add("bg-danger");
-    // TODO: redirect to error page
+    document.getElementById("error-section").style.display = "block";
+    document.getElementById("error-title").innerHTML = data.error_title;
+    document.getElementById("error-message").innerHTML = data.error_message;
   } else if (jobStatus == "SUCCESS") {
     document.getElementById("progress-bar").style.width = "100%";
     document.getElementById("progress-bar").ariaValueNow = 100;
     document.getElementById("progress-bar").classList.add("bg-success");
-    // TODO: redirect to plot page
+    document.getElementById("sessionid").innerHTML = document.getElementById("sessionid").innerHTML.replace(sessionId, `<a href="${redirectUrl}">${sessionId}</a>`);
+    document.getElementById("job-status-text").innerHTML = `<i>Your results are ready!</i>`;
+
+    document.getElementById("success-section").style.display = "block";
+    document.getElementById("success-button").href = redirectUrl;
   }
 }

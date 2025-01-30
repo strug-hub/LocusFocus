@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, current_app as app
+from flask import Blueprint, jsonify, current_app as app, url_for
 from celery.result import AsyncResult
 
 from app.utils.errors import InvalidUsage, ServerError
@@ -28,5 +28,11 @@ def get_job_status(job_id):
             app.logger.error("An unexpected error occurred!")
             app.logger.error(error.__repr__(), exc_info=True)
             return jsonify({"status": "FAILURE", "message": "An unexpected error occurred", "status_code": 500})
+
+    if result.status == "SUCCESS":
+        return jsonify({
+            "status": "SUCCESS",
+            "redirect_url": url_for("prev_session_input", old_session_id=result.id),
+        })
 
     return jsonify({"status": result.status})
