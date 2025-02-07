@@ -112,6 +112,4 @@ class Pipeline:
             return error
         else:
             app.logger.error(error.__repr__(), exc_info=True)
-            new_error = ServerError("An unexpected error occurred")  # type: ignore
-
-            return new_error
+            return ServerError(error)

@@ -13,7 +13,7 @@ async function handleJobStatus(jobStatusURL, sessionId) {
   // Pending loop
   while (jobStatus == "PENDING") {
     let response = await fetch(jobStatusURL);
-    let data = await response.json();
+    var data = await response.json();
     jobStatus = data.status;
     if (jobStatus == "PENDING") {
       // wait 10 seconds
@@ -25,7 +25,7 @@ async function handleJobStatus(jobStatusURL, sessionId) {
   while (jobStatus == "RUNNING") {
     checks += 1;
     let response = await fetch(jobStatusURL);
-    let data = await response.json();
+    var data = await response.json();
     jobStatus = data.status;
     redirectUrl = data.redirect_url ? data.redirect_url : "";
     if (jobStatus == "RUNNING") {
@@ -47,8 +47,8 @@ async function handleJobStatus(jobStatusURL, sessionId) {
     document.getElementById("progress-bar").ariaValueNow = 100;
     document.getElementById("progress-bar").classList.add("bg-danger");
     document.getElementById("error-section").style.display = "block";
-    document.getElementById("error-title").innerHTML = data.error_title;
-    document.getElementById("error-message").innerHTML = data.error_message;
+    document.getElementById("job-status-text").innerHTML = `<i>Your submission has failed. Please see the error message below.</i>`;
+    handleError(data);
   } else if (jobStatus == "SUCCESS") {
     document.getElementById("progress-bar").style.width = "100%";
     document.getElementById("progress-bar").ariaValueNow = 100;
@@ -59,4 +59,37 @@ async function handleJobStatus(jobStatusURL, sessionId) {
     document.getElementById("success-section").style.display = "block";
     document.getElementById("success-button").href = redirectUrl;
   }
+}
+
+function handleError(data) {
+  document.getElementById("error-title").innerHTML = data.error_title;
+  document.getElementById("error-message").innerHTML = `<code>${data.error_message}</code>`;
+  
+  if (data.status_code >= 400 && data.status_code < 500) {
+    document.getElementById("error-subtitle").innerHTML = "This error is due to an issue with your form input or your uploaded files. Please see the error message below for more details.";
+  } else if (data.status_code >= 500) {
+    document.getElementById("error-subtitle").innerHTML = "This error is due to an issue with the server. Please see the error message below for more details, and report this to our system administrator using the link below.";
+    document.getElementById("error-contact").style.display = "block";
+    document.getElementById("error-contact-link").href = buildMailToLink(data);
+  }
+
+  if (data.payload) {
+    document.getElementById("error-payload").innerHTML = `<pre><code>${JSON.stringify(data.payload, null, 2)}</code></pre>`;
+  }
+}
+
+function buildMailToLink(data) {
+  const subject = `LocusFocus Error Report [${data.error_message}]`;
+  const body = `
+    Hello,
+    I received a server error from LocusFocus from submitting a job.
+
+    Details:
+    - Session ID: ${data.session_id}
+    - Error Title: ${data.error_title}
+    - Error Message: ${data.error_message}
+    - Payload: ${data.payload}
+  `;
+  const link = `mailto:mfrew@broadinstitute.org?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  return link;
 }
