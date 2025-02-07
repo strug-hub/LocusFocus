@@ -53,7 +53,6 @@ async function handleJobStatus(jobStatusURL, sessionId) {
     document.getElementById("progress-bar").style.width = "100%";
     document.getElementById("progress-bar").ariaValueNow = 100;
     document.getElementById("progress-bar").classList.add("bg-success");
-    document.getElementById("sessionid").innerHTML = document.getElementById("sessionid").innerHTML.replace(sessionId, `<a href="${redirectUrl}">${sessionId}</a>`);
     document.getElementById("job-status-text").innerHTML = `<i>Your results are ready!</i>`;
 
     document.getElementById("success-section").style.display = "block";

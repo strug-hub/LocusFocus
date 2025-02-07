@@ -24,6 +24,7 @@ from flask import (
     Markup,
     current_app as app,
 )
+from celery.result import AsyncResult
 from werkzeug.utils import secure_filename
 
 from pymongo.errors import ConnectionFailure
@@ -1882,14 +1883,22 @@ def prev_session():
 
 @app.route("/session_id/<old_session_id>")
 def prev_session_input(old_session_id):
+
+    # Check celery session
+    if not app.config["DISABLE_CELERY"]:
+        celery_result = AsyncResult(old_session_id, app=app.extensions["celery"])
+        if celery_result.state == "PENDING":
+            raise InvalidUsage(f"Session {old_session_id} does not exist.")
+        elif celery_result.state != "SUCCESS":
+            return render_template("waiting_page.html", session_id=old_session_id)
+
     if old_session_id != "":
-        my_session_id = old_session_id
-        sessionfile = f"session_data/form_data-{my_session_id}.json"
-        SBTsessionfile = f"session_data/form_data_setbasedtest-{my_session_id}.json"
-        genes_sessionfile = f"session_data/genes_data-{my_session_id}.json"
-        SSPvalues_file = f"session_data/SSPvalues-{my_session_id}.json"
-        coloc2_file = f"session_data/coloc2result-{my_session_id}.json"
-        metadatafile = f"session_data/metadata-{my_session_id}.json"  # don't check if this exists; new addition
+        sessionfile = f"session_data/form_data-{old_session_id}.json"
+        SBTsessionfile = f"session_data/form_data_setbasedtest-{old_session_id}.json"
+        genes_sessionfile = f"session_data/genes_data-{old_session_id}.json"
+        SSPvalues_file = f"session_data/SSPvalues-{old_session_id}.json"
+        coloc2_file = f"session_data/coloc2result-{old_session_id}.json"
+        metadatafile = f"session_data/metadata-{old_session_id}.json"  # don't check if this exists; new addition
         sessionfilepath = os.path.join(MYDIR, "static", sessionfile)
         genes_sessionfilepath = os.path.join(MYDIR, "static", genes_sessionfile)
         SSPvalues_filepath = os.path.join(MYDIR, "static", SSPvalues_file)
@@ -1905,7 +1914,7 @@ def prev_session_input(old_session_id):
         return render_template(
             "plot.html",
             sessionfile=SBTsessionfile,
-            sessionid=my_session_id,
+            sessionid=old_session_id,
             metadata_file=metadatafile,
         )
     if (
@@ -1921,11 +1930,11 @@ def prev_session_input(old_session_id):
             genesfile=genes_sessionfile,
             SSPvalues_file=SSPvalues_file,
             coloc2_file=coloc2_file,
-            sessionid=my_session_id,
+            sessionid=old_session_id,
             metadata_file=metadatafile,
         )
 
-    raise InvalidUsage(f"Could not locate session {my_session_id}")
+    raise InvalidUsage(f"Could not locate session {old_session_id}")
 
 
 @app.route("/update/<session_id>/<newgene>")

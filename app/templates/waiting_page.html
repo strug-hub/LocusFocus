@@ -36,7 +36,9 @@
         <div class="card border-primary mb-9" style="max-width: 60rem">
           <div class="card-header">Session ID</div>
           <div class="card-body">
-            <h4 class="card-title" id="sessionid">{{ session_id }}</h4>
+            <h4 class="card-title" id="sessionid">
+              <a href="{{ url_for('prev_session_input', old_session_id=session_id) }}">{{ session_id }}</a>
+            </h4>
             <p class="card-text">
               Save the above string for your records to load or share your
               plot once it is ready.
