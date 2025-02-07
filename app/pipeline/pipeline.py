@@ -103,7 +103,6 @@ class Pipeline:
             error (Exception): The error that occurred during pipeline execution.
             payload (object): The payload that was being processed when the error occurred.
         """
-
         if isinstance(error, InvalidUsage):
             app.logger.warning(error.message, exc_info=True)
             return error
@@ -111,5 +110,5 @@ class Pipeline:
             app.logger.error(error.message, exc_info=True)
             return error
         else:
-            app.logger.error(error.__repr__(), exc_info=True)
-            return ServerError(error)
+            app.logger.error("%s %s", self.id, error.__repr__(), exc_info=True)
+            return ServerError(f"An unexpected error occurred.")

@@ -48,7 +48,7 @@ async function handleJobStatus(jobStatusURL, sessionId) {
     document.getElementById("progress-bar").classList.add("bg-danger");
     document.getElementById("error-section").style.display = "block";
     document.getElementById("job-status-text").innerHTML = `<i>Your submission has failed. Please see the error message below.</i>`;
-    handleError(data);
+    handleError(data, sessionId);
   } else if (jobStatus == "SUCCESS") {
     document.getElementById("progress-bar").style.width = "100%";
     document.getElementById("progress-bar").ariaValueNow = 100;
@@ -61,7 +61,7 @@ async function handleJobStatus(jobStatusURL, sessionId) {
   }
 }
 
-function handleError(data) {
+function handleError(data, sessionId) {
   document.getElementById("error-title").innerHTML = data.error_title;
   document.getElementById("error-message").innerHTML = `<code>${data.error_message}</code>`;
   
@@ -69,8 +69,8 @@ function handleError(data) {
     document.getElementById("error-subtitle").innerHTML = "This error is due to an issue with your form input or your uploaded files. Please see the error message below for more details.";
   } else if (data.status_code >= 500) {
     document.getElementById("error-subtitle").innerHTML = "This error is due to an issue with the server. Please see the error message below for more details, and report this to our system administrator using the link below.";
-    document.getElementById("error-contact").style.display = "block";
-    document.getElementById("error-contact-link").href = buildMailToLink(data);
+    document.getElementById("error-contact-section").style.display = "block";
+    document.getElementById("error-contact-link").href = buildMailToLink(data, sessionId);
   }
 
   if (data.payload) {
@@ -78,18 +78,19 @@ function handleError(data) {
   }
 }
 
-function buildMailToLink(data) {
-  const subject = `LocusFocus Error Report [${data.error_message}]`;
-  const body = `
-    Hello,
-    I received a server error from LocusFocus from submitting a job.
+function buildMailToLink(data, sessionId) {
+  const subject = `LocusFocus Error Report [${sessionId}]`;
+  const body = `Hello,
+    I received a server error from LocusFocus from submitting a job. Please see the details below.
 
     Details:
-    - Session ID: ${data.session_id}
+    - Session ID: ${sessionId}
     - Error Title: ${data.error_title}
     - Error Message: ${data.error_message}
     - Payload: ${data.payload}
+
+    Thanks!
   `;
-  const link = `mailto:mfrew@broadinstitute.org?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  const link = `mailto:mackenzie.frew@sickkids.ca?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   return link;
 }
