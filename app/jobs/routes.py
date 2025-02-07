@@ -20,19 +20,44 @@ def get_job_status(job_id):
     if result.status == "FAILURE":
         error = result.result
         if isinstance(error, InvalidUsage):
-            return jsonify({"status": "FAILURE", "message": error.message["message"], "status_code": error.status_code, "payload": error.payload})
+            return jsonify(
+                {
+                    "status": "FAILURE",
+                    "error_title": "Invalid Usage Error",
+                    "error_message": error.message["message"],
+                    "status_code": error.status_code,
+                    "payload": error.payload,
+                }
+            )
         elif isinstance(error, ServerError):
-            return jsonify({"status": "FAILURE", "message": error.message["message"], "status_code": error.status_code, "payload": error.payload})
+            return jsonify(
+                {
+                    "status": "FAILURE",
+                    "error_title": "Server Error",
+                    "error_message": error.message["message"],
+                    "status_code": error.status_code,
+                    "payload": error.payload,
+                }
+            )
         else:
             # Unexpected error
             app.logger.error("An unexpected error occurred!")
             app.logger.error(error.__repr__(), exc_info=True)
-            return jsonify({"status": "FAILURE", "message": "An unexpected error occurred", "status_code": 500})
+            return jsonify(
+                {
+                    "status": "FAILURE",
+                    "error_title": "Unexpected Server Error",
+                    "error_message": "An unexpected error occurred. Please contact your system administrator.",
+                    "status_code": 500,
+                }
+            )
 
     if result.status == "SUCCESS":
-        return jsonify({
-            "status": "SUCCESS",
-            "redirect_url": url_for("prev_session_input", old_session_id=result.id),
-        })
+        return jsonify(
+            {
+                "status": "SUCCESS",
+                "redirect_url": url_for("prev_session_input", old_session_id=result.id),
+            }
+        )
 
     return jsonify({"status": result.status})
