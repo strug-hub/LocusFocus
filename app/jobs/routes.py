@@ -19,12 +19,19 @@ def get_job_status(job_id):
 
     if result.status == "FAILURE":
         error = result.result
+        
+        # message
+        try:
+            error_message = error.message["message"]
+        except TypeError:
+            error_message = error.message
+
         if isinstance(error, InvalidUsage):
             return jsonify(
                 {
                     "status": "FAILURE",
                     "error_title": "Invalid Usage Error",
-                    "error_message": error.message["message"],
+                    "error_message": error_message,
                     "status_code": error.status_code,
                     "payload": error.payload,
                 }
@@ -34,7 +41,7 @@ def get_job_status(job_id):
                 {
                     "status": "FAILURE",
                     "error_title": "Server Error",
-                    "error_message": error.message["message"],
+                    "error_message": error_message,
                     "status_code": error.status_code,
                     "payload": error.payload,
                 }
@@ -42,7 +49,6 @@ def get_job_status(job_id):
         else:
             # Unexpected error
             app.logger.error("An unexpected error occurred!")
-            app.logger.error(error.__repr__(), exc_info=True)
             return jsonify(
                 {
                     "status": "FAILURE",
