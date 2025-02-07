@@ -16,6 +16,13 @@ def run_pipeline_async(pipeline_type: str, request_form: ImmutableMultiDict, upl
     Return the task ID, which can be used to check the task status.
 
     pipeline must be one of: "colocalization"
+
+    Tasks can be looked up using `AsyncResult(task_id, app=app.extensions["celery"])`.
+    Read `.state` to check the task status:
+    - PENDING: task does not exist (yet)
+    - RUNNING: task has been started by the worker
+    - FAILURE: task has failed
+    - SUCCESS: task has been executed successfully
     """
     result = _pipeline_task.apply_async((pipeline_type, request_form, uploaded_filepaths))  # type: ignore
     return result
