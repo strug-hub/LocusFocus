@@ -14,7 +14,7 @@ import pysam
 import glob
 import tarfile
 from typing import Dict, Optional, Tuple, List, Union
-import gc 
+import gc
 
 from flask import (
     request,
@@ -2056,11 +2056,10 @@ def index():
 
     job_result = run_pipeline_async("colocalization", request_form, filepaths)
     session_id = job_result.id
-    app.logger.debug(f"Session ID: {session_id}")
 
     return render_template(
         "waiting_page.html",
-        session_id=session_id, 
+        session_id=session_id,
     )
 
 
