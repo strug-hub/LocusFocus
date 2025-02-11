@@ -66,4 +66,9 @@ def get_job_status(job_id):
             }
         )
 
-    return jsonify({"status": result.status})
+    # default (in-progress)
+    return jsonify({
+        "status": result.status,
+        "stage_index": result.info.get("stage_index"),
+        "stage_count": result.info.get("stage_count"),
+    })

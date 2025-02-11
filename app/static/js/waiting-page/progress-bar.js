@@ -14,6 +14,7 @@ async function handleJobStatus(jobStatusURL, sessionId) {
   while (jobStatus == "PENDING") {
     let response = await fetch(jobStatusURL);
     var data = await response.json();
+    console.log(data);
     jobStatus = data.status;
     if (jobStatus == "PENDING") {
       // wait 10 seconds
@@ -22,19 +23,28 @@ async function handleJobStatus(jobStatusURL, sessionId) {
   }
 
   // Running loop
+  let last_stage_index = 0;
   while (jobStatus == "RUNNING") {
     checks += 1;
     let response = await fetch(jobStatusURL);
     var data = await response.json();
+    console.log(data);
     jobStatus = data.status;
     redirectUrl = data.redirect_url ? data.redirect_url : "";
     if (jobStatus == "RUNNING") {
-      let percent = 100 - (1 / (1 + (checks + Math.random()) * 0.1)) * 100;
-      if (percent > 95) {
-        percent = 95;
+      let stage_index = data.stage_index + 1;
+      let stage_count = data.stage_count;
+      let gap = (1 / stage_count) * 100;
+      if (stage_index !== last_stage_index) {
+        checks = 0;
+        last_stage_index = stage_index;
       }
+      let percent = ((stage_index-0.5) / stage_count) * 100 + (1 - (1/(1+(checks*0.25)))) * gap;
+      console.log(percent);
       document.getElementById("progress-bar").style.width = percent + "%";
       document.getElementById("progress-bar").ariaValueNow = percent;
+
+      document.getElementById("job-status-text").innerHTML = `<i>Your job is currently running. Stage ${stage_index} of ${stage_count}.</i>`;
       // wait 10 seconds
       await new Promise((resolve) => setTimeout(resolve, 10000));
     }

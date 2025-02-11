@@ -41,13 +41,12 @@ def _pipeline_task(self, pipeline_type: str, request_form: ImmutableMultiDict, u
     if pipeline_type == "colocalization":
         from app.colocalization.pipeline import ColocalizationPipeline
 
-        pipeline = ColocalizationPipeline(id=session_id)
+        pipeline = ColocalizationPipeline(id=session_id, bound_task=self)
     else:
         raise ValueError(f"Invalid pipeline type: '{pipeline_type}'")
 
     app.logger.debug(f"Running pipeline '{session_id}' with type '{pipeline_type}'")
 
-    self.update_state(state="RUNNING")
     result = pipeline.process(request_form, uploaded_filepaths)
 
     return result.file.get_plot_template_paths(session_id=str(session_id))
