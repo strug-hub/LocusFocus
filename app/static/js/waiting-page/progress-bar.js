@@ -14,7 +14,6 @@ async function handleJobStatus(jobStatusURL, sessionId) {
   while (jobStatus == "PENDING") {
     let response = await fetch(jobStatusURL);
     var data = await response.json();
-    console.log(data);
     jobStatus = data.status;
     if (jobStatus == "PENDING") {
       // wait 10 seconds
@@ -28,7 +27,6 @@ async function handleJobStatus(jobStatusURL, sessionId) {
     checks += 1;
     let response = await fetch(jobStatusURL);
     var data = await response.json();
-    console.log(data);
     jobStatus = data.status;
     redirectUrl = data.redirect_url ? data.redirect_url : "";
     if (jobStatus == "RUNNING") {
@@ -40,7 +38,6 @@ async function handleJobStatus(jobStatusURL, sessionId) {
         last_stage_index = stage_index;
       }
       let percent = ((stage_index-0.5) / stage_count) * 100 + (1 - (1/(1+(checks*0.25)))) * gap;
-      console.log(percent);
       document.getElementById("progress-bar").style.width = percent + "%";
       document.getElementById("progress-bar").ariaValueNow = percent;
 
