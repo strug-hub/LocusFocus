@@ -104,11 +104,11 @@ class Pipeline:
             payload (object): The payload that was being processed when the error occurred.
         """
         if isinstance(error, InvalidUsage):
-            app.logger.warning(error.message, exc_info=True)
+            app.logger.warning("[session_id=%s, User Error] %s", self.id, error.message, exc_info=True)
             return error
         if isinstance(error, ServerError):
-            app.logger.error(error.message, exc_info=True)
+            app.logger.error("[session_id=%s] %s", self.id, error.message, exc_info=True)
             return error
         else:
-            app.logger.error("%s %s", self.id, error.__repr__(), exc_info=True)
+            app.logger.error("[session_id=%s] %s", self.id, error.__repr__(), exc_info=True)
             return ServerError(f"An unexpected error occurred.")
