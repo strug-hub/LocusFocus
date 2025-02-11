@@ -20,8 +20,8 @@ class ColocalizationPipeline(Pipeline):
     Pipeline class for handling colocalization.
     """
 
-    def __init__(self, id=None):
-        super().__init__()
+    def __init__(self, id=None, bound_task=None):
+        super().__init__(id=id, bound_task=bound_task)
         self.pipe(
             CreateSessionStage(),
             CollectUserInputStage(),
@@ -33,8 +33,6 @@ class ColocalizationPipeline(Pipeline):
             ColocSimpleSumStage(),
             FinalizeResultsStage(),
         )
-        self.id = id or uuid4()
-
         self.timers = {f"{stage.name()}": 0.0 for stage in self.stages}
 
     def process(self, request_form: ImmutableMultiDict, uploaded_files: List[PathLike]) -> SessionPayload:
