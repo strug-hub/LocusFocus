@@ -87,7 +87,6 @@ class Pipeline:
             object: A payload that has been processed by all stages in this pipeline.
         """
         self.pre_pipeline(payload)
-        app.logger.debug(f"bound task assigned: {self.bound_task is not None}")
         n = len(self.stages)
         for i, stage in enumerate(self.stages):
             if self.bound_task:
