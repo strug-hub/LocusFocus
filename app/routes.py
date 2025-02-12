@@ -29,7 +29,7 @@ from werkzeug.utils import secure_filename
 
 from pymongo.errors import ConnectionFailure
 
-from app.tasks import run_pipeline_async
+from app.tasks import get_is_celery_running, run_pipeline_async
 from app.utils import download_file
 from app.utils.errors import InvalidUsage, ServerError
 from numpy_encoder import NumpyEncoder
@@ -1885,7 +1885,7 @@ def prev_session():
 def prev_session_input(old_session_id):
 
     # Check celery session
-    if not app.config["DISABLE_CELERY"]:
+    if not app.config["DISABLE_CELERY"] and get_is_celery_running():
         celery_result = AsyncResult(old_session_id, app=app.extensions["celery"])
         if celery_result.state == "PENDING":
             raise InvalidUsage(f"Session {old_session_id} does not exist.")
@@ -2043,7 +2043,7 @@ def index():
         if key not in ["multiselect[]", "GTEx-tissues", "region-genes"]:
             request_form[key] = request_form[key][0]
 
-    if app.config["DISABLE_CELERY"]:
+    if app.config["DISABLE_CELERY"] or not get_is_celery_running():
         session_id = uuid.uuid4()
         from app.colocalization.pipeline import ColocalizationPipeline
         pipeline = ColocalizationPipeline(id=session_id)
