@@ -8,7 +8,20 @@ from celery import shared_task
 from celery.result import AsyncResult
 from werkzeug.datastructures import ImmutableMultiDict
 from flask import current_app as app
+from kombu.exceptions import OperationalError
 
+
+def get_is_celery_running() -> bool:
+    """
+    Check if Celery is running and available to accept tasks.
+    """
+    try:
+        return app.extensions["celery"].control.ping() is not None
+    except IOError:
+        return False
+    except OperationalError:
+        app.logger.error("Could not connect to redis server. Celery is not available.")
+        return False
 
 def run_pipeline_async(pipeline_type: str, request_form: ImmutableMultiDict, uploaded_filepaths: List[PathLike]) -> AsyncResult:
     """
