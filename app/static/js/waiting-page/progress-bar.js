@@ -7,9 +7,6 @@ async function handleJobStatus(jobStatusURL, sessionId) {
   let jobStatus = "PENDING";
   let redirectUrl = "";
 
-  // Wait 2 seconds before checking the status
-  await new Promise((resolve) => setTimeout(resolve, 2000));
-
   // Pending loop
   while (jobStatus == "PENDING") {
     let response = await fetch(jobStatusURL);

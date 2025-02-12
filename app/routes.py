@@ -1832,14 +1832,14 @@ def get_gtex_variant(version, tissue, gene_id, variant):
 @app.route("/previous_session", methods=["GET", "POST"])
 def prev_session():
     if request.method == "POST":
-        old_session_id = request.form["session-id"]
+        old_session_id = request.form["session-id"].strip()
 
         # Check celery session
         if not app.config["DISABLE_CELERY"] and get_is_celery_running():
             celery_result = AsyncResult(old_session_id, app=app.extensions["celery"])
-            if celery_result.state == "PENDING":
+            if celery_result.status == "PENDING":
                 raise InvalidUsage(f"Session {old_session_id} does not exist.")
-            elif celery_result.state != "SUCCESS":
+            elif celery_result.status != "SUCCESS":
                 return render_template("waiting_page.html", session_id=old_session_id)
 
         if old_session_id != "":
@@ -1896,9 +1896,9 @@ def prev_session_input(old_session_id):
     # Check celery session
     if not app.config["DISABLE_CELERY"] and get_is_celery_running():
         celery_result = AsyncResult(old_session_id, app=app.extensions["celery"])
-        if celery_result.state == "PENDING":
+        if celery_result.status == "PENDING":
             raise InvalidUsage(f"Session {old_session_id} does not exist.")
-        elif celery_result.state != "SUCCESS":
+        elif celery_result.status != "SUCCESS":
             return render_template("waiting_page.html", session_id=old_session_id)
 
     if old_session_id != "":
