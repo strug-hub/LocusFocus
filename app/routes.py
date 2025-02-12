@@ -1833,6 +1833,15 @@ def get_gtex_variant(version, tissue, gene_id, variant):
 def prev_session():
     if request.method == "POST":
         old_session_id = request.form["session-id"]
+
+        # Check celery session
+        if not app.config["DISABLE_CELERY"] and get_is_celery_running():
+            celery_result = AsyncResult(old_session_id, app=app.extensions["celery"])
+            if celery_result.state == "PENDING":
+                raise InvalidUsage(f"Session {old_session_id} does not exist.")
+            elif celery_result.state != "SUCCESS":
+                return render_template("waiting_page.html", session_id=old_session_id)
+
         if old_session_id != "":
             my_session_id = old_session_id
             sessionfile = f"session_data/form_data-{my_session_id}.json"
