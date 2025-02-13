@@ -22,6 +22,9 @@ def get_is_celery_running() -> bool:
     except OperationalError:
         app.logger.error("Could not connect to redis server. Celery is not available.")
         return False
+    except Exception:
+        app.logger.error("An unexpected error occurred while checking if Celery is running.")
+        return False
 
 def run_pipeline_async(pipeline_type: str, request_form: ImmutableMultiDict, uploaded_filepaths: List[PathLike]) -> AsyncResult:
     """
