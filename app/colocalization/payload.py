@@ -263,20 +263,27 @@ class SessionPayload:
 
         return self.lead_snp_name
 
-    def get_lead_snp_index(self) -> int:
+    def get_lead_snp_index(self, only_kept=True) -> int:
         """
         Get the index of the lead SNP for the GWAS dataset.
+
+        By default, only checks the kept SNPs in the GWAS dataset.
+
+        If `only_kept` is False, then checks all SNPs in the GWAS dataset,
+        including SNPs that were removed due to filtering steps (eg. bad format, duplicate SNPs, etc.).
         """
         lead_snp = self.get_lead_snp_name()
         if self.gwas_data is None:
             raise Exception("Cannot get lead SNP index when GWAS dataset is undefined.")
 
-        snps = [snp.split(";")[0] for snp in self.gwas_data_kept.loc[:, "SNP"]]  # type: ignore
+        gwas = self.gwas_data_kept if only_kept else self.gwas_data
+
+        snps = [snp.split(";")[0] for snp in gwas.loc[:, "SNP"]]  # type: ignore
         if lead_snp == "":
-            lead_snp = list(self.gwas_data_kept.loc[self.gwas_data_kept.loc[:, "P"] == self.gwas_data_kept.loc[:, "P"].min()].loc[:, "SNP"])[0].split(";")[0]  # type: ignore
+            lead_snp = str(gwas.iloc[gwas["P"].argmin()]["SNP"]).split(";")[0]  # type: ignore
         if lead_snp not in snps:
             raise InvalidUsage("Lead SNP not found", status_code=410)
-        return snps.index(lead_snp)
+        return gwas["P"].argmin()  # type: ignore
 
     def get_ss_locus(self) -> str:
         """
