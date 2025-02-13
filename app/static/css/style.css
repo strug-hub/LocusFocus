@@ -110,3 +110,8 @@ bottom: .5em;
   text-decoration: underline;
   color: blue;
 }
+
+.progress-bar {
+  transition: all 0.5s ease;
+  transition: width 4s ease;
+}

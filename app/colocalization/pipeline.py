@@ -1,6 +1,11 @@
+from collections import namedtuple
+from os import PathLike
 import timeit
+from typing import List
+from uuid import uuid4
 
-from flask import Request, current_app as app
+from flask import current_app as app
+from werkzeug.datastructures import ImmutableMultiDict
 
 from app.colocalization.payload import SessionPayload
 from app.utils import get_session_filepath
@@ -15,8 +20,8 @@ class ColocalizationPipeline(Pipeline):
     Pipeline class for handling colocalization.
     """
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, id=None, bound_task=None):
+        super().__init__(id=id, bound_task=bound_task)
         self.pipe(
             CreateSessionStage(),
             CollectUserInputStage(),
@@ -28,11 +33,26 @@ class ColocalizationPipeline(Pipeline):
             ColocSimpleSumStage(),
             FinalizeResultsStage(),
         )
-
         self.timers = {f"{stage.name()}": 0.0 for stage in self.stages}
 
-    def process(self, payload: Request) -> SessionPayload:
-        return super().process(payload)  # type: ignore
+    def process(self, request_form: ImmutableMultiDict, uploaded_files: List[PathLike]) -> SessionPayload:
+        """
+        Run the colocalization pipeline with the provided Request form and file upload dicts.
+
+        Args:
+            request_form: The form data from the request.
+            uploaded_files: The uploaded file data from the request.
+
+        Returns:
+            SessionPayload: The final payload object that has been processed by all stages in this pipeline.
+        """
+        initial_payload = SessionPayload(
+            request_form=request_form, 
+            uploaded_files=uploaded_files, 
+            session_id=self.id,
+        )
+        
+        return super().process(initial_payload)  # type: ignore
 
     def pre_stage(self, stage: PipelineStage, payload: object):
         # Timer for each stage (start time)
@@ -85,6 +105,6 @@ class ColocalizationPipeline(Pipeline):
             payload = self.post_pipeline(payload)  # type: ignore
             e.message = f"[{stage.name()}] {e.message}"
             raise e
-        except Exception as e:
+        except BaseException as e:
             # Unexpected errors
             raise e

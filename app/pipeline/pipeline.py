@@ -1,10 +1,15 @@
 from typing import List  # type: ignore
+
+from uuid import uuid4
+from flask import current_app as app
+
 from .pipeline_stage import PipelineStage
+from app.utils.errors import InvalidUsage, ServerError, LocusFocusError
 
 
 class Pipeline:
     """
-    Generic pipeline class for creating an 
+    Generic pipeline class for creating an
     ordered series of stages to execute on a given payload.
 
     Similar implementation as the Chain of Responsibility design pattern.
@@ -12,8 +17,10 @@ class Pipeline:
     Includes methods for handling pre and post-stage operations.
     """
 
-    def __init__(self):
+    def __init__(self, id=None, bound_task=None):
         self.stages: List[PipelineStage] = []
+        self.id = id or uuid4()
+        self.bound_task = bound_task
 
     def invoke_stage(self, stage: PipelineStage, payload: object) -> object:
         payload = self.pre_stage(stage, payload)
@@ -25,7 +32,7 @@ class Pipeline:
         """
         Operations performed before the stage's `invoke` method is called.
         Executes before every stage in the pipeline, and can be extended.
-        
+
         Parameters:
             stage (PipelineStage): The stage that's about to be invoked.
             payload (object): The payload to be processed by the stage.
@@ -51,14 +58,14 @@ class Pipeline:
         return payload
 
     def post_pipeline(self, payload: object) -> object:
-        """ 
+        """
         Operations performed after the pipeline's `process` method is called.
         Can be extended.
         """
         return payload
 
     def pipe(self, *stages: PipelineStage):
-        """Add new stage(s) to the pipeline. 
+        """Add new stage(s) to the pipeline.
         Serves as a builder function for the pipeline, and can be chain-called.
 
         Args:
@@ -80,7 +87,41 @@ class Pipeline:
             object: A payload that has been processed by all stages in this pipeline.
         """
         self.pre_pipeline(payload)
-        for stage in self.stages:
-            payload = self.invoke_stage(stage, payload)
+        n = len(self.stages)
+        for i, stage in enumerate(self.stages):
+            if self.bound_task:
+                self.bound_task.update_state(
+                    state="RUNNING",
+                    meta={"stage": stage.name(), "stage_index": i, "stage_count": n},
+                )
+            try:
+                payload = self.invoke_stage(stage, payload)
+            except BaseException as e:
+                raise self.handle_error(e, payload)
         self.post_pipeline(payload)
         return payload
+
+    def handle_error(self, error: BaseException, payload: object) -> LocusFocusError:
+        """
+        Logs errors that occur during pipeline execution,
+        and returns a new error without stack trace (ie. safe to show on the front-end).
+
+        Args:
+            error (Exception): The error that occurred during pipeline execution.
+            payload (object): The payload that was being processed when the error occurred.
+        """
+        if isinstance(error, InvalidUsage):
+            app.logger.warning(
+                "[session_id=%s, User Error] %s", self.id, error.message, exc_info=True
+            )
+            return error
+        if isinstance(error, ServerError):
+            app.logger.error(
+                "[session_id=%s] %s", self.id, error.message, exc_info=True
+            )
+            return error
+        else:
+            app.logger.error(
+                "[session_id=%s] %s", self.id, error.__repr__(), exc_info=True
+            )
+            return ServerError(f"An unexpected error occurred.")

@@ -13,7 +13,7 @@ import re
 import pysam
 import glob
 import tarfile
-from typing import Dict, Optional, Tuple, List
+from typing import Dict, Optional, Tuple, List, Union
 import gc
 
 from flask import (
@@ -24,11 +24,13 @@ from flask import (
     Markup,
     current_app as app,
 )
+from celery.result import AsyncResult
 from werkzeug.utils import secure_filename
 
 from pymongo.errors import ConnectionFailure
 
-from app.colocalization.pipeline import ColocalizationPipeline
+from app.tasks import get_is_celery_running, run_pipeline_async
+from app.utils import download_file
 from app.utils.errors import InvalidUsage, ServerError
 from numpy_encoder import NumpyEncoder
 
@@ -1174,7 +1176,7 @@ def find_plink_1kg_overlap(
     in the provided 1000 Genomes dataset.
 
     Args:
-        plink_filepath (str): Absolute path to a filename (no extension) for a given 1000Genomes dataset. 
+        plink_filepath (str): Absolute path to a filename (no extension) for a given 1000Genomes dataset.
             Returned by `resolve_plink_filepath`.
         snp_positions (List[int]): List of SNP positions. Must be the same length as `snp_pvalues`.
         snp_pvalues (List[float] | None): List of SNP P values. Must be the same length as `snp_positions`. If none, then we ignore it.
@@ -1830,7 +1832,16 @@ def get_gtex_variant(version, tissue, gene_id, variant):
 @app.route("/previous_session", methods=["GET", "POST"])
 def prev_session():
     if request.method == "POST":
-        old_session_id = request.form["session-id"]
+        old_session_id = request.form["session-id"].strip()
+
+        # Check celery session
+        if not app.config["DISABLE_CELERY"] and get_is_celery_running():
+            celery_result = AsyncResult(old_session_id, app=app.extensions["celery"])
+            if celery_result.status == "PENDING":
+                raise InvalidUsage(f"Session {old_session_id} does not exist.")
+            elif celery_result.status != "SUCCESS":
+                return render_template("waiting_page.html", session_id=old_session_id)
+
         if old_session_id != "":
             my_session_id = old_session_id
             sessionfile = f"session_data/form_data-{my_session_id}.json"
@@ -1881,14 +1892,22 @@ def prev_session():
 
 @app.route("/session_id/<old_session_id>")
 def prev_session_input(old_session_id):
+
+    # Check celery session
+    if not app.config["DISABLE_CELERY"] and get_is_celery_running():
+        celery_result = AsyncResult(old_session_id, app=app.extensions["celery"])
+        if celery_result.status == "PENDING":
+            raise InvalidUsage(f"Session {old_session_id} does not exist.")
+        elif celery_result.status != "SUCCESS":
+            return render_template("waiting_page.html", session_id=old_session_id)
+
     if old_session_id != "":
-        my_session_id = old_session_id
-        sessionfile = f"session_data/form_data-{my_session_id}.json"
-        SBTsessionfile = f"session_data/form_data_setbasedtest-{my_session_id}.json"
-        genes_sessionfile = f"session_data/genes_data-{my_session_id}.json"
-        SSPvalues_file = f"session_data/SSPvalues-{my_session_id}.json"
-        coloc2_file = f"session_data/coloc2result-{my_session_id}.json"
-        metadatafile = f"session_data/metadata-{my_session_id}.json"  # don't check if this exists; new addition
+        sessionfile = f"session_data/form_data-{old_session_id}.json"
+        SBTsessionfile = f"session_data/form_data_setbasedtest-{old_session_id}.json"
+        genes_sessionfile = f"session_data/genes_data-{old_session_id}.json"
+        SSPvalues_file = f"session_data/SSPvalues-{old_session_id}.json"
+        coloc2_file = f"session_data/coloc2result-{old_session_id}.json"
+        metadatafile = f"session_data/metadata-{old_session_id}.json"  # don't check if this exists; new addition
         sessionfilepath = os.path.join(MYDIR, "static", sessionfile)
         genes_sessionfilepath = os.path.join(MYDIR, "static", genes_sessionfile)
         SSPvalues_filepath = os.path.join(MYDIR, "static", SSPvalues_file)
@@ -1904,7 +1923,7 @@ def prev_session_input(old_session_id):
         return render_template(
             "plot.html",
             sessionfile=SBTsessionfile,
-            sessionid=my_session_id,
+            sessionid=old_session_id,
             metadata_file=metadatafile,
         )
     if (
@@ -1920,11 +1939,11 @@ def prev_session_input(old_session_id):
             genesfile=genes_sessionfile,
             SSPvalues_file=SSPvalues_file,
             coloc2_file=coloc2_file,
-            sessionid=my_session_id,
+            sessionid=old_session_id,
             metadata_file=metadatafile,
         )
 
-    raise InvalidUsage(f"Could not locate session {my_session_id}")
+    raise InvalidUsage(f"Could not locate session {old_session_id}")
 
 
 @app.route("/update/<session_id>/<newgene>")
@@ -2020,12 +2039,36 @@ def index():
     if request.method == "GET":
         return render_template("index.html")
 
-    pipeline = ColocalizationPipeline()
-    payload = pipeline.process(request)
+    # Download all files in advance
+    filepaths = []
+    for file in request.files.getlist("files[]"):
+        filepath = download_file(file)
+        if filepath is not None and any(str(filepath).endswith(ext) for ext in ["txt", "tsv", "ld", "html"]):
+            filepaths.append(filepath)
+
+    # Convert request.form to dict
+    request_form: Dict[str, Union[str, List[str]]] = request.form.to_dict(flat=False)  # type: ignore
+    for key in request_form.keys():
+        if key not in ["multiselect[]", "GTEx-tissues", "region-genes"]:
+            request_form[key] = request_form[key][0]
+
+    if app.config["DISABLE_CELERY"] or not get_is_celery_running():
+        session_id = uuid.uuid4()
+        from app.colocalization.pipeline import ColocalizationPipeline
+        pipeline = ColocalizationPipeline(id=session_id)
+        result = pipeline.process(request_form, filepaths)
+
+        return render_template(
+            "plot.html",
+            **result.file.get_plot_template_paths(session_id=str(result.session_id)),
+        )
+
+    job_result = run_pipeline_async("colocalization", request_form, filepaths)
+    session_id = job_result.id
 
     return render_template(
-        "plot.html",
-        **payload.file.get_plot_template_paths(session_id=str(payload.session_id)),
+        "waiting_page.html",
+        session_id=session_id,
     )
 
 

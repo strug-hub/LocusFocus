@@ -8,9 +8,10 @@ from typing import List, Optional
 import pysam
 import pandas as pd
 import numpy as np
-from flask import Request, current_app as app
+from flask import current_app as app
 from werkzeug.utils import secure_filename
 from werkzeug.exceptions import RequestEntityTooLarge
+from werkzeug.datastructures import ImmutableMultiDict, FileStorage
 
 from app import mongo
 from app.utils.errors import InvalidUsage
@@ -36,41 +37,42 @@ def get_upload_filepath(filename: str) -> os.PathLike:
         return os.path.join(app.config["UPLOAD_FOLDER"], filename)  # type: ignore
 
 
-def download_file(
-    request: Request, extensions: List[str], check_only: bool = False
-) -> Optional[str]:
+def download_file(file: FileStorage, check_only: bool = False) -> Optional[os.PathLike]:
     """
-    Download the first file at 'files[]' that matches the given extensions,
-    and return the filepath to the saved file. Return None if no such file exists.
+    Download the given file (from a request.files MultiDict) to a temporary file in the UPLOAD folder.
 
     If check_only is True, do not download the file.
 
-    Extensions should not include the period. eg. `["html", "tsv", "txt"]`
+    Return the path to the saved file.
+    Raises an error if the file is too large.
     """
-    if not ("files[]" in request.files):
-        raise InvalidUsage(f"No files found in request")
+    if file.filename is None:
+        # What causes this?
+        return None
+    filename = secure_filename(file.filename)
+    filepath = get_upload_filepath(filename)
+    if not check_only:
+        file.save(filepath)
+    if not os.path.isfile(filepath):
+        raise RequestEntityTooLarge(f"File '{filename}' too large")
 
-    filenames = request.files.getlist("files[]")
+    return filepath
 
-    saved_filepath = None
-    for file in filenames:
-        if (
-            file.filename is None
-            or file.filename.rsplit(".", 1)[-1].lower() not in extensions
-        ):
-            continue
 
-        filename = secure_filename(file.filename)
-        filepath = get_upload_filepath(filename)
-        if not check_only:
-            file.save(filepath)
-        if not os.path.isfile(filepath):
-            raise RequestEntityTooLarge(f"File '{filename}' too large")
+def get_file_with_ext(filepaths: List[os.PathLike], extensions: List[str]) -> Optional[os.PathLike]:
+    """
+    Grab the first file in the list that matches the given extensions. This assumes that the 
+    files are already uploaded and stored in the upload folder.
 
-        saved_filepath = filepath
-        break
+    Return None if no such file exists.
 
-    return saved_filepath  # type: ignore
+    Extensions should not include the period. eg. `["html", "tsv", "txt"]`.
+    """
+
+    for filepath in filepaths:
+        if os.path.isfile(filepath) and str(filepath).endswith(tuple(extensions)):
+            return filepath
+    return None
 
 
 def decompose_variant_list(variant_list):
