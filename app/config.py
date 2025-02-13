@@ -7,7 +7,6 @@ from dotenv import load_dotenv
 
 load_dotenv(os.path.dirname(__file__))
 
-
 class BaseConfig:
     """
     Common configuration options for all environments.
@@ -69,6 +68,14 @@ class BaseConfig:
         "data",
     )
 
+    CELERY = {
+        "timezone": "America/Toronto",
+        "broker_url": "redis://localhost:6379/0",
+        "result_backend": f"file://{os.path.join(SESSION_FOLDER, 'celery_results')}",
+    }
+
+    DISABLE_CELERY = os.environ.get("DISABLE_CELERY", "False").lower() == "true"
+
 
 class DevConfig(BaseConfig):
     """
@@ -76,7 +83,6 @@ class DevConfig(BaseConfig):
     """
 
     MONGO_URI = "mongodb://localhost:27017"
-    pass
 
 
 class ProdConfig(BaseConfig):
@@ -85,4 +91,3 @@ class ProdConfig(BaseConfig):
     """
 
     MONGO_URI = "mongodb://localhost:27017"
-    pass

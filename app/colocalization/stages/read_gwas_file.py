@@ -6,7 +6,7 @@ import numpy as np
 from flask import current_app as app
 
 from app.colocalization.payload import SessionPayload
-from app.utils import download_file, standardize_snps, decompose_variant_list, x_to_23
+from app.utils import get_file_with_ext, standardize_snps, decompose_variant_list, x_to_23
 from app.pipeline import PipelineStage
 from app.utils.errors import InvalidUsage, ServerError
 
@@ -84,7 +84,7 @@ class ReadGWASFileStage(PipelineStage):
 
         Save the file and return the dataframe.
         """
-        gwas_filepath = download_file(payload.request, self.VALID_GWAS_EXTENSIONS)
+        gwas_filepath = get_file_with_ext(payload.uploaded_files, self.VALID_GWAS_EXTENSIONS)
 
         if gwas_filepath is None:
             raise InvalidUsage(
@@ -132,12 +132,12 @@ class ReadGWASFileStage(PipelineStage):
 
         for column in self.GWAS_COLUMNS:
             column_input_list.append(
-                payload.request.form.get(column.form_id, column.default)
+                payload.request_form.get(column.form_id, column.default)
             )
             column_mapper[
-                payload.request.form.get(column.form_id, column.default)
+                payload.request_form.get(column.form_id, column.default)
             ] = column.default
-            column_inputs[column.default] = payload.request.form.get(column.form_id, "")
+            column_inputs[column.default] = payload.request_form.get(column.form_id, "")
 
         # Column uniqueness check
         if len(set(column_input_list)) != len(column_input_list):
@@ -153,7 +153,7 @@ class ReadGWASFileStage(PipelineStage):
                 f"P value column not found in provided GWAS file. Found columns: '{', '.join(old_gwas_columns)}'. Please verify that your GWAS file contains a P value column."
             )
 
-        infer_variant = bool(payload.request.form.get("markerCheckbox"))
+        infer_variant = bool(payload.request_form.get("markerCheckbox"))
 
         # Get CHROM, POS, REF, ALT, SNP
         if infer_variant:

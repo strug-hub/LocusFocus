@@ -7,7 +7,7 @@ from flask import current_app as app
 
 from app.colocalization.constants import LD_MAT_DIAG_CONSTANT
 from app.colocalization.payload import SessionPayload
-from app.utils import download_file, x_to_23
+from app.utils import get_file_with_ext, x_to_23
 from app.colocalization.plink import plink_ld_pairwise, plink_ldmat
 from app.pipeline import PipelineStage
 from app.utils.errors import InvalidUsage, ServerError
@@ -62,7 +62,7 @@ class GetLDMatrixStage(PipelineStage):
 
         Otherwise, return the LD matrix, as well as the BIM file as a DataFrame.
         """
-        ld_matrix_filepath = download_file(payload.request, ["ld"])
+        ld_matrix_filepath = get_file_with_ext(payload.uploaded_files, ["ld"])
         if ld_matrix_filepath is None:
             return None, None
 
