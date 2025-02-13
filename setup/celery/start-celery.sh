@@ -11,7 +11,7 @@ if [ -z "$ENV_FILE" ]; then
     exit 1
 fi
 
-if [ ! -e "$ENV_FILE" || ! -f "$ENV_FILE" ]; then
+if [ ! -e "$ENV_FILE" ] || [ ! -f "$ENV_FILE" ]; then
     echo "ERROR: env file $ENV_FILE does not exist"
     exit 1
 fi
