@@ -20,6 +20,7 @@ class GWASColumn:
     form_id: str  # The ID of the form element where the user enters this column
     default: str  # Column default value
     coloc2: bool = False  # Required for coloc2?
+    optional: bool = False  # Optional column
 
 
 class ReadGWASFileStage(PipelineStage):
@@ -39,16 +40,21 @@ class ReadGWASFileStage(PipelineStage):
     VALID_GWAS_EXTENSIONS = ["txt", "tsv"]
 
     GWAS_COLUMNS = [
+        # always needed
         GWASColumn("chrom-col", "CHROM"),
         GWASColumn("pos-col", "POS"),
         GWASColumn("pval-col", "P"),
         GWASColumn("snp-col", "SNP"),
         GWASColumn("ref-col", "REF"),
         GWASColumn("alt-col", "ALT"),
+        # only needed for coloc2
         GWASColumn("beta-col", "BETA", coloc2=True),
         GWASColumn("stderr-col", "SE", coloc2=True),
         GWASColumn("numsamples-col", "N", coloc2=True),
         GWASColumn("maf-col", "MAF", coloc2=True),
+        # part of coloc2 but not required, don't have form controls at the moment
+        GWASColumn("type-col", "type", coloc2=True, optional=True),
+        GWASColumn("ncases-col", "Ncases", coloc2=True, optional=True),
     ]
 
     def name(self) -> str:
@@ -161,7 +167,7 @@ class ReadGWASFileStage(PipelineStage):
 
         # Get coloc2 if applicable
         if payload.get_is_coloc2():
-            for column in [c.default for c in self.GWAS_COLUMNS if c.coloc2]:
+            for column in [c.default for c in self.GWAS_COLUMNS if c.coloc2 and not c.optional]:
                 if column not in gwas_data.columns:
                     raise InvalidUsage(
                         f"{column} column missing but is required for COLOC2. '{column_inputs[column]}' not in columns '{', '.join(old_gwas_columns)}'"
@@ -181,6 +187,9 @@ class ReadGWASFileStage(PipelineStage):
                         {"Ncases": np.repeat(num_cases, gwas_data.shape[0]).tolist()}
                     )
                     gwas_data = pd.concat([gwas_data, num_cases_df], axis=1)
+
+        # Drop columns that are not used
+        gwas_data = gwas_data.drop(columns=[c for c in gwas_data.columns if c not in (c.default for c in self.GWAS_COLUMNS)])
 
         return gwas_data
 

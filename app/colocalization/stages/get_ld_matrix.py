@@ -7,7 +7,7 @@ from flask import current_app as app
 
 from app.colocalization.constants import LD_MAT_DIAG_CONSTANT
 from app.colocalization.payload import SessionPayload
-from app.utils import get_file_with_ext
+from app.utils import get_file_with_ext, x_to_23
 from app.colocalization.plink import plink_ld_pairwise, plink_ldmat
 from app.pipeline import PipelineStage
 from app.utils.errors import InvalidUsage, ServerError
@@ -85,26 +85,26 @@ class GetLDMatrixStage(PipelineStage):
         if not ld_mat.shape[0] == payload.gwas_data_kept.shape[0]:
             if ld_mat.shape[0] == payload.gwas_data.shape[0]:
                 # Special case: user uploaded LD matrix matches GWAS data exactly, but not after subsetting
-                app.logger.warning(
-                    f"LD matrix input has same dimensions as GWAS data, but not after subsetting. LD matrix will be subsetted to match current GWAS data."
+                app.logger.debug(
+                    f"LD matrix input has same dimensions as GWAS data ({payload.gwas_data.shape[0]}), but not after subsetting ({payload.gwas_data_kept.shape[0]}). LD matrix will be subsetted to match current GWAS data."
                 )
                 ld_mat = ld_mat.loc[
                     payload.gwas_indices_kept, payload.gwas_indices_kept
                 ]
             else:
                 raise InvalidUsage(
-                    f"GWAS and LD matrix input have different dimensions:\nRaw GWAS Length: {payload.gwas_data.shape[0]}\nGWAS Length after format check: {payload.gwas_data_kept.shape[0]}\nLD matrix shape: {ld_mat.shape}",
+                    f"GWAS and LD matrix input have different dimensions:\nRaw GWAS Length (valid rows): {payload.gwas_data.shape[0]}\nGWAS Length after filtering steps: {payload.gwas_data_kept.shape[0]}\nLD matrix shape: {ld_mat.shape}",
                     status_code=410,
                 )
 
         # Ensure custom LD matrix and GWAS files are sorted for accurate matching
         if not payload.gwas_data_kept["POS"].is_monotonic_increasing:
             raise InvalidUsage(
-                "GWAS data input is not sorted and may not match with the LD matrix",
+                "GWAS data input is not sorted and may not match with the LD matrix. Please ensure that the GWAS data is sorted by position in ascending order.",
                 status_code=410,
             )
 
-        payload.r2 = list(ld_mat.iloc[:, payload.get_current_lead_snp_index()])  # type: ignore
+        payload.r2 = list(ld_mat.iloc[:, payload.get_lead_snp_index()])  # type: ignore
 
         ld_mat = np.matrix(ld_mat)
 
@@ -113,7 +113,7 @@ class GetLDMatrixStage(PipelineStage):
         ld_snps_df = pd.DataFrame(
             {
                 "CHROM": payload.gwas_data_kept["CHROM"],
-                "CHROM_POS": payload.gwas_data_kept["CHROM_POS"],
+                "CHROM_POS": payload.gwas_data_kept.apply(lambda row: f"chr{row['CHROM']}:{row['POS']}", axis=1),
                 "POS": payload.gwas_data_kept["POS"],
                 "ALT": payload.gwas_data_kept["ALT"],
                 "REF": payload.gwas_data_kept["REF"],
