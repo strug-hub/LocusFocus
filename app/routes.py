@@ -1838,7 +1838,7 @@ def prev_session():
         old_session_id = request.form["session-id"].strip()
 
         # Check celery session
-        if not app.config["DISABLE_CELERY"] and get_is_celery_running():
+        if not app.config["DISABLE_CELERY"] and get_is_celery_running() and old_session_id != "example-output":
             celery_result = AsyncResult(old_session_id, app=app.extensions["celery"])
             if celery_result.status == "PENDING":
                 raise InvalidUsage(f"Session {old_session_id} does not exist.")
@@ -1897,7 +1897,7 @@ def prev_session():
 def prev_session_input(old_session_id):
 
     # Check celery session
-    if not app.config["DISABLE_CELERY"] and get_is_celery_running():
+    if not app.config["DISABLE_CELERY"] and get_is_celery_running() and old_session_id != "example-output":
         celery_result = AsyncResult(old_session_id, app=app.extensions["celery"])
         if celery_result.status == "PENDING":
             raise InvalidUsage(f"Session {old_session_id} does not exist.")
