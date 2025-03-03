@@ -310,6 +310,14 @@ an example run would be:
 
 In the above command, please replace plink_filename and output_filename with appropriate substitutes.
 
+From here, you can upload your LD matrix file:
+
+.. figure:: _static/choose_file_ld.png
+   :alt: File input button for LD matrix
+   :target: _static/choose_file_ld.png
+   :align: center
+   :figclass: borderit
+
 
 ******************************************************
 Secondary datasets
@@ -343,6 +351,14 @@ and doing so may delay or prevent others from accessing the website. In a later 
 
 Formatting custom secondary datasets
 ======================================================
+
+.. figure:: _static/choose_file_secondary.png
+   :alt: File input button for secondary dataset(s)
+   :target: _static/choose_file_secondary.png
+   :align: center
+   :figclass: borderit
+
+   Upload button for uploading your secondary dataset(s)
 
 In order for LocusFocus to recognize a dataset as secondary and perform colocalization testing,
 you must format your dataset in HTML format.
