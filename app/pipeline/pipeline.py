@@ -3,7 +3,7 @@ from typing import List  # type: ignore
 from uuid import uuid4
 from flask import current_app as app
 
-from .pipeline_stage import PipelineStage
+from app.pipeline.pipeline_stage import PipelineStage
 from app.utils.errors import InvalidUsage, ServerError, LocusFocusError
 
 
