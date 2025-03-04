@@ -12,15 +12,16 @@ Expected order:
 - coloc_simple_sum
 - finalize_results
 """
-from .create_session import CreateSessionStage
-from .collect_user_input import CollectUserInputStage
-from .read_gwas_file import ReadGWASFileStage
-from .read_secondary_datasets import ReadSecondaryDatasetsStage
-from .report_gtex_data import ReportGTExDataStage
-from .get_ld_matrix import GetLDMatrixStage
-from .ss_subset_gwas import SimpleSumSubsetGWASStage
-from .coloc_simple_sum import ColocSimpleSumStage
-from .finalize_results import FinalizeResultsStage
+
+from app.colocalization.stages.create_session import CreateSessionStage
+from app.colocalization.stages.collect_user_input import CollectUserInputStage
+from app.colocalization.stages.read_gwas_file import ReadGWASFileStage
+from app.colocalization.stages.read_secondary_datasets import ReadSecondaryDatasetsStage
+from app.colocalization.stages.report_gtex_data import ReportGTExDataStage
+from app.colocalization.stages.get_ld_matrix import GetLDMatrixStage
+from app.colocalization.stages.ss_subset_gwas import SimpleSumSubsetGWASStage
+from app.colocalization.stages.coloc_simple_sum import ColocSimpleSumStage
+from app.colocalization.stages.finalize_results import FinalizeResultsStage
 
 
 __all__ = [
