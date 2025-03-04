@@ -1,11 +1,13 @@
 """
 Config classes for LocusFocus
 """
+
 import os
 from dotenv import load_dotenv
 
 
 load_dotenv(os.path.dirname(__file__))
+
 
 class BaseConfig:
     """
@@ -49,6 +51,11 @@ class BaseConfig:
             "https://*.googletagmanager.com",
         ],
     }
+
+    APP_ENV = os.environ["APP_ENV"]
+
+    FLASK_APP_DEBUG = os.environ["FLASK_APP_DEBUG"]
+
     UPLOAD_FOLDER = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "static", "upload")
     )
@@ -82,7 +89,7 @@ class DevConfig(BaseConfig):
     Configuration options for development environment only.
     """
 
-    MONGO_URI = "mongodb://localhost:27017"
+    MONGO_URI = os.environ.get("MONGO_CONNECTION_STRING")
 
 
 class ProdConfig(BaseConfig):
@@ -90,4 +97,4 @@ class ProdConfig(BaseConfig):
     Configuration options for production environment only.
     """
 
-    MONGO_URI = "mongodb://localhost:27017"
+    MONGO_URI = os.environ.get("MONGO_CONNECTION_STRING")

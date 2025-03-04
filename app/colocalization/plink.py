@@ -1,6 +1,7 @@
 """
 Functions for interacting with PLINK.
 """
+
 import os
 import subprocess
 from typing import List, Optional, Tuple
@@ -124,7 +125,7 @@ def plink_ld_pairwise(build, pop, chrom, snp_positions, snp_pvalues, outfilename
 
     # plink_path = subprocess.run(args=["which","plink"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
 
-    plink_binary = "./plink"
+    plink_binary = "plink"
     if os.name == "nt":
         plink_binary = "./plink.exe"
 
@@ -216,7 +217,7 @@ def plink_ldmat(
         from_bp = str(min(snp_positions))
         to_bp = str(max(snp_positions))
 
-    plink_binary = "./plink"
+    plink_binary = "plink"
     if os.name == "nt":
         plink_binary = "./plink.exe"
 
