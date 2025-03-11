@@ -8,7 +8,6 @@ from tqdm import tqdm
 import uuid
 import subprocess
 from datetime import datetime
-from bs4 import BeautifulSoup as bs
 import re
 import pysam
 import glob
@@ -31,6 +30,7 @@ from pymongo.errors import ConnectionFailure
 
 from app.tasks import get_is_celery_running, run_pipeline_async
 from app.utils import download_file
+from app.utils.apis.gtex import get_tissue_site_details
 from app.utils.errors import InvalidUsage, ServerError
 from app.utils.numpy_encoder import NumpyEncoder
 
@@ -1800,12 +1800,15 @@ def getGenesInRange(build, chrom, startbp, endbp):
 
 @app.route("/gtex/<version>/tissues_list")
 def list_tissues(version):
-    if version.upper() == "V8":
-        db = client.GTEx_V8
-    elif version.upper() == "V7":
+    version = version.upper()
+    if version == "V7":
         db = client.GTEx_V7
-    tissues = list(db.list_collection_names())
-    tissues.remove("variant_table")
+        tissues = list(db.list_collection_names())
+        tissues.remove("variant_table")
+    else:
+        _tissues = get_tissue_site_details(version)
+        tissues = [d.tissue_site_detail_id for d in _tissues.data]
+
     return jsonify(tissues)
 
 
