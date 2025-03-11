@@ -88,6 +88,9 @@ RUN install2.r --error \
 RUN R -e "BiocManager::install('GenomicRanges')"
 RUN R -e "BiocManager::install('biomaRt')"
 
+# Link plink to work dir
+RUN ln -s /usr/local/bin/plink /code/plink
+
 # this seems not to respect user install path, might need to install as root and copy over
 # RUN R -e "remotes::install_version('Matrix', version = '1.2')" # this seems to be already installed via other deps, however
 
