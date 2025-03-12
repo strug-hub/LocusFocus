@@ -5,7 +5,6 @@ services:
       - ./app:/code/app
       - ./misc:/code/misc
       - ./data:/code/data
-      - ${DATA_DIR}:/code/data
       - ./tests:/code/tests
       - ./pyproject.toml:/code/pyproject.toml
       - ./poetry.lock:/code/poetry.lock
@@ -23,6 +22,7 @@ services:
       - FLASK_DEBUG=1
       - FLASK_SECRET_KEY
       - MONGO_CONNECTION_STRING
+      - DISABLE_CELERY=true
     entrypoint: ["python3", "-m", "app.wsgi"]
   mongo:
     image:  mongo:6
