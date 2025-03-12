@@ -3,6 +3,7 @@ Functions for interacting with PLINK.
 """
 
 import os
+import shutil
 import subprocess
 from typing import List, Optional, Tuple
 
@@ -10,7 +11,7 @@ import pandas as pd
 import numpy as np
 from flask import current_app as app
 
-from app.utils.errors import InvalidUsage
+from app.utils.errors import InvalidUsage, ServerError
 from app.utils import write_list, x_to_23
 from app.colocalization.constants import VALID_POPULATIONS
 
@@ -94,6 +95,21 @@ def resolve_plink_filepath(build, pop, chrom):
     return plink_filepath
 
 
+def get_plink_binary():
+    """
+    Return path to plink executable.
+    """
+    if os.name == "nt":
+        return "./plink.exe"
+    if shutil.which("plink") is not None:
+        return "plink"
+    if os.path.exists("/usr/local/bin/plink"):
+        return "/usr/local/bin/plink"
+    if os.path.exists("./plink"):
+        return "./plink"
+    raise ServerError("Could not find plink binary")
+
+
 def plink_ld_pairwise(build, pop, chrom, snp_positions, snp_pvalues, outfilename):
     """
     Positions must be in hg19 coordinates.
@@ -125,9 +141,7 @@ def plink_ld_pairwise(build, pop, chrom, snp_positions, snp_pvalues, outfilename
 
     # plink_path = subprocess.run(args=["which","plink"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
 
-    plink_binary = "plink"
-    if os.name == "nt":
-        plink_binary = "./plink.exe"
+    plink_binary = get_plink_binary()
 
     plink_args = [
         plink_binary,
@@ -217,9 +231,7 @@ def plink_ldmat(
         from_bp = str(min(snp_positions))
         to_bp = str(max(snp_positions))
 
-    plink_binary = "plink"
-    if os.name == "nt":
-        plink_binary = "./plink.exe"
+    plink_binary = get_plink_binary()
 
     plink_args = [
         plink_binary,
