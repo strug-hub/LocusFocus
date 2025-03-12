@@ -98,8 +98,5 @@ COPY --chown=$USERNAME:$USERNAME ./pyproject.toml /code/pyproject.toml
 COPY --chown=$USERNAME:$USERNAME ./poetry.lock /code/poetry.lock
 COPY --chown=$USERNAME:$USERNAME ./README.md /code/README.md
 COPY --chown=$USERNAME:$USERNAME ./app /code/app
-COPY --chown=$USERNAME:$USERNAME ./tests /code/app
-COPY --chown=$USERNAME:$USERNAME ./data /code/app
-COPY --chown=$USERNAME:$USERNAME ./misc /code/app
 
 RUN poetry install --with dev
