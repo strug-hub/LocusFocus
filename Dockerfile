@@ -88,6 +88,9 @@ RUN install2.r --error \
 RUN R -e "BiocManager::install('GenomicRanges')"
 RUN R -e "BiocManager::install('biomaRt')"
 
+# Link plink to work dir
+RUN ln -s /usr/local/bin/plink /code/plink
+
 # this seems not to respect user install path, might need to install as root and copy over
 # RUN R -e "remotes::install_version('Matrix', version = '1.2')" # this seems to be already installed via other deps, however
 
@@ -95,8 +98,5 @@ COPY --chown=$USERNAME:$USERNAME ./pyproject.toml /code/pyproject.toml
 COPY --chown=$USERNAME:$USERNAME ./poetry.lock /code/poetry.lock
 COPY --chown=$USERNAME:$USERNAME ./README.md /code/README.md
 COPY --chown=$USERNAME:$USERNAME ./app /code/app
-COPY --chown=$USERNAME:$USERNAME ./tests /code/app
-COPY --chown=$USERNAME:$USERNAME ./data /code/app
-COPY --chown=$USERNAME:$USERNAME ./misc /code/app
 
 RUN poetry install --with dev
