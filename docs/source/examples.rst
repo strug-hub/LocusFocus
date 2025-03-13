@@ -17,20 +17,20 @@ The output after a run using this dataset can be accessed by entering the `sessi
 
 1. Click on "Choose File" to upload the GWAS summary statistics. As stated, the file must be tab-delimited and not exceed 100MB.
 
-.. figure:: _static/choose_file.png
-   :alt: File input button
-   :target: _static/choose_file.png
+.. figure:: _static/choose_file_gwas.png
+   :alt: File input button for GWAS dataset
+   :target: _static/choose_file_gwas.png
    :align: center
    :figclass: borderit
 
-   Upload button allows for uploading multiple files
+   Upload button for uploading your GWAS dataset (or other summary statistics)
 
-- This step allows uploading multiple files. Two additional files may be uploaded here (optional):
+- Two additional files may be uploaded in other sections of the page (optional):
 
   - :ref:`A PLINK-generated .ld matrix file for your sample population<Computing the LD matrix from your GWAS population>`
   - :ref:`An HTML file of secondary datasets<Formatting custom secondary datasets>`
 
-2. Next, if your GWAS summary statistics have column names that differ from the defaults, you may enter them in the respective columns.
+1. Next, if your GWAS summary statistics have column names that differ from the defaults, you may enter them in the respective columns.
 
 .. figure:: _static/column_names.png
    :alt: Column name input fields

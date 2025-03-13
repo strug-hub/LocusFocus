@@ -66,6 +66,10 @@ class ColocSimpleSumStage(PipelineStage):
 
         p_value_matrix, coloc2eqtl_df = self._build_pvalue_matrix(payload)
 
+        if len(p_value_matrix) == 1:
+            # Only GWAS data was provided, no secondary datasets
+            raise InvalidUsage("No secondary datasets provided for colocalization. Please select at least one GTEx tissue/gene combination, or upload a secondary dataset.\nIf you would like to run a set-based test for your GWAS data, please use the Set-Based Test form in the navbar instead.")
+
         self._run_simple_sum(
             p_value_matrix, payload, coloc2eqtl_df,
         )
