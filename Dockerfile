@@ -1,4 +1,4 @@
-FROM python:3.10-buster
+FROM python:3.10-buster as base
 
 ARG USERNAME=flask
 ARG USER_UID=1000
@@ -88,11 +88,13 @@ RUN install2.r --error \
 RUN R -e "BiocManager::install('GenomicRanges')"
 RUN R -e "BiocManager::install('biomaRt')"
 
+# this seems not to respect user install path, might need to install as root and copy over
+# RUN R -e "remotes::install_version('Matrix', version = '1.2')" # this seems to be already installed via other deps, however
+
 # Link plink to work dir
 RUN ln -s /usr/local/bin/plink /code/plink
 
-# this seems not to respect user install path, might need to install as root and copy over
-# RUN R -e "remotes::install_version('Matrix', version = '1.2')" # this seems to be already installed via other deps, however
+FROM base AS dev
 
 COPY --chown=$USERNAME:$USERNAME ./pyproject.toml /code/pyproject.toml
 COPY --chown=$USERNAME:$USERNAME ./poetry.lock /code/poetry.lock
@@ -100,3 +102,11 @@ COPY --chown=$USERNAME:$USERNAME ./README.md /code/README.md
 COPY --chown=$USERNAME:$USERNAME ./app /code/app
 
 RUN poetry install --with dev
+
+FROM base AS prod
+
+COPY --chown=$USERNAME:$USERNAME ./pyproject.toml /code/pyproject.toml
+COPY --chown=$USERNAME:$USERNAME ./poetry.lock /code/poetry.lock
+COPY --chown=$USERNAME:$USERNAME ./app /code/app
+
+RUN poetry install --no-dev
