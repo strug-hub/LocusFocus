@@ -148,4 +148,5 @@ locusfocusR.tar.gz
 !*set_based_test*
 app/static/session_data/
 !app/static/session_data/celery_results/.gitkeep
-app/static/upload/
+app/static/upload/*
+!app/static/upload/.gitkeep
