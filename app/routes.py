@@ -32,9 +32,9 @@ from pymongo.errors import ConnectionFailure
 from app.tasks import get_is_celery_running, run_pipeline_async
 from app.utils import download_file
 from app.utils.errors import InvalidUsage, ServerError
-from numpy_encoder import NumpyEncoder
+from app.utils.numpy_encoder import NumpyEncoder
 
-from . import ext, mongo
+from app import ext, mongo
 
 client = mongo.cx
 db = client.GTEx_V7
@@ -49,6 +49,7 @@ MYDIR = os.path.dirname(__file__)  # app directory
 APP_STATIC = os.path.join(MYDIR, "static")
 ALLOWED_EXTENSIONS = set(["txt", "tsv", "ld", "html"])
 ALLOWED_SBT_EXTENSIONS = set(["txt", "tsv", "ld"])
+
 
 ##################
 # Default settings
@@ -143,6 +144,7 @@ LD_MAT_DIAG_CONSTANT = 1e-6
 
 available_gtex_versions = ["V7", "V8"]
 valid_populations = ["EUR", "AFR", "EAS", "SAS", "AMR", "ASN", "NFE"]
+
 
 ####################################
 # Helper functions
@@ -1424,6 +1426,7 @@ def plink_ld_pairwise(build, pop, chrom, snp_positions, snp_pvalues, outfilename
 # Getting GTEx Data from Local MongoDB Database
 ####################################
 
+
 # This is the main function to extract the data for a tissue and gene_id:
 def get_gtex(version, tissue, gene_id):
     if version.upper() == "V8":
@@ -1981,9 +1984,9 @@ def regionCheck(build, regiontext):
     if not re.search(
         r"^\d+:\d+-\d+$", regiontext.replace("X", "23").replace("x", "23")
     ):
-        message[
-            "response"
-        ] = "Invalid coordinate format. e.g. 1:205,000,000-206,000,000"
+        message["response"] = (
+            "Invalid coordinate format. e.g. 1:205,000,000-206,000,000"
+        )
         return jsonify(message)
     chrom = regiontext.split(":")[0].lower().replace("chr", "").upper()
     pos = regiontext.split(":")[1]
@@ -2019,15 +2022,15 @@ def regionCheck(build, regiontext):
     if chrom < 1 or chrom > 23:
         message["response"] = "Chromosome input must be between 1 and 23"
     elif startbp > endbp:
-        message[
-            "response"
-        ] = "Starting chromosome basepair position is greater than ending basepair position"
+        message["response"] = (
+            "Starting chromosome basepair position is greater than ending basepair position"
+        )
     elif startbp > maxChromLength or endbp > maxChromLength:
         message["response"] = "Start or end coordinates are out of range"
     elif (endbp - startbp) > genomicWindowLimit:
-        message[
-            "response"
-        ] = f"Entered region size is larger than {genomicWindowLimit/10**6} Mbp"
+        message["response"] = (
+            f"Entered region size is larger than {genomicWindowLimit/10**6} Mbp"
+        )
         return jsonify(message)
     else:
         return jsonify(message)
@@ -2041,10 +2044,23 @@ def index():
 
     # Download all files in advance
     filepaths = []
-    for file in request.files.getlist("files[]"):
-        filepath = download_file(file)
-        if filepath is not None and any(str(filepath).endswith(ext) for ext in ["txt", "tsv", "ld", "html"]):
-            filepaths.append(filepath)
+
+    # name, required, extensions, description
+    FILE_CONTROLS = [
+        ("gwas-file", True, ["txt", "tsv"], "GWAS file"),
+        ("html-file", False, ["html"], "Secondary dataset HTML file"),
+        ("ld-file", False, ["ld"], "LD matrix file"),
+    ]
+
+    for file_control in FILE_CONTROLS:
+        name, required, extensions, description = file_control
+        file = request.files.get(name)
+        if file:
+            filepath = download_file(file)
+            if filepath is not None and any(str(filepath).endswith(ext) for ext in extensions):
+                filepaths.append(filepath)
+        elif required:
+            raise InvalidUsage(f"Missing required file: {description}", status_code=410)
 
     # Convert request.form to dict
     request_form: Dict[str, Union[str, List[str]]] = request.form.to_dict(flat=False)  # type: ignore
@@ -2055,6 +2071,7 @@ def index():
     if app.config["DISABLE_CELERY"] or not get_is_celery_running():
         session_id = uuid.uuid4()
         from app.colocalization.pipeline import ColocalizationPipeline
+
         pipeline = ColocalizationPipeline(id=session_id)
         result = pipeline.process(request_form, filepaths)
 
