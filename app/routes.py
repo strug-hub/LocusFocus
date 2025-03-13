@@ -1838,7 +1838,7 @@ def prev_session():
         old_session_id = request.form["session-id"].strip()
 
         # Check celery session
-        if not app.config["DISABLE_CELERY"] and get_is_celery_running():
+        if not app.config["DISABLE_CELERY"] and get_is_celery_running() and old_session_id != "example-output":
             celery_result = AsyncResult(old_session_id, app=app.extensions["celery"])
             if celery_result.status == "PENDING":
                 raise InvalidUsage(f"Session {old_session_id} does not exist.")
@@ -1897,7 +1897,7 @@ def prev_session():
 def prev_session_input(old_session_id):
 
     # Check celery session
-    if not app.config["DISABLE_CELERY"] and get_is_celery_running():
+    if not app.config["DISABLE_CELERY"] and get_is_celery_running() and old_session_id != "example-output":
         celery_result = AsyncResult(old_session_id, app=app.extensions["celery"])
         if celery_result.status == "PENDING":
             raise InvalidUsage(f"Session {old_session_id} does not exist.")
@@ -2044,12 +2044,23 @@ def index():
 
     # Download all files in advance
     filepaths = []
-    for file in request.files.getlist("files[]"):
-        filepath = download_file(file)
-        if filepath is not None and any(
-            str(filepath).endswith(ext) for ext in ["txt", "tsv", "ld", "html"]
-        ):
-            filepaths.append(filepath)
+
+    # name, required, extensions, description
+    FILE_CONTROLS = [
+        ("gwas-file", True, ["txt", "tsv"], "GWAS file"),
+        ("html-file", False, ["html"], "Secondary dataset HTML file"),
+        ("ld-file", False, ["ld"], "LD matrix file"),
+    ]
+
+    for file_control in FILE_CONTROLS:
+        name, required, extensions, description = file_control
+        file = request.files.get(name)
+        if file:
+            filepath = download_file(file)
+            if filepath is not None and any(str(filepath).endswith(ext) for ext in extensions):
+                filepaths.append(filepath)
+        elif required:
+            raise InvalidUsage(f"Missing required file: {description}", status_code=410)
 
     # Convert request.form to dict
     request_form: Dict[str, Union[str, List[str]]] = request.form.to_dict(flat=False)  # type: ignore
