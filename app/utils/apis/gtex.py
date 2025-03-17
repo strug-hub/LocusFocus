@@ -43,7 +43,21 @@ def get_tissue_site_details(dataset_id: str):
 
 
 def get_variants(dataset_id: str, start: int, end: int, chromosome: str):
-    validate_chromosome(chromosome)
+    """Fetch variants from gtex api, with a return limit of 100,000
+
+    :param dataset_id: The identifier of the gtex dataset (`gtex_v8`, `gtex_v10`)
+    :type dataset_id: str
+    :param start: The start position
+    :type start: int
+    :param end: The end position
+    :type end: int
+    :param chromosome: The chromosome (prefixed with 'chr'), `X` and `Y` for 23
+    :type chromosome: str
+    :return: The paginated variant list
+    :rtype: PaginatedResponseVariant
+    """
+
+    validate_chromosome(chromosome, prefix="chr", x_y_numeric=False)
 
     chromosome = get_chromosome_enum(chromosome)
     dataset_id = get_dataset_id_enum(dataset_id)
@@ -56,4 +70,5 @@ def get_variants(dataset_id: str, start: int, end: int, chromosome: str):
             start=start,
             end=end,
             chromosome=chromosome,
+            items_per_page=100000,
         )
