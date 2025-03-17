@@ -10,16 +10,38 @@ services:
       - ./pyproject.toml:/code/pyproject.toml
       - ./poetry.lock:/code/poetry.lock
     ports:
-      - "${FLASK_PORT}:${FLASK_PORT}"
+      - 8000:8000
     networks:
       - lf-net
     environment:
-      - APP_ENV
-      # for vscode debugger
-      - FLASK_APP_DEBUG=true
-      # for flask debug mode
-      - FLASK_DEBUG=1
+      - APP_ENV=production
       - FLASK_SECRET_KEY
       - MONGO_CONNECTION_STRING
-      - DISABLE_CELERY=true
-    entrypoint: ["python3", "-m", "app.wsgi"]
+      - DISABLE_CELERY=false
+    entrypoint: ["gunicorn", "--timeout", "6000", "wsgi:app", "--bind=127.0.0.1:8000", "--name", "locusfocus", "--workers=3"]
+  celery:
+    build:
+      context: .
+      target: prod
+    volumes:
+      - ./app:/code/app
+      - ./misc:/code/misc
+      - ./data:/code/data
+      - ./pyproject.toml:/code/pyproject.toml
+      - ./poetry.lock:/code/poetry.lock
+    networks:
+      - lf-net
+    environment:
+      - APP_ENV=production
+      - FLASK_SECRET_KEY
+      - MONGO_CONNECTION_STRING
+      - DISABLE_CELERY=false
+    entrypoint: ["celery", "-A", "app.tasks", "worker", "--loglevel=info"]
+  redis:
+    image: redis:7.4.2-alpine
+    networks:
+      - lf-net
+
+networks:
+  lf-net:
+    driver: host
