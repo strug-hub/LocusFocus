@@ -1806,7 +1806,7 @@ def list_tissues(version):
         tissues = list(db.list_collection_names())
         tissues.remove("variant_table")
     else:
-        version = "gtex_v8" if version == "V8" else "gtex_v10"
+        version = "gtex_v8"
         _tissues = get_tissue_site_details(version)
         tissues = [d.tissue_site_detail_id for d in _tissues.data]
 
