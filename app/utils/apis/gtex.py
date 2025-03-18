@@ -1,10 +1,12 @@
-from enum import Enum
+from collections.abc import Callable
+from typing import Any
 
 from gtex_openapi.api.datasets_endpoints_api import DatasetsEndpointsApi
 from gtex_openapi.api_client import ApiClient
 from gtex_openapi.configuration import Configuration
 from gtex_openapi.models.chromosome import Chromosome
 from gtex_openapi.models.dataset_id import DatasetId
+from gtex_openapi.models.paginated_response_variant import PaginatedResponseVariant
 
 from app.utils.helpers import validate_chromosome
 
@@ -21,6 +23,19 @@ def get_dataset_id_enum(dataset_id: str):
 HOSTNAME = "https://gtexportal.org"
 
 configuration = Configuration(host=HOSTNAME)
+
+
+def fetch_all(func: Callable[..., Any], page: int | None = None, **kwargs):
+    page = page or 0
+    results = func(page=page, **kwargs)
+
+    if results.paging_info.number_of_pages > page + 1:
+        page += 1
+        results.data.extend(fetch_all(func, page=page, **kwargs).data)
+    results.paging_info.number_of_pages = 1
+    results.paging_info.page = 0
+    results.paging_info.max_items_per_page = results.paging_info.total_number_of_items
+    return results
 
 
 def get_tissue_site_details(dataset_id: str):
@@ -42,7 +57,9 @@ def get_tissue_site_details(dataset_id: str):
         )
 
 
-def get_variants(dataset_id: str, start: int, end: int, chromosome: str):
+def get_variants(
+    dataset_id: str, start: int, end: int, chromosome: str
+) -> PaginatedResponseVariant:
     """Fetch variants from gtex api, with a return limit of 100,000
 
     :param dataset_id: The identifier of the gtex dataset (`gtex_v8`, `gtex_v10`)
@@ -65,7 +82,8 @@ def get_variants(dataset_id: str, start: int, end: int, chromosome: str):
     with ApiClient(configuration) as api_client:
         instance = DatasetsEndpointsApi(api_client)
 
-        return instance.get_variant_by_location_api_v2_dataset_variant_by_location_get(
+        return fetch_all(
+            instance.get_variant_by_location_api_v2_dataset_variant_by_location_get,
             dataset_id=dataset_id,
             start=start,
             end=end,
