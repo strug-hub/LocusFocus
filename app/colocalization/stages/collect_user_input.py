@@ -74,20 +74,20 @@ class CollectUserInputStage(PipelineStage):
                 p_threshold = float(p_threshold)
                 if p_threshold < 0 or p_threshold > 1:
                     errors.append(
-                        "Set-based p-value threshold given is not between 0 and 1"
+                        f"Set-based p-value threshold given is not between 0 and 1: '{p_threshold}'"
                     )
                 else:
                     payload.set_based_p = p_threshold
-            except:
+            except Exception:
                 errors.append(
-                    "Invalid value provided for the set-based p-value threshold. Value must be numeric between 0 and 1."
+                    f"Invalid value provided for the set-based p-value threshold: '{p_threshold}'. Value must be numeric between 0 and 1."
                 )
 
         payload.lead_snp_name = payload.request_form.get("leadsnp", "")
 
         if len(errors) > 0:
             raise InvalidUsage(
-                message=f"Error(s) found in uploaded form",
+                message=f"Error(s) found in uploaded form: {'; '.join(errors)}",
                 payload={f"error_{i+1}": error for i, error in enumerate(errors)},
             )
 
