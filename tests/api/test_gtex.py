@@ -5,13 +5,24 @@ from typing import Any, List
 from gtex_openapi.models.pagination_info import PaginationInfo
 
 from app import mongo
-from app.utils.apis.gtex import fetch_all, get_variants
+from app.utils.apis.gtex import (
+    fetch_all,
+    get_eqtl,
+    get_tissue_site_details,
+    get_variants,
+)
 
 
 @dataclass
 class DummyResponse:
     data: List[Any]
     paging_info: PaginationInfo
+
+
+def test_can_fetch_v8_tissues():
+    """Sanity check for v8 tissue fetch"""
+    results = get_tissue_site_details(dataset_id="gtex_v8")
+    assert len(results.data) == 54
 
 
 def test_fetch_all():
@@ -103,3 +114,16 @@ def test_can_fetch_v8_variants_from_region_string(app):
         variants_list_api[idx].variant_id.replace("chr", "")
         == variants_list_mongo[idx]["variant_id"]
     )
+
+
+def test_can_fetch_eqtl():
+    results = get_eqtl(
+        dataset_id="gtex_v10",
+        gencode_id="ENSG00000005436.14",
+        tissue_site="Liver",
+        variant_id="chr7_95404491_A_T_b38",
+    )
+
+    assert results.data is not None
+    assert isinstance(results.data, list)
+    assert isinstance(results.p_value, float)
