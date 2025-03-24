@@ -17,7 +17,7 @@ services:
       - FLASK_SECRET_KEY
       - MONGO_CONNECTION_STRING
       - DISABLE_CELERY=false
-    entrypoint: ["python", "-m", "gunicorn", "--timeout", "6000", "wsgi:app", "--bind=127.0.0.1:8000", "--name", "locusfocus", "--workers=3"]
+    entrypoint: ["python", "-m", "gunicorn", "--timeout", "6000", "--chdir", "app", "wsgi:app", "--bind=127.0.0.1:8000", "--name", "locusfocus", "--workers=3"]
   celery:
     build:
       context: .
