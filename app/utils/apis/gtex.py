@@ -2,22 +2,31 @@ from collections.abc import Callable
 from typing import Any
 
 from gtex_openapi.api.datasets_endpoints_api import DatasetsEndpointsApi
+from gtex_openapi.api.dynamic_association_endpoints_api import (
+    DynamicAssociationEndpointsApi,
+)
 from gtex_openapi.api_client import ApiClient
 from gtex_openapi.configuration import Configuration
 from gtex_openapi.models.chromosome import Chromosome
 from gtex_openapi.models.dataset_id import DatasetId
+from gtex_openapi.models.tissue_site_detail_id import TissueSiteDetailId
 from gtex_openapi.models.paginated_response_variant import PaginatedResponseVariant
 
 from app.utils.helpers import validate_chromosome
 
 
-# this is circuitous but seems more convenient than passing in enum val from callers
+# caller passes in string and we replace with enum value here
+# this is a little backward but more convenient than callers looking up enums?
 def get_chromosome_enum(chr: str):
     return Chromosome[Chromosome(chr).name]
 
 
 def get_dataset_id_enum(dataset_id: str):
     return DatasetId[DatasetId(dataset_id).name]
+
+
+def get_tissue_site_detail_id_enum(tissue_site_detail: str):
+    return TissueSiteDetailId[TissueSiteDetailId(tissue_site_detail).name]
 
 
 HOSTNAME = "https://gtexportal.org"
@@ -36,6 +45,43 @@ def fetch_all(func: Callable[..., Any], page: int | None = None, **kwargs):
     results.paging_info.page = 0
     results.paging_info.max_items_per_page = results.paging_info.total_number_of_items
     return results
+
+
+def get_eqtl(
+    dataset_id: str,
+    gencode_id: str,
+    tissue_site: str,
+    variant_id: str,
+):
+    """Fetch dynamic EQTL Data
+
+    :type dataset_id: str
+    :param gencode_id: A versioned GENCODE ID of a gene
+    :type gencode_id: str
+    :param tissue_site: The tissue site to use in the calculation
+    :type tissue_site: str, a key of gtex_openapi.models.tissue_site_detail_id.TissueSiteDetailId enum
+    :param variant_id: A GTEx variant id (must begin with `chr`)
+    :type variant_id: str
+    :return: The calculation result
+    :rtype: gtex_openapi.models.i_eqtl.IEqtl
+    """
+
+    tissue_site = get_tissue_site_detail_id_enum(tissue_site)
+
+    dataset_id = get_dataset_id_enum(dataset_id)
+
+    if not variant_id.startswith("chr"):
+        raise ValueError("Variant ID must start with 'chr' prefix!")
+
+    with ApiClient(configuration) as api_client:
+        instance = DynamicAssociationEndpointsApi(api_client)
+
+        return instance.calculate_expression_quantitative_trait_loci_api_v2_association_dyneqtl_get(
+            dataset_id=dataset_id,
+            gencode_id=gencode_id,
+            tissue_site_detail_id=tissue_site,
+            variant_id=variant_id,
+        )
 
 
 def get_tissue_site_details(dataset_id: str):
