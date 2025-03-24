@@ -1795,7 +1795,7 @@ def getGenesInRange(build, chrom, startbp, endbp):
             )
         )
     ]
-    return jsonify(sorted(list(genes_to_draw["name"])))
+    return jsonify(list(genes_to_draw.sort_values("txStart")["name"]))
 
 
 @app.route("/gtex/<version>/tissues_list")
