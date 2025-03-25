@@ -28,6 +28,7 @@ services:
   mongo:
     image: mongo:6
     restart: unless-stopped
+    user: root
     volumes:
       - mongo-data:/data/db
     environment:

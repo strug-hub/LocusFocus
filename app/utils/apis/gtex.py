@@ -18,15 +18,15 @@ from app.utils.helpers import validate_chromosome
 # caller passes in string and we replace with enum value here
 # this is a little backward but more convenient than callers looking up enums?
 def get_chromosome_enum(chr: str):
-    return Chromosome[Chromosome(chr).name]
+    return Chromosome(chr)
 
 
 def get_dataset_id_enum(dataset_id: str):
-    return DatasetId[DatasetId(dataset_id).name]
+    return DatasetId(dataset_id)
 
 
 def get_tissue_site_detail_id_enum(tissue_site_detail: str):
-    return TissueSiteDetailId[TissueSiteDetailId(tissue_site_detail).name]
+    return TissueSiteDetailId(tissue_site_detail)
 
 
 HOSTNAME = "https://gtexportal.org"
