@@ -314,7 +314,7 @@ class ReadGWASFileStage(PipelineStage):
         )
         if not all(gwas_indices_kept):
             app.logger.debug(
-                f"Some SNPs were removed from GWAS dataset during format check: {[i for i, x in enumerate(list(gwas_indices_kept)) if not x]}"
+                f"{sum(gwas_indices_kept)} SNPs kept, {sum(~gwas_indices_kept)} SNPs removed."
             )
         gwas_data = gwas_data.loc[gwas_indices_kept].copy()
         gwas_data.sort_values(by=["POS"], inplace=True)
