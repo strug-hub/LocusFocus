@@ -388,6 +388,6 @@ class ReadGWASFileStage(PipelineStage):
             if len(vcf_snps) != len(merged_vcf_snps):
                 raise InvalidUsage(
                     "GWAS data contains SNPs with chrom_pos_ref_alt_build format that are not consistent (eg. reversed alleles, incorrect position or chromosome). "
-                    "Please inspect your GWAS file and ensure that the SNP column is consistent with the values in other columns in the GWAS file."
-                    f"'{len(vcf_snps) - len(merged_vcf_snps)}' of '{len(gwas_data)}' SNPs are inconsistent."
+                    "Please inspect your GWAS file and ensure that the SNP column is consistent with the values in other columns in the GWAS file. "
+                    f"{len(vcf_snps) - len(merged_vcf_snps)} of {len(gwas_data)} SNPs are inconsistent."
                 )
