@@ -23,7 +23,7 @@ class GWASColumn:
     optional: bool = False  # Optional column
 
 
-VCF_FORMAT_PATTERN = "^(?:chr)?([0-9]{1,2})_([0-9]+)_([ATCG]+)_([ATCG]+)_b3(?:7|8)$"
+VCF_FORMAT_PATTERN = "^(?:chr)?([0-9]{1,2})_([0-9]+)_([ATCG]+)_([ATCG]+(?:,[ATCG]+)*)_b3(?:7|8)$"
 
 
 class ReadGWASFileStage(PipelineStage):
