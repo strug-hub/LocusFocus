@@ -22,7 +22,8 @@ class GWASColumn:
     coloc2: bool = False  # Required for coloc2?
     optional: bool = False  # Optional column
 
-
+#                                                              (bi-allelic variants are allowed)
+#                      (prefix) chrom        pos      ref       alt(s)                build
 VCF_FORMAT_PATTERN = "^(?:chr)?([0-9]{1,2})_([0-9]+)_([ATCG]+)_([ATCG]+(?:,[ATCG]+)*)_b3(?:7|8)$"
 
 
