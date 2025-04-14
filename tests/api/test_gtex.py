@@ -7,6 +7,7 @@ from gtex_openapi.models.pagination_info import PaginationInfo
 from app import mongo
 from app.utils.apis.gtex import (
     fetch_all,
+    get_bulk_eqtl,
     get_eqtl,
     get_tissue_site_details,
     get_variants,
@@ -127,3 +128,26 @@ def test_can_fetch_eqtl():
     assert results.data is not None
     assert isinstance(results.data, list)
     assert isinstance(results.p_value, float)
+
+
+def test_can_fetch_eqtl_bulk():
+
+    body = [
+        {
+            "variant_id": "chr7_95404491_A_T_b38",
+            "gencode_id": "ENSG00000005436.14",
+            "tissue_site_detail_id": "Liver",
+        },
+        {
+            "gencode_id": "ENSG00000225972.1",
+            "tissue_site_detail_id": "Adipose_Visceral_Omentum",
+            "variant_id": "chr1_629115_C_T_b38",
+        },
+    ]
+
+    results = get_bulk_eqtl(dataset_id="gtex_v10", body=body)
+
+    assert results["data"] is not None
+    assert len(results["errors"]) == 0
+    assert isinstance(results["data"], list)
+    assert isinstance(results["data"][0]["pValue"], float)
