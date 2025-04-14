@@ -116,10 +116,15 @@ class SessionPayload:
 
     # File data
     # GWAS data is user-uploaded, and we update gwas_indices_kept in each stage to "keep" or "discard" SNPs
-    gwas_data: Optional[pd.DataFrame] = None  # Original GWAS data
+    gwas_data_original: Optional[pd.DataFrame] = (
+        None  # Original, unlifted-over GWAS data
+    )
+    # the indices of rows that failed liftover, refers to rows in gwas_data_original
+    unlifted_over_indices: pd.Series = field(default_factory=pd.Series)
+    gwas_data: Optional[pd.DataFrame] = None  # working GWAS data (possibly lifted over)
     gwas_indices_kept: pd.Series = field(
         default_factory=pd.Series
-    )  # Boolean Array of GWAS SNPs kept
+    )  # Boolean Array of GWAS SNPs kept (excludes non-lifted over rows as well, if applicatble)
     ld_matrix: Optional[np.matrix] = None
     secondary_datasets: Optional[Dict[str, dict]] = None
     file: SessionFiles = field(init=False)
@@ -402,7 +407,9 @@ class SessionPayload:
         data = {}
         data["success"] = self.success
         data["sessionid"] = str(self.session_id)
-        data["snps"] = list(self.gwas_data_kept["SNP"]) if self.gwas_data is not None else []
+        data["snps"] = (
+            list(self.gwas_data_kept["SNP"]) if self.gwas_data is not None else []
+        )
         data["inferVariant"] = self.get_infer_variant()
         data["pvalues"] = (
             list(self.gwas_data_kept["P"]) if self.gwas_data is not None else []
