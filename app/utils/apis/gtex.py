@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Dict, List
 
 from gtex_openapi.api.datasets_endpoints_api import DatasetsEndpointsApi
 from gtex_openapi.api.dynamic_association_endpoints_api import (
@@ -9,6 +9,9 @@ from gtex_openapi.api_client import ApiClient
 from gtex_openapi.configuration import Configuration
 from gtex_openapi.models.chromosome import Chromosome
 from gtex_openapi.models.dataset_id import DatasetId
+from gtex_openapi.models.dynamic_eqtl_body import DynamicEqtlBody
+from gtex_openapi.models.eqtl import Eqtl
+from gtex_openapi.models.post_dynamic_eqtl_result import PostDynamicEqtlResult
 from gtex_openapi.models.tissue_site_detail_id import TissueSiteDetailId
 from gtex_openapi.models.paginated_response_variant import PaginatedResponseVariant
 
@@ -52,9 +55,10 @@ def get_eqtl(
     gencode_id: str,
     tissue_site: str,
     variant_id: str,
-):
+) -> Eqtl:
     """Fetch dynamic EQTL Data
 
+    :param dataset_id: The identifier of the gtex dataset (`gtex_v8`, `gtex_v10`)
     :type dataset_id: str
     :param gencode_id: A versioned GENCODE ID of a gene
     :type gencode_id: str
@@ -63,7 +67,7 @@ def get_eqtl(
     :param variant_id: A GTEx variant id (must begin with `chr`)
     :type variant_id: str
     :return: The calculation result
-    :rtype: gtex_openapi.models.i_eqtl.IEqtl
+    :rtype: Eqtl
     """
 
     tissue_site = get_tissue_site_detail_id_enum(tissue_site)
@@ -82,6 +86,44 @@ def get_eqtl(
             tissue_site_detail_id=tissue_site,
             variant_id=variant_id,
         )
+
+
+def get_bulk_eqtl(dataset_id: str, body: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Fetch dynamic EQTL Data in bulk
+
+    :param dataset_id: The identifier of the gtex dataset (`gtex_v8`, `gtex_v10`)
+    :type dataset_id: str
+    :param body: A list of dictionaries containing the tissue site detail, variant_id, and gencode_id for each desired EQTL result
+    :type body: List[Dict[Literal['gencode_id', 'tissue_site_detail_id', 'variant_id], Any]]
+                see docstring for `get_eqtl` for type details.
+    :return: The calculation result
+    :rtype: Dict[str, Any]
+    """
+    dataset_id = get_dataset_id_enum(dataset_id)
+
+    body_args = []
+
+    for arg in body:
+        body_args.append(
+            DynamicEqtlBody(
+                tissueSiteDetailId=get_tissue_site_detail_id_enum(
+                    arg["tissue_site_detail_id"]
+                ),
+                variantId=arg["variant_id"],
+                gencodeId=arg["gencode_id"],
+            )
+        )
+
+    with ApiClient(configuration) as api_client:
+        instance = DynamicAssociationEndpointsApi(api_client)
+
+        # request is not paginated, so no need to use fetch_all
+        results = instance.bulk_calculate_expression_quantitative_trait_loci_api_v2_association_dyneqtl_post(
+            dataset_id=dataset_id,
+            dynamic_eqtl_body=body_args,
+        )
+
+        return results.to_dict()
 
 
 def get_tissue_site_details(dataset_id: str):
