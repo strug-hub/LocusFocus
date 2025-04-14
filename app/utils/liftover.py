@@ -1,7 +1,7 @@
 import os
 import subprocess
 import tempfile
-from typing import Tuple
+from typing import List, Tuple
 
 import pandas as pd
 
@@ -9,7 +9,7 @@ import pandas as pd
 # inspired by https://github.com/broadinstitute/liftover/blob/main/service/server.py
 def run_liftover(
     original_df: pd.DataFrame, source_coords: str
-) -> Tuple[pd.DataFrame, set]:
+) -> Tuple[pd.DataFrame, List[int]]:
     """Lift positions from one coordinate system to the other. This script assumes that columns in the
     dataframe have standardized names (specifically "CHROM" and "POS").
 
@@ -92,8 +92,9 @@ def run_liftover(
 
         dropped = set(original_copy["index"]).difference(joined["index"])
 
+        # Chrom can be affected by liftover, so we'll take it from the new DataFrame
         joined = joined.drop(["CHROM", "POS", "index", "POS_lifted"], axis=1).rename(
             {"#CHROM": "CHROM", "end": "POS"}, axis=1
         )[original_df.columns]
 
-    return joined, dropped
+    return joined, list(dropped)
