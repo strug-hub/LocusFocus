@@ -57,7 +57,7 @@ WORKDIR /code
 
 # handle R libraries
 
-ENV R_LIBS_USER /home/${USERNAME}/Rlibs
+ENV R_LIBS_USER=/home/${USERNAME}/Rlibs
 
 # only root can write here, so we'll save these into the default package dir and use to store application packages in the user's dir
 RUN Rscript -e "install.packages(c('littler', 'docopt'))" \
