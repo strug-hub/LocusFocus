@@ -9,15 +9,18 @@ services:
       - ./data:/code/data
       - ./pyproject.toml:/code/pyproject.toml
       - ./poetry.lock:/code/poetry.lock
-    ports:
-      - 8000:8000
     network_mode: "host"
     environment:
       - APP_ENV=production
       - FLASK_SECRET_KEY
       - MONGO_CONNECTION_STRING
       - DISABLE_CELERY=false
-    entrypoint: ["python", "-m", "gunicorn", "--timeout", "6000", "--chdir", "app", "wsgi:app", "--bind=127.0.0.1:8000", "--name", "locusfocus", "--workers=3"]
+    entrypoint: ["python", "-m", "gunicorn", "--timeout", "6000", "--chdir", "app", "wsgi:app", "--bind=0.0.0.0:8000", "--name", "locusfocus", "--workers=3"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
   celery:
     build:
       context: .
@@ -34,9 +37,9 @@ services:
       - FLASK_SECRET_KEY
       - MONGO_CONNECTION_STRING
       - DISABLE_CELERY=false
-    entrypoint: ["celery", "-A", "app.tasks", "worker", "--loglevel=info"]
+      - CELERY_BROKER_URL=redis://localhost:6379/0
+    entrypoint: ["celery", "-A", "app.make_celery.celery_app", "worker", "--loglevel=INFO"]
   redis:
     image: redis:7.4.2-alpine
-    ports: 
-      - 6379:6379
+    # port: 6379
     network_mode: "host"
