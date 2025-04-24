@@ -79,6 +79,7 @@ class BaseConfig:
         "timezone": "America/Toronto",
         "broker_url": "redis://localhost:6379/0",
         "result_backend": f"file://{os.path.join(SESSION_FOLDER, 'celery_results')}",
+        "broker_connection_retry_on_startup": True,
     }
 
     DISABLE_CELERY = os.environ.get("DISABLE_CELERY", "False").lower() == "true"
