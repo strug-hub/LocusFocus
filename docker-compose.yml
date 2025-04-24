@@ -15,7 +15,7 @@ services:
       - FLASK_SECRET_KEY
       - MONGO_CONNECTION_STRING
       - DISABLE_CELERY=false
-    entrypoint: ["python", "-m", "gunicorn", "--timeout", "6000", "--chdir", "app", "wsgi:app", "--bind=0.0.0.0:8000", "--name", "locusfocus", "--workers=3"]
+    entrypoint: ["python", "-m", "gunicorn", "--timeout", "6000", "--chdir", "app", "wsgi:app", "--bind=127.0.0.1:8000", "--name", "locusfocus", "--workers=3"]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000"]
       interval: 30s
