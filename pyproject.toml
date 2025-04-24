@@ -23,6 +23,8 @@ flask-uploads = "0.2.1"
 python-dotenv = "0.21.1"
 requests = "2.31.0"
 celery = "^5.4.0"
+gunicorn = "^23.0.0"
+redis = "^5.2.1"
 gtex-openapi = { git = "https://github.com/ccmbioinfo/gtex-openapi", branch = "master" }
 
 [tool.poetry.group.dev.dependencies]
