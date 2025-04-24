@@ -1,0 +1,44 @@
+services:
+  flask:
+    build:
+      context: .
+      target: dev
+    volumes:
+      - ./app:/code/app
+      - ./misc:/code/misc
+      - ./data:/code/data
+      - ./tests:/code/tests
+      - ./pyproject.toml:/code/pyproject.toml
+      - ./poetry.lock:/code/poetry.lock
+    ports:
+      - "${FLASK_PORT}:${FLASK_PORT}"
+    depends_on:
+      - mongo
+    networks:
+      - lf-net
+    environment:
+      - APP_ENV
+      # for vscode debugger
+      - FLASK_APP_DEBUG=true
+      # for flask debug mode
+      - FLASK_DEBUG=1
+      - FLASK_SECRET_KEY
+      - MONGO_CONNECTION_STRING
+      - DISABLE_CELERY=true
+    entrypoint: ["python3", "-m", "app.wsgi"]
+  mongo:
+    image:  mongo:6
+    volumes:
+      - mongo-data:/data/db
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
+      - MONGO_INITDB_DATABASE=${MONGO_DATABASE}
+    networks:
+      - lf-net
+
+volumes:
+  mongo-data:
+
+networks:
+  lf-net:
