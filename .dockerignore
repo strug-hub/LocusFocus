@@ -5,3 +5,4 @@ app/static/upload
 app/static/archive
 data/1000Genomes*
 data/dbSNP*
+data/cache

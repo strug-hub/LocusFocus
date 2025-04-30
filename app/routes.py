@@ -33,8 +33,10 @@ from app.utils import download_file
 from app.utils.apis.gtex import get_tissue_site_details
 from app.utils.errors import InvalidUsage, ServerError
 from app.utils.numpy_encoder import NumpyEncoder
+from app.utils.timing import timeit
 
 from app import ext, mongo
+from app.cache import cache
 
 client = mongo.cx
 db = client.GTEx_V7
@@ -1799,6 +1801,8 @@ def getGenesInRange(build, chrom, startbp, endbp):
 
 
 @app.route("/gtex/<version>/tissues_list")
+@timeit
+@cache.cached()
 def list_tissues(version):
     version = version.upper()
     if version == "V7":

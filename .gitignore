@@ -150,3 +150,5 @@ app/static/session_data/
 app/static/upload/*
 !app/static/upload/.gitkeep
 _data
+data/cache/*
+!data/cache/.gitkeep

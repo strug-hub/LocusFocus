@@ -26,6 +26,7 @@ services:
       - FLASK_SECRET_KEY
       - MONGO_CONNECTION_STRING
       - DISABLE_CELERY=true
+      - DISABLE_CACHE=${DISABLE_CACHE:-true}
     entrypoint: ["python3", "-m", "app.wsgi"]
   mongo:
     image:  mongo:6

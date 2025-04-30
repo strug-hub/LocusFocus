@@ -10,6 +10,7 @@ from flask_sitemap import Sitemap
 from flask_talisman import Talisman
 
 from app.config import BaseConfig, DevConfig, ProdConfig
+from app.cache import cache
 
 ConfigClass = ProdConfig if BaseConfig.APP_ENV == "production" else DevConfig
 
@@ -64,6 +65,7 @@ def create_app(config_class=ConfigClass):
     talisman.init_app(app, content_security_policy=app.config["CSP_POLICY"])
     mongo.init_app(app)
     celery_init_app(app)
+    cache.init_app(app)
 
     with app.app_context():
         from app import routes
