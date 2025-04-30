@@ -1,0 +1,7 @@
+# Load these as volumes, not at build time
+app/static/session_data
+!app/static/session_data/*example-output*
+app/static/upload
+app/static/archive
+data/1000Genomes*
+data/dbSNP*
