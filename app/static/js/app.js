@@ -28,6 +28,10 @@ d3.select("#locus").attr("value", `${startingChr}:${startingPos}-${endingPos}`);
 
 // FUNCTIONS
 
+function setLoading(loading) {
+  d3.select("#loading").style("display", loading ? "block" : "none");
+}
+
 // Coordinate system selection change
 function coordinateChange(newCoordinate) {
   $("#LD-populations").multiselect("destroy");
@@ -37,6 +41,13 @@ function coordinateChange(newCoordinate) {
     "value",
     `${startingChr}:${startingPos}-${endingPos}`
   );
+  if (!["hg38", "hg19"].includes(newCoordinate)) {
+    alert(
+      "Invalid coordinate system. Please select hg38 or hg19 coordinates."
+    );
+    return;
+  }
+  setLoading(true);
   if (newCoordinate === "hg38") {
     gtex_version = "v8";
     gtexurl = `/gtex/${gtex_version}/tissues_list`;
@@ -45,8 +56,6 @@ function coordinateChange(newCoordinate) {
     d3.select("#genes-select").text(
       "Select Genes (enter coordinates above to populate)"
     );
-    d3.select("#region-genes").text("");
-    init();
   } else if (newCoordinate.toLowerCase() == "hg19") {
     gtex_version = "v7";
     gtexurl = `/gtex/${gtex_version}/tissues_list`;
@@ -55,9 +64,9 @@ function coordinateChange(newCoordinate) {
     d3.select("#genes-select").text(
       "Select Genes (enter coordinates above to populate)"
     );
-    d3.select("#region-genes").text("");
-    init();
   }
+  d3.select("#region-genes").text("");
+  init();
 }
 
 function askBetaInput(betaColDiv) {
@@ -467,6 +476,7 @@ function init() {
   console.log("Loading genes:");
   loadGenes("hg19", "1:205,500,000-206,000,000");
 
+  
   d3.json(gtexurl).then((response) => {
     var gtex_tissues = response.map((k) => k);
 
@@ -479,6 +489,8 @@ function init() {
         .attr("value", gtex_tissues[i])
         .text(gtex_tissues[i].replaceAll("_", " "));
     }
+
+    setLoading(false);
 
     // Multi-Select Initialization
     $(document).ready(function () {

@@ -67,6 +67,11 @@ def create_app(config_class=ConfigClass):
     celery_init_app(app)
     cache.init_app(app)
 
+    if app.config["CACHE_TYPE"] == "NullCache":
+        app.logger.debug("Cache is disabled")
+    else:
+        app.logger.debug(f"Cache is enabled: {app.config['CACHE_TYPE']}")
+
     with app.app_context():
         from app import routes
         from app.jobs import routes as jobs_routes
