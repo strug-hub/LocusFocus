@@ -26,6 +26,7 @@ celery = "^5.4.0"
 gunicorn = "^23.0.0"
 redis = "^5.2.1"
 gtex-openapi = { git = "https://github.com/ccmbioinfo/gtex-openapi", branch = "master" }
+flask-caching = "^2.3.1"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "7.4.1"
