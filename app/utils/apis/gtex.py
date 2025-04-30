@@ -5,15 +5,17 @@ from gtex_openapi.api.datasets_endpoints_api import DatasetsEndpointsApi
 from gtex_openapi.api.dynamic_association_endpoints_api import (
     DynamicAssociationEndpointsApi,
 )
+from gtex_openapi.api.reference_genome_endpoints_api import ReferenceGenomeEndpointsApi
 from gtex_openapi.api_client import ApiClient
 from gtex_openapi.configuration import Configuration
 from gtex_openapi.models.chromosome import Chromosome
 from gtex_openapi.models.dataset_id import DatasetId
 from gtex_openapi.models.dynamic_eqtl_body import DynamicEqtlBody
 from gtex_openapi.models.eqtl import Eqtl
-from gtex_openapi.models.post_dynamic_eqtl_result import PostDynamicEqtlResult
 from gtex_openapi.models.tissue_site_detail_id import TissueSiteDetailId
 from gtex_openapi.models.paginated_response_variant import PaginatedResponseVariant
+from gtex_openapi.models.paginated_response_gene import PaginatedResponseGene
+from gtex_openapi.models.app_models_request_parameters_genome_build import AppModelsRequestParametersGenomeBuild
 
 from app.utils.helpers import validate_chromosome
 
@@ -30,6 +32,10 @@ def get_dataset_id_enum(dataset_id: str):
 
 def get_tissue_site_detail_id_enum(tissue_site_detail: str):
     return TissueSiteDetailId(tissue_site_detail)
+
+
+def get_genome_build_enum(genome_build: str):
+    return AppModelsRequestParametersGenomeBuild(genome_build)
 
 
 HOSTNAME = "https://gtexportal.org"
@@ -50,6 +56,43 @@ def fetch_all(func: Callable[..., Any], page: int | None = None, **kwargs):
     return results
 
 
+def get_genes(build: str, gene_symbols: List[str]) -> PaginatedResponseGene:
+    """Fetch genes from the GTEx API.
+
+    Useful for getting GENCODE IDs from a list of gene symbols.
+
+    See https://gtexportal.org/api/v2/redoc#tag/Reference-Genome-Endpoints/operation/get_genes_api_v2_reference_gene_get
+    for more details.
+
+    :param build: The build to use (hg19 or hg38)
+    :type build: str
+    :param geneSymbols: A list of gene symbols to fetch. eg. ["NUCKS1", "CDK18"]
+    :type geneSymbols: List[str]
+    :return: A paginated response containing the genes
+    :rtype: PaginatedResponseGene
+    """
+    build = build.lower()
+    if build not in ["hg19", "hg38"]:
+        raise ValueError("build must be 'hg19' or 'hg38'")
+
+    if build == "hg19":
+        build = "GRCh37/hg19"
+    elif build == "hg38":
+        build = "GRCh38/hg38"
+
+    build = get_genome_build_enum(build)
+
+    with ApiClient(CONFIGURATION) as api_client:
+        instance = ReferenceGenomeEndpointsApi(api_client)
+
+        return fetch_all(
+            instance.get_genes_api_v2_reference_gene_get,
+            gene_id=gene_symbols,
+            genome_build=build,
+            items_per_page=100000,
+        )
+
+
 def get_eqtl(
     dataset_id: str,
     gencode_id: str,
@@ -60,11 +103,11 @@ def get_eqtl(
 
     :param dataset_id: The identifier of the gtex dataset (`gtex_v8`, `gtex_v10`)
     :type dataset_id: str
-    :param gencode_id: A versioned GENCODE ID of a gene
+    :param gencode_id: A versioned GENCODE ID of a gene. eg. "ENSG00000005436.14"
     :type gencode_id: str
-    :param tissue_site: The tissue site to use in the calculation
-    :type tissue_site: str, a key of gtex_openapi.models.tissue_site_detail_id.TissueSiteDetailId enum
-    :param variant_id: A GTEx variant id (must begin with `chr`)
+    :param tissue_site: The tissue site to use in the calculation. eg. "Liver"
+    :type tissue_site: str, a key of gtex_openapi.models.tissue_site_detail_id.TissueSiteDetailId enum.
+    :param variant_id: A GTEx variant id (must begin with `chr`). eg. "chr7_95404491_A_T_b38"
     :type variant_id: str
     :return: The calculation result
     :rtype: Eqtl

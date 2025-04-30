@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from random import randint
 from typing import Any, List
 
 from gtex_openapi.models.pagination_info import PaginationInfo
@@ -8,6 +7,7 @@ from app.utils.apis.gtex import (
     fetch_all,
     get_bulk_eqtl,
     get_eqtl,
+    get_genes,
     get_tissue_site_details,
     get_variants,
 )
@@ -127,3 +127,13 @@ def test_can_fetch_eqtl_bulk():
     assert len(results["errors"]) == 0
     assert isinstance(results["data"], list)
     assert isinstance(results["data"][0]["pValue"], float)
+
+
+def test_can_fetch_genes():
+    """Sanity check for gene fetch"""
+    results = get_genes(build="hg38", gene_symbols=["NUCKS1", "CDK18"])
+
+    assert results.data is not None
+    assert len(results.data) == 2
+    assert results.paging_info.number_of_pages == 1
+    assert results.paging_info.page == 0
