@@ -19,6 +19,7 @@ def test_gencode_id_lookup_parity():
     """
     Test that gencode ID lookups using the API and the local dataframe are the same.
     """
+    assert GENE_DF is not None  # gets linter to behave
     gene_symbols = [
         "CDK18",
         "ELK4",
