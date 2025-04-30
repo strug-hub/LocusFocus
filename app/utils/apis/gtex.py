@@ -34,7 +34,7 @@ def get_tissue_site_detail_id_enum(tissue_site_detail: str):
 
 HOSTNAME = "https://gtexportal.org"
 
-configuration = Configuration(host=HOSTNAME)
+CONFIGURATION = Configuration(host=HOSTNAME)
 
 
 def fetch_all(func: Callable[..., Any], page: int | None = None, **kwargs):
@@ -77,7 +77,7 @@ def get_eqtl(
     if not variant_id.startswith("chr"):
         raise ValueError("Variant ID must start with 'chr' prefix!")
 
-    with ApiClient(configuration) as api_client:
+    with ApiClient(CONFIGURATION) as api_client:
         instance = DynamicAssociationEndpointsApi(api_client)
 
         return instance.calculate_expression_quantitative_trait_loci_api_v2_association_dyneqtl_get(
@@ -114,7 +114,7 @@ def get_bulk_eqtl(dataset_id: str, body: List[Dict[str, Any]]) -> Dict[str, Any]
             )
         )
 
-    with ApiClient(configuration) as api_client:
+    with ApiClient(CONFIGURATION) as api_client:
         instance = DynamicAssociationEndpointsApi(api_client)
 
         # request is not paginated, so no need to use fetch_all
@@ -137,7 +137,7 @@ def get_tissue_site_details(dataset_id: str):
 
     dataset_id = get_dataset_id_enum(dataset_id)
 
-    with ApiClient(configuration) as api_client:
+    with ApiClient(CONFIGURATION) as api_client:
         instance = DatasetsEndpointsApi(api_client)
 
         return instance.get_tissue_site_detail_api_v2_dataset_tissue_site_detail_get(
@@ -167,7 +167,7 @@ def get_variants(
     chromosome = get_chromosome_enum(chromosome)
     dataset_id = get_dataset_id_enum(dataset_id)
 
-    with ApiClient(configuration) as api_client:
+    with ApiClient(CONFIGURATION) as api_client:
         instance = DatasetsEndpointsApi(api_client)
 
         return fetch_all(
