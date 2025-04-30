@@ -584,7 +584,7 @@ Flask = ">=0.8.0"
 
 [[package]]
 name = "gtex-openapi"
-version = "1.0.0"
+version = "1.0.1"
 description = "GTEx Portal API"
 optional = false
 python-versions = "^3.8"
@@ -601,8 +601,8 @@ urllib3 = ">= 1.25.3, < 3.0.0"
 [package.source]
 type = "git"
 url = "https://github.com/ccmbioinfo/gtex-openapi"
-reference = "master"
-resolved_reference = "eae736a5ce2ca091b97b70b282acecf2959b58b5"
+reference = "v1.0.1"
+resolved_reference = "042a68387552bde5ff91996f4da63e25a394d6bb"
 
 [[package]]
 name = "gunicorn"
@@ -1540,4 +1540,4 @@ watchdog = ["watchdog (>=2.3)"]
 [metadata]
 lock-version = "2.1"
 python-versions = "~3.10"
-content-hash = "a63d402fada631c91a709536e3451eec2cce8b7953847f017da7dc91fd953cb2"
+content-hash = "738cac1c12e79c3df8cb2a2fe937282d880835948b9e8a31b5d0687872614b3a"

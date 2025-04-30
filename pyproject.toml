@@ -2,7 +2,7 @@
 name = "app"
 version = "0.1.0"
 description = ""
-authors = ["Your Name <you@example.com>"]
+authors = ["Conor Klamann <conor.klamann@utoronto.ca>", "Mackenzie Frew <mackenzie.frew@sickkids.ca>", "Naim Panjwani <naim.panjwani@gmail.com>"]
 license = "MIT"
 readme = "README.md"
 
@@ -25,7 +25,7 @@ requests = "2.31.0"
 celery = "^5.4.0"
 gunicorn = "^23.0.0"
 redis = "^5.2.1"
-gtex-openapi = { git = "https://github.com/ccmbioinfo/gtex-openapi", branch = "master" }
+gtex-openapi = { git = "https://github.com/ccmbioinfo/gtex-openapi", tag = "v1.0.1" }
 flask-caching = "^2.3.1"
 
 [tool.poetry.group.dev.dependencies]
