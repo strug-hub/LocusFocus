@@ -129,6 +129,7 @@ function plot_heatmap(
       colorscale: norm_color_cutoffs,
     },
   ];
+
   let layout = {
     annotations: [],
     margin: {
@@ -141,6 +142,11 @@ function plot_heatmap(
     width: image_width,
     height: image_height,
     font: { size: font_size },
+    xaxis: {
+      //uncomment to set a max range of visible genes and set `dragmode=pan` to pan
+      //range: [0, Math.min(genes.length, 10)],
+      dtick: 1,
+    },
   };
 
   // Tried to add the SSPvalue numbers, but does not place correctly (they all go into the middle of the plot)
