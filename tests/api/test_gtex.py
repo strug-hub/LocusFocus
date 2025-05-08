@@ -107,7 +107,7 @@ def test_can_fetch_eqtl():
 
 
 def test_can_fetch_eqtl_bulk():
-
+    """Sanity check for bulk eqtl fetch"""
     body = [
         {
             "variant_id": "chr7_95404491_A_T_b38",
@@ -137,3 +137,49 @@ def test_can_fetch_genes():
     assert len(results.data) == 2
     assert results.paging_info.number_of_pages == 1
     assert results.paging_info.page == 0
+
+
+def test_eqtl_fetch_equivalence():
+    """
+    Check that the eQTL fetch API results are the same as bulk fetch.
+    """
+
+    variant_id = "chr1_205381100_C_T_b38"
+    tissue_site = "Liver"
+    gencode_id = "ENSG00000069275.12"  # "NUCKS1"
+    dataset_id = "gtex_v8"
+
+    print("Fetching single eQTL...")
+    single_eqtl_results = get_eqtl(
+        dataset_id=dataset_id,
+        gencode_id=gencode_id,
+        tissue_site=tissue_site,
+        variant_id=variant_id,
+    )
+    print("Done fetching single eQTL")
+    assert single_eqtl_results.data is not None
+    assert len(single_eqtl_results.data) > 0
+
+    print("Fetching bulk eQTL...")
+    bulk_eqtl_results = get_bulk_eqtl(
+        dataset_id=dataset_id,
+        body=[
+            {
+                "variant_id": variant_id,
+                "gencode_id": gencode_id,
+                "tissue_site_detail_id": tissue_site,
+            }
+        ],
+    )
+    print("Done fetching bulk eQTL")
+    assert bulk_eqtl_results["data"] is not None
+    assert len(bulk_eqtl_results["data"]) > 0
+
+    # Check equivalence
+    single_dict = single_eqtl_results.to_dict()
+    bulk_dict = bulk_eqtl_results["data"][0]
+    assert abs(single_dict["pValue"] - bulk_dict["pValue"]) < 1e-6
+    assert abs(single_dict["error"] - bulk_dict["error"]) < 1e-6
+    assert abs(single_dict["nes"] - bulk_dict["nes"]) < 1e-6
+    assert abs(single_dict["tStatistic"] - bulk_dict["tStatistic"]) < 1e-6
+    # Missing! maf, hetCount, homoAltCount, homoRefCount
