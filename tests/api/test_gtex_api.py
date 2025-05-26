@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from typing import Any, List
 
+import pytest
+import pandas as pd
 from gtex_openapi.models.pagination_info import PaginationInfo
 
 from app.utils.apis.gtex import (
@@ -127,6 +129,58 @@ def test_can_fetch_eqtl_bulk():
     assert len(results["errors"]) == 0
     assert isinstance(results["data"], list)
     assert isinstance(results["data"][0]["pValue"], float)
+
+
+def test_combined_eqtl():
+    """
+    Lookup gene using gtex,
+    get variants in gene region,
+    then try fetching eQTLs using those variants.
+
+    Check that rsID and variant IDs both work for queries.
+    """
+    # Get gene info
+    gene_symbols = ["NUCKS1"]
+    results = get_genes(build="hg38", gene_symbols=gene_symbols)
+    assert results.data is not None
+
+    gene = results.data[0]
+
+    # Get region
+    start = gene.start
+    end = gene.end
+    chrom = gene.chromosome.value
+    gencode_id = gene.gencode_id
+
+    # Get variants in gene region
+    variants = get_variants(
+        dataset_id="gtex_v8",
+        start=start,
+        end=end,
+        chromosome=chrom,
+    )
+
+    assert variants.data is not None
+    assert len(variants.data) > 0
+
+    ids = pd.DataFrame({
+        "variant_id": [v.variant_id for v in variants.data],
+        "rs_id": [v.snp_id for v in variants.data]
+    })
+
+    print(len(ids))
+
+    ids = ids[(ids["rs_id"] != ".") & (ids["variant_id"] != ".")].iloc[100:110]
+
+    variant_body = [{"tissue_site_detail_id": "Liver", "variant_id": v, "gencode_id": gencode_id} for v in ids["variant_id"]]
+    rsid_body = [{"tissue_site_detail_id": "Liver", "variant_id": v, "gencode_id": gencode_id} for v in ids["rs_id"]]
+    variant_results = get_bulk_eqtl(dataset_id="gtex_v8", body=variant_body)
+    rsid_results = get_bulk_eqtl(dataset_id="gtex_v8", body=rsid_body)
+
+    assert variant_results["data"] is not None
+    assert len(variant_results["data"]) > 0
+    assert rsid_results["data"] is not None
+    assert len(rsid_results["data"]) > 0
 
 
 def test_can_fetch_genes():
