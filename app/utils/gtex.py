@@ -1,13 +1,16 @@
 import os
+from typing import List
 
 import pandas as pd
 from flask import current_app as app
 from pymongo import MongoClient
+from gtex_openapi.exceptions import ApiException
 
 
 from app import mongo
 from app.utils import parse_region_text
 from app.utils.errors import InvalidUsage
+from app.utils.apis.gtex import get_eqtl, get_genes, get_bulk_eqtl
 
 client = None  # type: ignore
 
@@ -224,3 +227,65 @@ def gene_names(genename, build):
             list(collapsed_genes_df["ENSG_name"]).index(genename)
         ]
     return genename, ensg_gene
+
+
+def fetch_gtex_eqtls(gtex_version, tissues: List[str], genes: List[str], snp_list: List[str], coloc2=False):
+    """Fetch eQTLs from GTEx using the API, and merges them with the provided snp_list.
+    Output dataframe is the exact same format as get_gtex_data.
+
+    :param gtex_version: The GTEx version to use (V8 or V10).
+    :type gtex_version: str
+    :param tissues: The tissues to fetch eQTLs for. 
+    :type tissues: List[str], a key of gtex_openapi.models.tissue_site_detail_id.TissueSiteDetailId enum
+    :param genes: A list of gene symbols. eg. ["NUCKS1", "CDK18"]
+    :type genes: List[str]
+    :param snp_list: A list of SNPs to fetch eQTLs for. Must be in format chr_pos_ref_alt_build, eg. chr1_205381100_C_T_b38
+    :type snp_list: List[str]
+    :param coloc2: Whether to fetch COLOC2 data. Some fields are not available in the bulk fetch API that are required for COLOC2 (ie. maf, sample count)
+    :type coloc2: bool
+    :return: A pandas DataFrame containing the eQTLs
+    :rtype: pd.DataFrame
+    """
+    # This is gonna be slow...
+    BUILD = "hg38"
+    gtex_version = gtex_version.lower()
+    if gtex_version not in ["v8", "v10"]:
+        raise ValueError("gtex_version must be 'V8' or 'V10'")
+
+    # Get gencode IDs
+    gencodes = [x.gencode_id for x in get_genes(build=BUILD, gene_symbols=genes).data]
+
+    skipped_snps = []
+    invalid_snps = []
+
+    if coloc2:
+        raise NotImplementedError("COLOC2 not implemented yet")
+    else:
+        # list of dicts with tissue_site_detail_id, variant_id, gencode_id
+        body = []
+        for tissue in tissues:
+            for gencode in gencodes:
+                for snp in snp_list:
+                    body.append({"tissue_site_detail_id": tissue, "variant_id": snp, "gencode_id": gencode})
+        eqtls = get_bulk_eqtl(dataset_id=f"gtex_{gtex_version}", body=body)
+
+    for tissue in tissues:
+        for gencode in gencodes:
+            for snp in snp_list:
+                try:
+                    eqtl = get_eqtl(dataset_id=f"gtex_{gtex_version}", gencode_id=gencode, tissue_site=tissue, variant_id=snp)
+
+
+
+                except ApiException as e:
+                    if e.status == 400:
+                        # Failed to calculate eQTL
+                        skipped_snps.append((tissue, gencode, snp))
+                        continue
+                    elif e.status == 422:
+                        # Validation error
+                        invalid_snps.append((tissue, gencode, snp))
+                        continue
+                    else:
+                        raise e
+
