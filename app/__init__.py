@@ -61,7 +61,11 @@ def create_app(config_class=ConfigClass):
         raise Exception("SECRET_KEY is not set! Add FLASK_SECRET_KEY to environment!")
 
     ext.init_app(app)
-    talisman.init_app(app, content_security_policy=app.config["CSP_POLICY"])
+    talisman.init_app(
+        app,
+        content_security_policy=app.config["CSP_POLICY"],
+        content_security_policy_nonce_in=app.config["NONCE_LIST"]
+    )
     mongo.init_app(app)
     celery_init_app(app)
 

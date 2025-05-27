@@ -225,11 +225,9 @@
   <script type="text/javascript" src="{{ url_for('static', filename='js/lib/jquery.dataTables.min.js') }}"></script>
   <!-- Multiselect -->
   <script src="{{ url_for('static', filename='js/lib/bootstrap-multiselect.js') }}"></script>
-  <script>
+  <script nonce="{{ csp_nonce() }}">
     $("#multi-region").on("change", checkMultipleRegionsInput);
-    $("#file-upload").on("change", function() {
-      
-    });
+    $("#file-upload").on("change", function() {});
   </script>
 </body>
 

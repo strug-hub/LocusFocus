@@ -25,15 +25,12 @@ class BaseConfig:
         ],
         "script-src": [
             "'self'",
-            "'unsafe-inline'",  # TODO
-            "'unsafe-eval'",  # TODO
             "https://*.googletagmanager.com",
             "cdnjs.cloudflare.com",
             "cdn.plot.ly",
         ],
         "style-src": [
             "'self'",
-            "'unsafe-inline'",  # TODO
             "use.fontawesome.com",
             "cdnjs.cloudflare.com",
             "stackpath.bootstrapcdn.com",
@@ -51,6 +48,7 @@ class BaseConfig:
             "https://*.googletagmanager.com",
         ],
     }
+    NONCE_LIST = ["script-src", "style-src"]
 
     APP_ENV = os.environ.get("APP_ENV", "production")
 

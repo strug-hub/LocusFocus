@@ -102,7 +102,7 @@
 
   <script src="{{ url_for('static', filename='js/waiting-page/progress-bar.js') }}"></script>
 
-  <script>
+  <script nonce="{{ csp_nonce() }}">
     const JOB_STATUS_URL = "{{ url_for('jobs.get_job_status', job_id=session_id) }}";
     const SESSION_ID = "{{ session_id }}";
     handleJobStatus(JOB_STATUS_URL, SESSION_ID);
