@@ -39,7 +39,7 @@ function plot_heatmap(
       if (newSSPvalues[i][j] === -2) {
         newSSPvalues[i][j] = -1;
       } else if (newSSPvalues[i][j] === -3) {
-        newSSPvalues[i] = -1;
+        newSSPvalues[i][j] = -1;
       } else {
         if (newSSPvalues[i][j] > 0) {
           num_datasets += 1;
@@ -107,6 +107,7 @@ function plot_heatmap(
   color_cutoffs = color_cutoffs.map(
     ([threshold, color]) => Math.round((threshold + Number.EPSILON) * 1e3) / 1e3
   );
+
   let data = [
     {
       z: newSSPvalues,
