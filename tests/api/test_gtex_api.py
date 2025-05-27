@@ -154,7 +154,7 @@ def test_combined_eqtl():
 
     # Get variants in gene region
     variants = get_variants(
-        dataset_id="gtex_v8",
+        dataset_id="gtex_v10",
         start=start,
         end=end,
         chromosome=chrom,
@@ -170,12 +170,14 @@ def test_combined_eqtl():
 
     print(len(ids))
 
-    ids = ids[(ids["rs_id"] != ".") & (ids["variant_id"] != ".")].iloc[100:110]
+    ids = ids[(ids["rs_id"] != ".") & (ids["variant_id"] != ".")]
+
+    print(ids)
 
     variant_body = [{"tissue_site_detail_id": "Liver", "variant_id": v, "gencode_id": gencode_id} for v in ids["variant_id"]]
     rsid_body = [{"tissue_site_detail_id": "Liver", "variant_id": v, "gencode_id": gencode_id} for v in ids["rs_id"]]
-    variant_results = get_bulk_eqtl(dataset_id="gtex_v8", body=variant_body)
-    rsid_results = get_bulk_eqtl(dataset_id="gtex_v8", body=rsid_body)
+    variant_results = get_bulk_eqtl(dataset_id="gtex_v10", body=variant_body)
+    rsid_results = get_bulk_eqtl(dataset_id="gtex_v10", body=rsid_body)
 
     assert variant_results["data"] is not None
     assert len(variant_results["data"]) > 0
