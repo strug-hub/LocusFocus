@@ -61,7 +61,7 @@ class ReadSecondaryDatasetsStage(PipelineStage):
                 secondary_datasets[table_titles[i]] = table.fillna(-1).to_dict(
                     orient="records"
                 )
-            except:
+            except Exception:
                 secondary_datasets[table_titles[i]] = []
 
         return secondary_datasets

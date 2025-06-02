@@ -63,7 +63,7 @@ def resolve_plink_filepath(build, pop, chrom):
         chrom = 23
     try:
         chrom = int(chrom)
-    except:
+    except Exception:
         raise InvalidUsage(f"Invalid chromosome {str(chrom)}", status_code=410)
     if chrom not in np.arange(1, 24):
         raise InvalidUsage(f"Invalid chromosome {str(chrom)}", status_code=410)

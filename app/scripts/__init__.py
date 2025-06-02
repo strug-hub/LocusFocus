@@ -109,5 +109,4 @@ def set_based_test():
     Does not perform any pre-processing or validation before running the script
     with the provided parameters.
     """
-    SCRIPT_PATH = os.path.join(BASE_DIR, "getSimpleSumStats.R")
     raise NotImplementedError()

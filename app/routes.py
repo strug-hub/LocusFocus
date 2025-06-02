@@ -175,7 +175,7 @@ def parseRegionText(regiontext, build):
         try:
             startbp = int(startbp)
             endbp = int(endbp)
-        except:
+        except Exception:
             raise InvalidUsage(
                 f"Invalid coordinates input: {regiontext}", status_code=410
             )
@@ -188,7 +188,7 @@ def parseRegionText(regiontext, build):
                 maxChromLength = chromLengths.loc["chr" + str(chrom), "length"]
             startbp = int(startbp)
             endbp = int(endbp)
-        except:
+        except Exception:
             raise InvalidUsage(
                 f"Invalid coordinates input {regiontext}", status_code=410
             )
@@ -231,7 +231,7 @@ def parseSNP(snp_text):
 
 
 def allowed_file(filenames):
-    if type(filenames) == type("str"):
+    if type(filenames) is type("str"):
         return (
             "." in filenames
             and filenames.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -304,17 +304,17 @@ def classify_files(filenames):
     return gwas_filepath, ldmat_filepath, html_filepath
 
 
-def isSorted(l):
+def isSorted(ls):
     # l is a list
     # returns True if l is sorted in non-descending order, False otherwise
-    return all(l[i] <= l[i + 1] for i in range(len(l) - 1))
+    return all(ls[i] <= ls[i + 1] for i in range(len(ls) - 1))
 
 
-def Xto23(l):
+def Xto23(ls):
     newl = []
     validchroms = [str(i) for i in list(np.arange(1, 24))]
     validchroms.append(".")
-    for x in l:
+    for x in ls:
         if str(str(x).strip().lower().replace("chr", "").upper()) == "X":
             newl.append(23)
         elif str(str(x).strip().lower().replace("chr", "")) in validchroms:
@@ -377,7 +377,7 @@ def buildSNPlist(df, chromcol, poscol, refcol, altcol, build):
                 + "_"
                 + str(build)
             )
-        except:
+        except Exception:
             raise InvalidUsage(f"Could not convert marker at row {str(i)}")
     return snplist
 
@@ -391,7 +391,7 @@ def fetchSNV(chrom, bp, ref, build):
     # Ensure valid region:
     try:
         regiontxt = str(chrom) + ":" + str(bp) + "-" + str(int(bp) + 1)
-    except:
+    except Exception:
         raise InvalidUsage(f"Invalid input for {str(chrom):str(bp)}")
     chrom, startbp, endbp = parseRegionText(regiontxt, build)
     chrom = str(chrom).replace("chr", "").replace("23", "X")
@@ -416,7 +416,6 @@ def fetchSNV(chrom, bp, ref, build):
         rowlist = str(row).split("\t")
         chromi = rowlist[0].replace("chr", "")
         posi = rowlist[1]
-        idi = rowlist[2]
         refi = rowlist[3]
         alti = rowlist[4]
         varstr = "_".join([chromi, posi, refi, alti, suffix])
@@ -550,7 +549,7 @@ def standardizeSNPs(variantlist, regiontxt, build):
                     stdvariantlist.append(stdvar)
                 else:
                     stdvariantlist.append(rsids[variantstr][0])
-            except:
+            except Exception:
                 stdvariantlist.append(".")
         elif re.search(
             r"^\d+_\d+_[A,T,G,C]+_[A,T,C,G]+,*", variantstr.replace("X", "23")
@@ -576,7 +575,7 @@ def standardizeSNPs(variantlist, regiontxt, build):
                         )
                 else:
                     stdvariantlist.append(".")
-            except:
+            except Exception:
                 raise InvalidUsage(f"Problem with variant {variant}", status_code=410)
         elif re.search(r"^\d+_\d+_*[A,T,G,C]*", variantstr.replace("X", "23")):
             strlist = variantstr.split("_")
@@ -595,7 +594,7 @@ def standardizeSNPs(variantlist, regiontxt, build):
                     stdvariantlist.append(fetchSNV(achr, astart, aref, build))
                 else:
                     stdvariantlist.append(".")
-            except:
+            except Exception:
                 raise InvalidUsage(f"Problem with variant {variant}", status_code=410)
         else:
             raise InvalidUsage(
@@ -709,7 +708,7 @@ def torsid(variantlist, regiontext, build):
         if not variant.startswith("rs"):
             try:
                 finalvarlist.append(rsid[variant])
-            except:
+            except Exception:
                 finalvarlist.append(".")
         else:
             finalvarlist.append(variant)
@@ -1212,7 +1211,7 @@ def resolve_plink_filepath(build, pop, chrom):
         chrom = 23
     try:
         chrom = int(chrom)
-    except:
+    except Exception:
         raise InvalidUsage(f"Invalid chromosome {str(chrom)}", status_code=410)
     if chrom not in np.arange(1, 24):
         raise InvalidUsage(f"Invalid chromosome {str(chrom)}", status_code=410)
@@ -1453,7 +1452,7 @@ def get_gtex(version, tissue, gene_id):
     response = []
     try:
         response = results[0]["eqtl_variants"]
-    except:
+    except Exception:
         return pd.DataFrame([{"error": f"No eQTL data for {gene_id} in {tissue}"}])
     results_df = pd.DataFrame(response)
     chrom = int(list(results_df["variant_id"])[0].split("_")[0].replace("X", "23"))
@@ -1536,9 +1535,8 @@ def get_gtex_data(version, tissue, gene, snp_list, raiseErrors=False):
             )
     else:
         try:
-            error_message = list(response_df["error"])[0]
             gtex_data = pd.DataFrame({})
-        except:
+        except Exception:
             if raiseErrors:
                 raise InvalidUsage(
                     "No response for tissue "
@@ -1588,7 +1586,7 @@ def read_gwasfile(infile, sep="\t"):
     try:
         gwas_data = pd.read_csv(infile, sep=sep, encoding="utf-8")
         return gwas_data
-    except:
+    except Exception:
         outfile = infile.replace(".txt", "_mod.txt")
         with open(infile) as f:
             with open(outfile, "w") as fout:
@@ -1599,7 +1597,7 @@ def read_gwasfile(infile, sep="\t"):
         try:
             gwas_data = pd.read_csv(outfile, sep=sep, encoding="utf-8")
             return gwas_data
-        except:
+        except Exception:
             raise InvalidUsage(
                 "Failed to load primary dataset. Please check formatting is adequate.",
                 status_code=410,
@@ -1667,7 +1665,7 @@ def create_close_regions(regions: List[Tuple[int, int, int]], threshold=int(1e6)
     # Split by chromosome
     chrom_buckets: Dict[int, List[Tuple[int, int, int]]] = dict()
     for region in regions:
-        if chrom_buckets.get(region[0], None) == None:
+        if chrom_buckets.get(region[0], None) is None:
             chrom_buckets[region[0]] = [region]
         else:
             chrom_buckets[region[0]].append(region)
@@ -2010,7 +2008,7 @@ def regionCheck(build, regiontext):
         try:
             startbp = int(startbp)
             endbp = int(endbp)
-        except:
+        except Exception:
             message["response"] = "Invalid coordinate input"
             return jsonify(message)
     else:
@@ -2022,7 +2020,7 @@ def regionCheck(build, regiontext):
                 maxChromLength = chromLengths.loc["chr" + str(chrom), "length"]
             startbp = int(startbp)
             endbp = int(endbp)
-        except:
+        except Exception:
             message["response"] = "Invalid coordinate input"
             return jsonify(message)
     if chrom < 1 or chrom > 23:
@@ -2174,7 +2172,7 @@ def setbasedtest():
     regionstext = request.form[FormID.LOCUS_MULTIPLE]
     regions = get_multiple_regions(regionstext, coordinate)
 
-    user_wants_separate_tests = request.form.get(FormID.SEPARATE_TESTS) != None
+    user_wants_separate_tests = request.form.get(FormID.SEPARATE_TESTS) is not None
 
     metadata = {}
     metadata.update(
@@ -2625,7 +2623,7 @@ app.config["SITEMAP_URL_SCHEME"] = "https"
 
 
 @ext.register_generator
-def index():
+def index_g():
     # Not needed if you set SITEMAP_INCLUDE_RULES_WITHOUT_PARAMS=True
     # yield 'index', {}
     urls = [
