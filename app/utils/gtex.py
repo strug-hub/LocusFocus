@@ -54,7 +54,7 @@ def get_gtex(version, tissue, gene_id):
     response = []
     try:
         response = results[0]["eqtl_variants"]
-    except:
+    except Exception:
         return pd.DataFrame([{"error": f"No eQTL data for {gene_id} in {tissue}"}])
     results_df = pd.DataFrame(response)
     chrom = int(list(results_df["variant_id"])[0].split("_")[0].replace("X", "23"))
@@ -133,9 +133,8 @@ def get_gtex_data(version, tissue, gene, snp_list, raiseErrors=False) -> pd.Data
             )
     else:
         try:
-            error_message = list(response_df["error"])[0]
             gtex_data = pd.DataFrame({})
-        except:
+        except Exception:
             if raiseErrors:
                 raise InvalidUsage(
                     "No response for tissue "

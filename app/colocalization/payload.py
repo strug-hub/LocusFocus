@@ -379,7 +379,7 @@ class SessionPayload:
                         raise InvalidUsage(
                             "Set-based p-value threshold given is not between 0 and 1"
                         )
-                except:
+                except Exception:
                     raise InvalidUsage(
                         "Invalid value provided for the set-based p-value threshold. Value must be numeric between 0 and 1."
                     )

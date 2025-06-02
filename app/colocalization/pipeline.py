@@ -9,7 +9,7 @@ from app.colocalization.payload import SessionPayload
 from app.utils import get_session_filepath
 from app.pipeline import Pipeline
 from app.pipeline.pipeline_stage import PipelineStage
-from app.colocalization.stages import *
+from app.colocalization import stages
 from app.utils.errors import LocusFocusError
 
 
@@ -21,15 +21,15 @@ class ColocalizationPipeline(Pipeline):
     def __init__(self, id=None, bound_task=None):
         super().__init__(id=id, bound_task=bound_task)
         self.pipe(
-            CreateSessionStage(),
-            CollectUserInputStage(),
-            ReadGWASFileStage(enforce_one_chrom=True),
-            ReadSecondaryDatasetsStage(),
-            ReportGTExDataStage(),
-            SimpleSumSubsetGWASStage(),
-            GetLDMatrixStage(),
-            ColocSimpleSumStage(),
-            FinalizeResultsStage(),
+            stages.CreateSessionStage(),
+            stages.CollectUserInputStage(),
+            stages.ReadGWASFileStage(enforce_one_chrom=True),
+            stages.ReadSecondaryDatasetsStage(),
+            stages.ReportGTExDataStage(),
+            stages.SimpleSumSubsetGWASStage(),
+            stages.GetLDMatrixStage(),
+            stages.ColocSimpleSumStage(),
+            stages.FinalizeResultsStage(),
         )
         self.timers = {f"{stage.name()}": 0.0 for stage in self.stages}
 

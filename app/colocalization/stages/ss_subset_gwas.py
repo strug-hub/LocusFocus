@@ -54,7 +54,7 @@ class SimpleSumSubsetGWASStage(PipelineStage):
         SS_chrom_bool = [
             str(x).replace("23", "X")
             for x in gwas_chrom_col.isin(chromList)
-            if x == True
+            if x
         ]
         SS_indices = (
             SS_chrom_bool

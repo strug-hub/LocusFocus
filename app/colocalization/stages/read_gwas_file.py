@@ -98,7 +98,7 @@ class ReadGWASFileStage(PipelineStage):
 
         try:
             gwas_data = pd.read_csv(gwas_filepath, sep="\t", encoding="utf-8")
-        except:
+        except Exception:
             outfile = gwas_filepath.replace(".txt", "_mod.txt").replace(
                 ".tsv", "_mod.tsv"
             )
@@ -110,7 +110,7 @@ class ReadGWASFileStage(PipelineStage):
                             fout.write(line.replace("\t\t\n", "\t\n"))
             try:
                 gwas_data = pd.read_csv(outfile, sep="\t", encoding="utf-8")
-            except:
+            except Exception:
                 raise InvalidUsage(
                     "Failed to load primary dataset as tab-separated file. Please check formatting is adequate, and that the file is not empty.",
                     status_code=410,

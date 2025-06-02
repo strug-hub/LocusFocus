@@ -77,7 +77,7 @@ class CollectUserInputStage(PipelineStage):
                     )
                 else:
                     payload.set_based_p = p_threshold
-            except:
+            except Exception:
                 errors.append(
                     "Invalid value provided for the set-based p-value threshold. Value must be numeric between 0 and 1."
                 )
