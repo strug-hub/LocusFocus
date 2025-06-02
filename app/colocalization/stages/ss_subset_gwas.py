@@ -22,7 +22,6 @@ class SimpleSumSubsetGWASStage(PipelineStage):
         return "simple-sum-subset-gwas"
 
     def invoke(self, payload: SessionPayload) -> SessionPayload:
-
         if payload.gwas_data is None:
             raise Exception("GWAS dataset not found")
 
@@ -117,6 +116,6 @@ class SimpleSumSubsetGWASStage(PipelineStage):
             dups = set([x for x in positions if positions.count(x) > 1])
             dup_counts = [(x, positions.count(x)) for x in dups]
             raise InvalidUsage(
-                f'Duplicate chromosome basepair positions detected: {[f"bp: {dup[0]}, num. duplicates: {dup[1]}" for dup in dup_counts]}'
+                f"Duplicate chromosome basepair positions detected: {[f'bp: {dup[0]}, num. duplicates: {dup[1]}' for dup in dup_counts]}"
             )
         return None

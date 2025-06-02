@@ -5,7 +5,6 @@ import os
 
 import numpy as np
 import pandas as pd
-from werkzeug.datastructures import ImmutableMultiDict
 
 from app.colocalization.constants import (
     ONE_SIDED_SS_WINDOW_SIZE,
@@ -309,7 +308,9 @@ class SessionPayload:
                 )
             SSchrom, _, _ = self.get_locus_tuple()
             lead_snp_position_index = self.get_lead_snp_index()
-            lead_snp_position = int(self.gwas_data.iloc[lead_snp_position_index, :]["POS"])  # type: ignore
+            lead_snp_position = int(
+                self.gwas_data.iloc[lead_snp_position_index, :]["POS"]
+            )  # type: ignore
             SS_start = max(int(lead_snp_position - ONE_SIDED_SS_WINDOW_SIZE), 0)
             SS_end = int(lead_snp_position + ONE_SIDED_SS_WINDOW_SIZE)
         SSlocustext = str(SSchrom) + ":" + str(SS_start) + "-" + str(SS_end)
@@ -402,7 +403,9 @@ class SessionPayload:
         data = {}
         data["success"] = self.success
         data["sessionid"] = str(self.session_id)
-        data["snps"] = list(self.gwas_data_kept["SNP"]) if self.gwas_data is not None else []
+        data["snps"] = (
+            list(self.gwas_data_kept["SNP"]) if self.gwas_data is not None else []
+        )
         data["inferVariant"] = self.get_infer_variant()
         data["pvalues"] = (
             list(self.gwas_data_kept["P"]) if self.gwas_data is not None else []

@@ -22,7 +22,6 @@ class CollectUserInputStage(PipelineStage):
         return "collect-user-input"
 
     def invoke(self, payload: SessionPayload) -> SessionPayload:
-
         new_payload = self._read_form_inputs(payload)
 
         return new_payload
@@ -87,8 +86,8 @@ class CollectUserInputStage(PipelineStage):
 
         if len(errors) > 0:
             raise InvalidUsage(
-                message=f"Error(s) found in uploaded form",
-                payload={f"error_{i+1}": error for i, error in enumerate(errors)},
+                message="Error(s) found in uploaded form",
+                payload={f"error_{i + 1}": error for i, error in enumerate(errors)},
             )
 
         return payload

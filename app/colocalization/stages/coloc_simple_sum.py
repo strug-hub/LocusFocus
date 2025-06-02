@@ -41,7 +41,6 @@ class ColocSimpleSumStage(PipelineStage):
         return "simple-sum"
 
     def invoke(self, payload: SessionPayload) -> SessionPayload:
-
         # Check prerequisites
         errors = []
         if payload.gwas_data is None:
@@ -68,10 +67,14 @@ class ColocSimpleSumStage(PipelineStage):
 
         if len(p_value_matrix) == 1:
             # Only GWAS data was provided, no secondary datasets
-            raise InvalidUsage("No secondary datasets provided for colocalization. Please select at least one GTEx tissue/gene combination, or upload a secondary dataset.\nIf you would like to run a set-based test for your GWAS data, please use the Set-Based Test form in the navbar instead.")
+            raise InvalidUsage(
+                "No secondary datasets provided for colocalization. Please select at least one GTEx tissue/gene combination, or upload a secondary dataset.\nIf you would like to run a set-based test for your GWAS data, please use the Set-Based Test form in the navbar instead."
+            )
 
         self._run_simple_sum(
-            p_value_matrix, payload, coloc2eqtl_df,
+            p_value_matrix,
+            payload,
+            coloc2eqtl_df,
         )
 
         return payload
@@ -376,7 +379,9 @@ class ColocSimpleSumStage(PipelineStage):
 
         for i in np.arange(len(SSPvalues)):
             if SSPvalues[i] > 0:
-                SSPvalues[i] = np.format_float_scientific((-np.log10(SSPvalues[i])), precision=2)  # type: ignore
+                SSPvalues[i] = np.format_float_scientific(
+                    (-np.log10(SSPvalues[i])), precision=2
+                )  # type: ignore
         SSPvaluesMatGTEx = np.empty(0)
         num_SNP_used_for_SSMat = np.empty(0)
         comp_usedMat = np.empty(0)
@@ -414,9 +419,8 @@ class ColocSimpleSumStage(PipelineStage):
             "Genes": gtex_genes,
             "Tissues": gtex_tissues,
             "Secondary_dataset_titles": table_titles,
-            "SSPvalues": SSPvaluesMatGTEx.tolist()  # GTEx pvalues
+            "SSPvalues": SSPvaluesMatGTEx.tolist(),  # GTEx pvalues
             # ,'Num_SNPs_Used_for_SS': [int(x) for x in num_SNP_used_for_SS]
-            ,
             "Num_SNPs_Used_for_SS": num_SNP_used_for_SSMat.tolist(),
             "Computation_method": comp_usedMat.tolist(),
             "SSPvalues_secondary": SSPvaluesSecondary,
@@ -430,7 +434,6 @@ class ColocSimpleSumStage(PipelineStage):
         ####################################################################################################
 
         if payload.coloc2:
-
             assert coloc2eqtl_df is not None
 
             # COLOC2

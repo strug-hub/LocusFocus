@@ -1,4 +1,3 @@
-from typing import Dict
 from bs4 import BeautifulSoup as bs
 import numpy as np
 
@@ -20,7 +19,6 @@ class ReadSecondaryDatasetsStage(PipelineStage):
         return "read-secondary-datasets"
 
     def invoke(self, payload: SessionPayload) -> SessionPayload:
-
         secondary_datasets = self._read_dataset_file(payload)
         payload.secondary_datasets = secondary_datasets
 

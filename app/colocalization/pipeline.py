@@ -1,8 +1,6 @@
-from collections import namedtuple
 from os import PathLike
 import timeit
 from typing import List
-from uuid import uuid4
 
 from flask import current_app as app
 from werkzeug.datastructures import ImmutableMultiDict
@@ -35,7 +33,9 @@ class ColocalizationPipeline(Pipeline):
         )
         self.timers = {f"{stage.name()}": 0.0 for stage in self.stages}
 
-    def process(self, request_form: ImmutableMultiDict, uploaded_files: List[PathLike]) -> SessionPayload:
+    def process(
+        self, request_form: ImmutableMultiDict, uploaded_files: List[PathLike]
+    ) -> SessionPayload:
         """
         Run the colocalization pipeline with the provided Request form and file upload dicts.
 
@@ -47,11 +47,11 @@ class ColocalizationPipeline(Pipeline):
             SessionPayload: The final payload object that has been processed by all stages in this pipeline.
         """
         initial_payload = SessionPayload(
-            request_form=request_form, 
-            uploaded_files=uploaded_files, 
+            request_form=request_form,
+            uploaded_files=uploaded_files,
             session_id=self.id,
         )
-        
+
         return super().process(initial_payload)  # type: ignore
 
     def pre_stage(self, stage: PipelineStage, payload: object):

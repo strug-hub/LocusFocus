@@ -1,7 +1,7 @@
 class PipelineStage:
     """
-    An abstract pipeline stage. 
-    
+    An abstract pipeline stage.
+
     Other stages must inherit from this one and implement the `invoke` and `name` methods.
     """
 
