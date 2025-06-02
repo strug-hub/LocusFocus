@@ -104,6 +104,9 @@ venv.bak/
 # mypy
 .mypy_cache/
 
+# ruff
+.ruff_cache
+
 # My file/directory exclusions:
 .DS_Store
 tokens.py
