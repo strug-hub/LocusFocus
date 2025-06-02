@@ -124,4 +124,4 @@ class Pipeline:
             app.logger.error(
                 "[session_id=%s] %s", self.id, error.__repr__(), exc_info=True
             )
-            return ServerError(f"An unexpected error occurred.")
+            return ServerError("An unexpected error occurred.")

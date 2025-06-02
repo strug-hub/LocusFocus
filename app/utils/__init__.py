@@ -1,6 +1,7 @@
 """
 Common utility functions and classes shared by multiple routes in LocusFocus.
 """
+
 import os
 import re
 from typing import List, Optional
@@ -59,9 +60,11 @@ def download_file(file: FileStorage, check_only: bool = False) -> Optional[os.Pa
     return filepath
 
 
-def get_file_with_ext(filepaths: List[os.PathLike], extensions: List[str]) -> Optional[os.PathLike]:
+def get_file_with_ext(
+    filepaths: List[os.PathLike], extensions: List[str]
+) -> Optional[os.PathLike]:
     """
-    Grab the first file in the list that matches the given extensions. This assumes that the 
+    Grab the first file in the list that matches the given extensions. This assumes that the
     files are already uploaded and stored in the upload folder.
 
     Return None if no such file exists.
@@ -94,7 +97,12 @@ def decompose_variant_list(variant_list):
     reflist = [x.split("_")[2] if len(x.split("_")) == 5 else x for x in variant_list]
     altlist = [x.split("_")[3] if len(x.split("_")) == 5 else x for x in variant_list]
     df = pd.DataFrame(
-        {"CHROM": chromlist, "POS": poslist, "REF": reflist, "ALT": altlist,}
+        {
+            "CHROM": chromlist,
+            "POS": poslist,
+            "REF": reflist,
+            "ALT": altlist,
+        }
     )
     return df
 
@@ -325,7 +333,7 @@ def parse_region_text(regiontext, build):
         raise InvalidUsage("Start or end coordinates are out of range", status_code=410)
     elif (endbp - startbp) > GENOMIC_WINDOW_LIMIT:
         raise InvalidUsage(
-            f"Entered region size is larger than {GENOMIC_WINDOW_LIMIT/1e6} Mbp",
+            f"Entered region size is larger than {GENOMIC_WINDOW_LIMIT / 1e6} Mbp",
             status_code=410,
         )
     else:

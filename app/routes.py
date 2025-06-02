@@ -8,7 +8,6 @@ from tqdm import tqdm
 import uuid
 import subprocess
 from datetime import datetime
-from bs4 import BeautifulSoup as bs
 import re
 import pysam
 import glob
@@ -204,7 +203,7 @@ def parseRegionText(regiontext, build):
         raise InvalidUsage("Start or end coordinates are out of range", status_code=410)
     elif (endbp - startbp) > genomicWindowLimit:
         raise InvalidUsage(
-            f"Entered region size is larger than {genomicWindowLimit/10**6} Mbp",
+            f"Entered region size is larger than {genomicWindowLimit / 10**6} Mbp",
             status_code=410,
         )
     else:
@@ -873,7 +872,7 @@ def check_pos_duplicates(positions):
         dups = set([x for x in positions if positions.count(x) > 1])
         dup_counts = [(x, positions.count(x)) for x in dups]
         raise InvalidUsage(
-            f'Duplicate chromosome basepair positions detected: {[f"bp: {dup[0]}, num. duplicates: {dup[1]}" for dup in dup_counts]}'
+            f"Duplicate chromosome basepair positions detected: {[f'bp: {dup[0]}, num. duplicates: {dup[1]}' for dup in dup_counts]}"
         )
     return None
 
@@ -1339,7 +1338,7 @@ def plink_ld_pairwise(build, pop, chrom, snp_positions, snp_pvalues, outfilename
     )
     if len(positions_in_1kg_df) == 0:
         raise InvalidUsage(
-            f"No alternative lead SNP found in the 1000 Genomes. This error occurs when no provided SNPs could be found in the selected 1000 Genomes dataset. Please try a different population, or provide your own LD matrix.",
+            "No alternative lead SNP found in the 1000 Genomes. This error occurs when no provided SNPs could be found in the selected 1000 Genomes dataset. Please try a different population, or provide your own LD matrix.",
             status_code=410,
         )
     new_lead_snp_row = positions_in_1kg_df[
@@ -1838,7 +1837,11 @@ def prev_session():
         old_session_id = request.form["session-id"].strip()
 
         # Check celery session
-        if not app.config["DISABLE_CELERY"] and get_is_celery_running() and old_session_id != "example-output":
+        if (
+            not app.config["DISABLE_CELERY"]
+            and get_is_celery_running()
+            and old_session_id != "example-output"
+        ):
             celery_result = AsyncResult(old_session_id, app=app.extensions["celery"])
             if celery_result.status == "PENDING":
                 raise InvalidUsage(f"Session {old_session_id} does not exist.")
@@ -1895,9 +1898,12 @@ def prev_session():
 
 @app.route("/session_id/<old_session_id>")
 def prev_session_input(old_session_id):
-
     # Check celery session
-    if not app.config["DISABLE_CELERY"] and get_is_celery_running() and old_session_id != "example-output":
+    if (
+        not app.config["DISABLE_CELERY"]
+        and get_is_celery_running()
+        and old_session_id != "example-output"
+    ):
         celery_result = AsyncResult(old_session_id, app=app.extensions["celery"])
         if celery_result.status == "PENDING":
             raise InvalidUsage(f"Session {old_session_id} does not exist.")
@@ -2029,7 +2035,7 @@ def regionCheck(build, regiontext):
         message["response"] = "Start or end coordinates are out of range"
     elif (endbp - startbp) > genomicWindowLimit:
         message["response"] = (
-            f"Entered region size is larger than {genomicWindowLimit/10**6} Mbp"
+            f"Entered region size is larger than {genomicWindowLimit / 10**6} Mbp"
         )
         return jsonify(message)
     else:
@@ -2057,7 +2063,9 @@ def index():
         file = request.files.get(name)
         if file:
             filepath = download_file(file)
-            if filepath is not None and any(str(filepath).endswith(ext) for ext in extensions):
+            if filepath is not None and any(
+                str(filepath).endswith(ext) for ext in extensions
+            ):
                 filepaths.append(filepath)
         elif required:
             raise InvalidUsage(f"Missing required file: {description}", status_code=410)
@@ -2124,7 +2132,7 @@ def setbasedtest():
         # Users can upload up to 1 LD, and must upload 1 summary stats file (.txt, .tsv)
         if len(uploaded_extensions) >= 2:
             raise InvalidUsage(
-                f"Too many files uploaded. Expecting maximum of 2 files",
+                "Too many files uploaded. Expecting maximum of 2 files",
                 status_code=410,
             )
         if extension not in uploaded_extensions:
@@ -2150,7 +2158,7 @@ def setbasedtest():
 
     if summary_stats_filepath == "":
         raise InvalidUsage(
-            f"Missing summary stats file. Please upload one of (.txt, .tsv)",
+            "Missing summary stats file. Please upload one of (.txt, .tsv)",
             status_code=410,
         )
 
@@ -2233,9 +2241,7 @@ def setbasedtest():
 
     combine_lds = False
 
-    snps_used_in_test = (
-        []
-    )  # List of list of positions, one list per test; position is (chrom, bp) tuple
+    snps_used_in_test = []  # List of list of positions, one list per test; position is (chrom, bp) tuple
 
     # TODO: need to determine used SNPs AFTER tests are performed
 
@@ -2260,9 +2266,7 @@ def setbasedtest():
                     & (summary_dataset[bp] >= region[1])
                     & (summary_dataset[bp] <= region[2])
                 )
-                sep_ldmatrix_file = (
-                    f"session_data/ldmat-{my_session_id}-{i+1:03}-{len(regions):03}.txt"
-                )
+                sep_ldmatrix_file = f"session_data/ldmat-{my_session_id}-{i + 1:03}-{len(regions):03}.txt"
                 sep_ldmatrix_filepath = os.path.join(MYDIR, "static", sep_ldmatrix_file)
                 sep_summary_dataset = summary_dataset[mask]
                 sep_ld_mat = ld_mat[mask][:, mask]
@@ -2270,7 +2274,7 @@ def setbasedtest():
                 # subset dataset to SNPs in LD
                 sep_PvaluesMat = np.matrix([sep_summary_dataset[P]])
 
-                sep_Pvalues_file = f"session_data/Pvalues-{my_session_id}-{i+1:03}-{len(regions):03}.txt"
+                sep_Pvalues_file = f"session_data/Pvalues-{my_session_id}-{i + 1:03}-{len(regions):03}.txt"
                 sep_Pvalues_filepath = os.path.join(MYDIR, "static", sep_Pvalues_file)
                 writeMat(sep_PvaluesMat, sep_Pvalues_filepath)
 
@@ -2278,7 +2282,7 @@ def setbasedtest():
                 SSresult_path = os.path.join(
                     MYDIR,
                     "static",
-                    f"session_data/SSPvalues-{my_session_id}-{i+1:03}-{len(regions):03}.txt",
+                    f"session_data/SSPvalues-{my_session_id}-{i + 1:03}-{len(regions):03}.txt",
                 )
                 Rscript_args = [
                     "Rscript",
@@ -2314,7 +2318,7 @@ def setbasedtest():
                 plink_outfilepath = os.path.join(
                     MYDIR,
                     "static",
-                    f"session_data/ld-{my_session_id}-{i+1:03}-{len(regions):03}",
+                    f"session_data/ld-{my_session_id}-{i + 1:03}-{len(regions):03}",
                 )
 
                 sep_dataset = get_snps_in_region(summary_dataset, region, chrom, bp)
@@ -2333,9 +2337,7 @@ def setbasedtest():
                 np.fill_diagonal(
                     ld_mat, np.diag(ld_mat) + LD_MAT_DIAG_CONSTANT
                 )  # need to add diag
-                sep_ldmatrix_file = (
-                    f"session_data/ldmat-{my_session_id}-{i+1:03}-{len(regions):03}.txt"
-                )
+                sep_ldmatrix_file = f"session_data/ldmat-{my_session_id}-{i + 1:03}-{len(regions):03}.txt"
                 sep_ldmatrix_filepath = os.path.join(MYDIR, "static", sep_ldmatrix_file)
                 writeMat(ld_mat, sep_ldmatrix_filepath)
                 # subset dataset to SNPs in LD
@@ -2345,7 +2347,7 @@ def setbasedtest():
                     os.path.join(
                         MYDIR,
                         "static",
-                        f"session_data/ldmat_snps-{my_session_id}-{i+1:03}-{len(regions):03}.txt",
+                        f"session_data/ldmat_snps-{my_session_id}-{i + 1:03}-{len(regions):03}.txt",
                     ),
                 )
                 writeList(
@@ -2353,14 +2355,14 @@ def setbasedtest():
                     os.path.join(
                         MYDIR,
                         "static",
-                        f"session_data/ldmat_positions-{my_session_id}-{i+1:03}-{len(regions):03}.txt",
+                        f"session_data/ldmat_positions-{my_session_id}-{i + 1:03}-{len(regions):03}.txt",
                     ),
                 )
                 sep_PvaluesMat = np.matrix(
                     [sep_dataset[p][sep_dataset[bp].isin(ld_mat_snps_df.iloc[:, 3])]]
                 )
 
-                sep_Pvalues_file = f"session_data/Pvalues-{my_session_id}-{i+1:03}-{len(regions):03}.txt"
+                sep_Pvalues_file = f"session_data/Pvalues-{my_session_id}-{i + 1:03}-{len(regions):03}.txt"
                 sep_Pvalues_filepath = os.path.join(MYDIR, "static", sep_Pvalues_file)
                 writeMat(sep_PvaluesMat, sep_Pvalues_filepath)
 
@@ -2368,7 +2370,7 @@ def setbasedtest():
                 SSresult_path = os.path.join(
                     MYDIR,
                     "static",
-                    f"session_data/SSPvalues-{my_session_id}-{i+1:03}-{len(regions):03}.txt",
+                    f"session_data/SSPvalues-{my_session_id}-{i + 1:03}-{len(regions):03}.txt",
                 )
                 Rscript_args = [
                     "Rscript",
@@ -2475,7 +2477,7 @@ def setbasedtest():
                 plink_outfilepath = os.path.join(
                     MYDIR,
                     "static",
-                    f"session_data/ld-{my_session_id}-{i+1:03}-{len(regions):03}",
+                    f"session_data/ld-{my_session_id}-{i + 1:03}-{len(regions):03}",
                 )
                 ld_mat_snps_df, ld_mat = plink_ldmat(
                     coordinate,
@@ -2493,7 +2495,7 @@ def setbasedtest():
                     os.path.join(
                         MYDIR,
                         "static",
-                        f"session_data/ldmat-{my_session_id}-{i+1:03}-{len(regions):03}.txt",
+                        f"session_data/ldmat-{my_session_id}-{i + 1:03}-{len(regions):03}.txt",
                     ),
                 )
                 ld_mat_snp_df_list.append(ld_mat_snps_df)

@@ -2,7 +2,8 @@
 R scripts for LocusFocus. Functions for running R scripts and returning results.
 """
 
-import os, subprocess
+import os
+import subprocess
 from typing import Union
 import pandas as pd
 

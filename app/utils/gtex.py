@@ -26,6 +26,7 @@ with app.app_context():
         encoding="utf-8",
     )
 
+
 # This is the main function to extract the data for a tissue and gene_id:
 def get_gtex(version, tissue, gene_id):
     if version.upper() == "V8":
@@ -108,6 +109,7 @@ def get_gtex_data(version, tissue, gene, snp_list, raiseErrors=False) -> pd.Data
         response_df = get_gtex("V8", tissue, gene)
     if "error" not in response_df.columns:
         eqtl = response_df
+        eqtl = eqtl.drop_duplicates()
         if rsids:
             snp_df = pd.DataFrame(snp_list, columns=["rs_id"])
             # idx = pd.Index(list(snp_df['rs_id']))

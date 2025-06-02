@@ -24,7 +24,6 @@ class ReportGTExDataStage(PipelineStage):
         return "report-gtex-data"
 
     def invoke(self, payload: SessionPayload) -> SessionPayload:
-
         if payload.gwas_data is None:
             raise Exception(
                 "GWAS data not loaded; needed for GTEx data selection stage"
