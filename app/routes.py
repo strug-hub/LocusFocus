@@ -2239,7 +2239,9 @@ def setbasedtest():
 
     combine_lds = False
 
-    snps_used_in_test = []  # List of list of positions, one list per test; position is (chrom, bp) tuple
+    snps_used_in_test = (
+        []
+    )  # List of list of positions, one list per test; position is (chrom, bp) tuple
 
     # TODO: need to determine used SNPs AFTER tests are performed
 

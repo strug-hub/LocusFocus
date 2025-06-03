@@ -66,6 +66,7 @@ def create_app(config_class=ConfigClass):
     celery_init_app(app)
 
     with app.app_context():
+        from app import routes  # noqa: F401
         from app.jobs import routes as jobs_routes
 
         app.register_blueprint(jobs_routes.jobs_bp)
