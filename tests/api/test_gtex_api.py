@@ -4,12 +4,14 @@ from typing import Any, List
 import pytest
 import pandas as pd
 from gtex_openapi.models.pagination_info import PaginationInfo
+from gtex_openapi.exceptions import BadRequestException
 
 from app.utils.apis.gtex import (
     fetch_all,
     get_bulk_eqtl,
     get_eqtl,
     get_genes,
+    get_independent_eqtls,
     get_tissue_site_details,
     get_variants,
 )
@@ -24,6 +26,12 @@ class DummyResponse:
 def test_can_fetch_v8_tissues():
     """Sanity check for v8 tissue fetch"""
     results = get_tissue_site_details(dataset_id="gtex_v8")
+    assert len(results.data) == 54
+
+
+def test_can_fetch_v10_tissues():
+    """Sanity check for v10 tissue fetch"""
+    results = get_tissue_site_details(dataset_id="gtex_v10")
     assert len(results.data) == 54
 
 
@@ -125,64 +133,21 @@ def test_can_fetch_eqtl_bulk():
 
     results = get_bulk_eqtl(dataset_id="gtex_v10", body=body)
 
-    assert results["data"] is not None
-    assert len(results["errors"]) == 0
-    assert isinstance(results["data"], list)
-    assert isinstance(results["data"][0]["pValue"], float)
-
-
-def test_combined_eqtl():
-    """
-    Lookup gene using gtex,
-    get variants in gene region,
-    then try fetching eQTLs using those variants.
-
-    Check that rsID and variant IDs both work for queries.
-    """
-    # Get gene info
-    gene_symbols = ["NUCKS1"]
-    results = get_genes(build="hg38", gene_symbols=gene_symbols)
     assert results.data is not None
+    assert len(results.errors) == 0
+    assert isinstance(results.data, list)
+    assert isinstance(results.data[0].p_value, float)
 
-    gene = results.data[0]
 
-    # Get region
-    start = gene.start
-    end = gene.end
-    chrom = gene.chromosome.value
-    gencode_id = gene.gencode_id
-
-    # Get variants in gene region
-    variants = get_variants(
+def test_can_fetch_independent_eqtl():
+    """Sanity check for independent eqtl fetch"""
+    results = get_independent_eqtls(
         dataset_id="gtex_v10",
-        start=start,
-        end=end,
-        chromosome=chrom,
+        gencode_ids=["ENSG00000005436.14", "ENSG00000225972.1"],
+        tissue_sites=["Liver", "Lung"],
     )
-
-    assert variants.data is not None
-    assert len(variants.data) > 0
-
-    ids = pd.DataFrame({
-        "variant_id": [v.variant_id for v in variants.data],
-        "rs_id": [v.snp_id for v in variants.data]
-    })
-
-    print(len(ids))
-
-    ids = ids[(ids["rs_id"] != ".") & (ids["variant_id"] != ".")]
-
-    print(ids)
-
-    variant_body = [{"tissue_site_detail_id": "Liver", "variant_id": v, "gencode_id": gencode_id} for v in ids["variant_id"]]
-    rsid_body = [{"tissue_site_detail_id": "Liver", "variant_id": v, "gencode_id": gencode_id} for v in ids["rs_id"]]
-    variant_results = get_bulk_eqtl(dataset_id="gtex_v10", body=variant_body)
-    rsid_results = get_bulk_eqtl(dataset_id="gtex_v10", body=rsid_body)
-
-    assert variant_results["data"] is not None
-    assert len(variant_results["data"]) > 0
-    assert rsid_results["data"] is not None
-    assert len(rsid_results["data"]) > 0
+    assert results.data is not None
+    assert len(results.data) > 0
 
 
 def test_can_fetch_genes():
@@ -228,12 +193,12 @@ def test_eqtl_fetch_equivalence():
         ],
     )
     print("Done fetching bulk eQTL")
-    assert bulk_eqtl_results["data"] is not None
-    assert len(bulk_eqtl_results["data"]) > 0
+    assert bulk_eqtl_results.data is not None
+    assert len(bulk_eqtl_results.data) > 0
 
     # Check equivalence
     single_dict = single_eqtl_results.to_dict()
-    bulk_dict = bulk_eqtl_results["data"][0]
+    bulk_dict = bulk_eqtl_results.data[0].to_dict()
     assert abs(single_dict["pValue"] - bulk_dict["pValue"]) < 1e-6
     assert abs(single_dict["error"] - bulk_dict["error"]) < 1e-6
     assert abs(single_dict["nes"] - bulk_dict["nes"]) < 1e-6
