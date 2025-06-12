@@ -1,6 +1,7 @@
 from collections.abc import Callable
 from typing import Any, Dict, List
 
+from gtex_openapi.api.static_association_endpoints_api import StaticAssociationEndpointsApi
 from gtex_openapi.api.datasets_endpoints_api import DatasetsEndpointsApi
 from gtex_openapi.api.dynamic_association_endpoints_api import (
     DynamicAssociationEndpointsApi,
@@ -16,14 +17,17 @@ from gtex_openapi.models.tissue_site_detail_id import TissueSiteDetailId
 from gtex_openapi.models.paginated_response_variant import PaginatedResponseVariant
 from gtex_openapi.models.paginated_response_gene import PaginatedResponseGene
 from gtex_openapi.models.app_models_request_parameters_genome_build import AppModelsRequestParametersGenomeBuild
+from gtex_openapi.models.post_dynamic_eqtl_result import PostDynamicEqtlResult
+from gtex_openapi.models.paginated_response_independent_eqtl import PaginatedResponseIndependentEqtl
+from gtex_openapi.models.tissuesitedetailid_inner import TissuesitedetailidInner
 
 from app.utils.helpers import validate_chromosome
 
 
 # caller passes in string and we replace with enum value here
 # this is a little backward but more convenient than callers looking up enums?
-def get_chromosome_enum(chr: str):
-    return Chromosome(chr)
+def get_chromosome_enum(chrom: str):
+    return Chromosome(chrom)
 
 
 def get_dataset_id_enum(dataset_id: str):
@@ -91,6 +95,36 @@ def get_genes(build: str, gene_symbols: List[str]) -> PaginatedResponseGene:
             genome_build=build,
             items_per_page=100000,
         )
+    
+
+def get_independent_eqtls(
+    dataset_id: str,
+    gencode_ids: List[str],
+    tissue_sites: List[str],
+) -> PaginatedResponseIndependentEqtl:
+    """Fetch independent EQTL Data
+
+    :param dataset_id: The identifier of the gtex dataset (`gtex_v8`, `gtex_v10`)
+    :type dataset_id: str
+    :param gencode_ids: A list of versioned GENCODE IDs of genes. eg. ["ENSG00000005436.14", "ENSG00000225972.1"]
+    :type gencode_ids: List[str]
+    :param tissue_sites: A list of tissue sites to use in the calculation. eg. ["Liver", "Lung"]
+    :type tissue_sites: List[str], a key of gtex_openapi.models.tissue_site_detail_id.TissueSiteDetailId enum.
+    :return: Independent EQTL results
+    :rtype: IndependentEqtl
+    """
+    tissue_sites = [TissuesitedetailidInner(get_tissue_site_detail_id_enum(x)) for x in tissue_sites] # type: ignore
+    dataset_id = get_dataset_id_enum(dataset_id)
+    with ApiClient(CONFIGURATION) as api_client:
+        instance = StaticAssociationEndpointsApi(api_client)
+
+        return fetch_all(
+            instance.get_independent_eqtl_api_v2_association_independent_eqtl_get,
+            gencode_id=gencode_ids,
+            tissue_site_detail_id=tissue_sites,
+            dataset_id=dataset_id,
+            items_per_page=100000,
+        )
 
 
 def get_eqtl(
@@ -131,7 +165,7 @@ def get_eqtl(
         )
 
 
-def get_bulk_eqtl(dataset_id: str, body: List[Dict[str, Any]]) -> Dict[str, Any]:
+def get_bulk_eqtl(dataset_id: str, body: List[Dict[str, Any]]) -> PostDynamicEqtlResult:
     """Fetch dynamic EQTL Data in bulk
 
     :param dataset_id: The identifier of the gtex dataset (`gtex_v8`, `gtex_v10`)
@@ -140,7 +174,8 @@ def get_bulk_eqtl(dataset_id: str, body: List[Dict[str, Any]]) -> Dict[str, Any]
     :type body: List[Dict[Literal['gencode_id', 'tissue_site_detail_id', 'variant_id], Any]]
                 see docstring for `get_eqtl` for type details.
     :return: The calculation result
-    :rtype: Dict[str, Any]
+    :rtype: PostDynamicEqtlResult
+    :
     """
     dataset_id = get_dataset_id_enum(dataset_id)
 
@@ -166,7 +201,7 @@ def get_bulk_eqtl(dataset_id: str, body: List[Dict[str, Any]]) -> Dict[str, Any]
             dynamic_eqtl_body=body_args,
         )
 
-        return results.to_dict()
+        return results
 
 
 def get_tissue_site_details(dataset_id: str):
