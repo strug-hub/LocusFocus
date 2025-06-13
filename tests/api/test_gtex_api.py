@@ -136,15 +136,43 @@ def test_can_fetch_eqtl_bulk():
     assert results.data is not None
     assert len(results.errors) == 0
     assert isinstance(results.data, list)
-    assert isinstance(results.data[0].p_value, float)
+    assert isinstance(results.data[0].to_dict()["pValue"], float)
 
 
 def test_can_fetch_independent_eqtl():
     """Sanity check for independent eqtl fetch"""
     results = get_independent_eqtls(
-        dataset_id="gtex_v10",
+        dataset_id="gtex_v8",
         gencode_ids=["ENSG00000005436.14", "ENSG00000225972.1"],
-        tissue_sites=["Liver", "Lung"],
+        tissue_sites=["Liver", "Adipose_Visceral_Omentum"],
+    )
+    assert results.data is not None
+    assert len(results.data) > 0
+
+
+def test_eqtl_fetch_pipeline():
+    """
+    Test fetching eQTLs using information from other API endpoints.
+    """
+    gtex_version = "gtex_v8"
+    print("Fetching all tissues for gtex_v8...")
+    tissues_response = get_tissue_site_details(dataset_id=gtex_version)
+    assert tissues_response.data is not None
+    assert len(tissues_response.data) > 0
+    tissues = [x.tissue_site_detail_id.value for x in tissues_response.data]
+
+    gene_symbols = ["NUCKS1", "CDK18", "RAB7L1", "SLC41A1", "PM20D1"]
+    print("Fetching gene info for symbols " + str(gene_symbols) + "...")
+    gene_response = get_genes(build="hg38", gene_symbols=gene_symbols)
+    assert gene_response.data is not None
+    assert len(gene_response.data) <= len(gene_symbols)
+    gencode_ids = [x.gencode_id for x in gene_response.data]
+
+    print("Fetching eQTLs for " + str(gencode_ids) + " in " + str(tissues) + "...")
+    results = get_independent_eqtls(
+        dataset_id=gtex_version,
+        gencode_ids=gencode_ids,
+        tissue_sites=tissues,
     )
     assert results.data is not None
     assert len(results.data) > 0
