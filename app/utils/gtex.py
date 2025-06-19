@@ -10,7 +10,7 @@ from gtex_openapi.exceptions import ApiException
 from app import mongo
 from app.utils import parse_region_text
 from app.utils.errors import InvalidUsage
-from app.utils.apis.gtex import get_eqtl, get_genes, get_bulk_eqtl
+from app.utils.apis.gtex import get_eqtl, get_genes, get_bulk_eqtl, get_independent_eqtls
 
 client = None  # type: ignore
 
@@ -229,15 +229,15 @@ def gene_names(genename, build):
     return genename, ensg_gene
 
 
-def fetch_gtex_eqtls(gtex_version, tissues: List[str], genes: List[str], snp_list: List[str], coloc2=False):
-    """Fetch eQTLs from GTEx using the API, and merges them with the provided snp_list.
-    Output dataframe is the exact same format as get_gtex_data.
+def fetch_gtex_eqtls(gtex_version: str, tissues: List[str], genes: List[str], snp_list: List[str], coloc2=False):
+    """Fetch independent eQTLs from GTEx using the API, and merges them with the provided snp_list.
+    Output dataframe is the exact same format as get_gtex_data, except as a list of results.
 
-    :param gtex_version: The GTEx version to use (V8 or V10).
+    :param gtex_version: The GTEx version to use. One of "gtex_v8", "gtex_v10", "gtex_snrnaseq_pilot".
     :type gtex_version: str
-    :param tissues: The tissues to fetch eQTLs for. 
-    :type tissues: List[str], a key of gtex_openapi.models.tissue_site_detail_id.TissueSiteDetailId enum
-    :param genes: A list of gene symbols. eg. ["NUCKS1", "CDK18"]
+    :param tissues: The tissues to fetch eQTLs for.
+    :type tissues: List[str], keys of gtex_openapi.models.tissue_site_detail_id.TissueSiteDetailId enum
+    :param genes: A list of gene symbols (eg. ["NUCKS1"]), OR a Gencode ID (eg. ["ENSG00000005436.14"])
     :type genes: List[str]
     :param snp_list: A list of SNPs to fetch eQTLs for. Must be in format chr_pos_ref_alt_build, eg. chr1_205381100_C_T_b38
     :type snp_list: List[str]
@@ -246,46 +246,81 @@ def fetch_gtex_eqtls(gtex_version, tissues: List[str], genes: List[str], snp_lis
     :return: A pandas DataFrame containing the eQTLs
     :rtype: pd.DataFrame
     """
-    # This is gonna be slow...
+    if coloc2:
+        raise NotImplementedError("COLOC2 not yet supported with the GTEx API")
     BUILD = "hg38"
     gtex_version = gtex_version.lower()
-    if gtex_version not in ["v8", "v10"]:
-        raise ValueError("gtex_version must be 'V8' or 'V10'")
+    if gtex_version not in ["gtex_v8", "gtex_v10", "gtex_snrnaseq_pilot"]:
+        raise ValueError("gtex_version must be 'gtex_v8', 'gtex_v10', or 'gtex_snrnaseq_pilot' to fetch eQTLs from the GTEx Portal API")
+
+    # check for rsIDs
+    snp_df = pd.Series(snp_list)
+
+    rsid_snps_mask = snp_df.str.startswith("rs")
+    b38_snps_mask = snp_df.str.endswith("_b38")
+    b37_snps_mask = snp_df.str.endswith("_b37")
+
+    if b37_snps_mask.any():
+        raise InvalidUsage(
+            "b37 snps are not supported for fetching eQTLs via GTEx API; please use b38 or rsIDs instead"
+        )
+    
+    if rsid_snps_mask.any() and b38_snps_mask.any():
+        raise InvalidUsage(
+            "There is a mix of rsid and other variant id formats; please use a consistent format"
+        )
+    
+    if not any([rsid_snps_mask.all(), b38_snps_mask.all()]):
+        raise InvalidUsage(
+            "Variant naming format not supported; ensure all are rs ID's are formatted as chrom_pos_ref_alt_b37 eg. chr1_205720483_G_A_b38"
+        )
+    # technically we can support both rsids and b38 together, but we're trying to mimic get_gtex_data
 
     # Get gencode IDs
-    gencodes = [x.gencode_id for x in get_genes(build=BUILD, gene_symbols=genes).data]
+    gene_response = get_genes(build=BUILD, gene_symbols=genes)
+    if len(gene_response.data) == 0:
+        raise InvalidUsage(f"Genes {genes} not found", status_code=410)
+    gencodes = [x.gencode_id for x in gene_response.data]
 
-    skipped_snps = []
-    invalid_snps = []
+    eqtl_response = get_independent_eqtls(
+        dataset_id=gtex_version,
+        gencode_ids=gencodes,
+        tissue_sites=tissues
+    )
 
-    if coloc2:
-        raise NotImplementedError("COLOC2 not implemented yet")
-    else:
-        # list of dicts with tissue_site_detail_id, variant_id, gencode_id
-        body = []
-        for tissue in tissues:
-            for gencode in gencodes:
-                for snp in snp_list:
-                    body.append({"tissue_site_detail_id": tissue, "variant_id": snp, "gencode_id": gencode})
-        eqtls = get_bulk_eqtl(dataset_id=f"gtex_{gtex_version}", body=body)
+    # to_dict is shallow
+    eqtls = [
+        {
+            **x.to_dict(),
+            "tissueSiteDetailId": x.tissue_site_detail_id.value,
+            "ontologyId": x.ontology_id.value,
+            "datasetId": x.dataset_id.value,
+            "chromosome": x.chromosome.value,
+        }
+        for x in eqtl_response.data
+    ]
 
-    for tissue in tissues:
-        for gencode in gencodes:
-            for snp in snp_list:
-                try:
-                    eqtl = get_eqtl(dataset_id=f"gtex_{gtex_version}", gencode_id=gencode, tissue_site=tissue, variant_id=snp)
+    # important columns: pValue, tissueSiteDetailId, variantId
+    eqtl_df = pd.DataFrame(eqtls)
 
+    # merge with snp list
+    rsid_mask = eqtl_df["snpId"].isin(snp_df[rsid_snps_mask])
+    b38_mask = eqtl_df["snpId"].isin(snp_df[b38_snps_mask])
 
+    eqtl_df = eqtl_df[rsid_mask | b38_mask]
 
-                except ApiException as e:
-                    if e.status == 400:
-                        # Failed to calculate eQTL
-                        skipped_snps.append((tissue, gencode, snp))
-                        continue
-                    elif e.status == 422:
-                        # Validation error
-                        invalid_snps.append((tissue, gencode, snp))
-                        continue
-                    else:
-                        raise e
-
+    # Rename columns to match get_gtex response df
+    eqtl_df.rename(
+        columns={
+            "variantId": "variant_id",
+            "snpId": "rs_id",
+            "pValue": "pval",
+            "maf": "sample_maf",
+            "nes": "beta",
+            "chromosome": "chr",
+            "pos": "variant_pos",
+            # error / se is missing
+            # ma_samples, ma_count are missing
+        },
+        inplace=True
+    )
