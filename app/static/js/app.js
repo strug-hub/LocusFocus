@@ -504,7 +504,7 @@ function init() {
   // });
 
   console.log("Loading genes:");
-  loadGenes("hg19", "1:205,500,000-206,000,000");
+  loadGenes(coordinate, "1:205,500,000-206,000,000");
 
   
   d3.json(gtexurl).then((response) => {
