@@ -1647,8 +1647,8 @@ def list_tissues(version):
         db = client.GTEx_V7
         tissues = list(db.list_collection_names())
         tissues.remove("variant_table")
-    else:
-        version = "gtex_v8"
+    elif version in ["V8", "V10"]:
+        version = f"gtex_{version.lower()}"
         _tissues = get_tissue_site_details(version)
         tissues = [d.tissue_site_detail_id for d in _tissues.data]
 
