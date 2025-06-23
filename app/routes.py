@@ -30,6 +30,7 @@ from pymongo.errors import ConnectionFailure
 
 from app.tasks import get_is_celery_running, run_pipeline_async
 from app.utils import download_file
+from app.utils.gencode import get_genes_by_location
 from app.utils.gtex import get_gtex, get_gtex_data
 from app.utils.apis.gtex import get_tissue_site_details
 from app.utils.errors import InvalidUsage, ServerError
@@ -1613,29 +1614,8 @@ def getGeneNames(build):
 
 @app.route("/genenames/<build>/<chrom>/<startbp>/<endbp>")
 def getGenesInRange(build, chrom, startbp, endbp):
-    collapsed_genes_df = collapsed_genes_df_hg19
-    if build.lower() == "hg38":
-        collapsed_genes_df = collapsed_genes_df_hg38
-    regiontext = str(chrom) + ":" + startbp + "-" + endbp
-    chrom, startbp, endbp = parseRegionText(regiontext, build)
-    genes_to_draw = collapsed_genes_df.loc[
-        (collapsed_genes_df["chrom"] == ("chr" + str(chrom).replace("23", "X")))
-        & (
-            (
-                (collapsed_genes_df["txStart"] >= startbp)
-                & (collapsed_genes_df["txStart"] <= endbp)
-            )
-            | (
-                (collapsed_genes_df["txEnd"] >= startbp)
-                & (collapsed_genes_df["txEnd"] <= endbp)
-            )
-            | (
-                (collapsed_genes_df["txStart"] <= startbp)
-                & (collapsed_genes_df["txEnd"] >= endbp)
-            )
-        )
-    ]
-    return jsonify(list(genes_to_draw["name"]))
+    genes = get_genes_by_location(build, chrom, startbp, endbp)
+    return jsonify(genes)
 
 
 @app.route("/gtex/<version>/tissues_list")
@@ -1647,7 +1627,11 @@ def list_tissues(version):
         db = client.GTEx_V7
         tissues = list(db.list_collection_names())
         tissues.remove("variant_table")
-    elif version in ["V8", "V10"]:
+    elif version == "V8":
+        db = client.GTEx_V8
+        tissues = list(db.list_collection_names())
+        tissues.remove("variant_table")
+    elif version == "V10":
         version = f"gtex_{version.lower()}"
         _tissues = get_tissue_site_details(version)
         tissues = [d.tissue_site_detail_id for d in _tissues.data]
