@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from gtex_openapi.api.static_association_endpoints_api import StaticAssociationEndpointsApi
 from gtex_openapi.api.datasets_endpoints_api import DatasetsEndpointsApi
@@ -20,6 +20,7 @@ from gtex_openapi.models.app_models_request_parameters_genome_build import AppMo
 from gtex_openapi.models.post_dynamic_eqtl_result import PostDynamicEqtlResult
 from gtex_openapi.models.paginated_response_independent_eqtl import PaginatedResponseIndependentEqtl
 from gtex_openapi.models.tissuesitedetailid_inner import TissuesitedetailidInner
+from gtex_openapi.models.paginated_response_single_tissue_eqtl import PaginatedResponseSingleTissueEqtl
 
 from app.utils.helpers import validate_chromosome
 
@@ -254,5 +255,40 @@ def get_variants(
             start=start,
             end=end,
             chromosome=chromosome,
+            items_per_page=100000,
+        )
+
+
+def get_significant_single_tissue_eqtls(dataset_id: str, gencode_ids: Optional[List[str]], variant_ids: Optional[List[str]], tissue_site_detail_ids: Optional[List[str]]) -> PaginatedResponseSingleTissueEqtl:
+    """Fetch single-tissue eQTLs from GTEx API
+
+    :param dataset_id: The identifier of the gtex dataset (`gtex_v8`, `gtex_v10`, `gtex_snrnaseq_pilot`)
+    :type dataset_id: str
+    :param gencode_ids: A list of versioned GENCODE IDs of genes. eg. ["ENSG00000005436.14", "ENSG00000225972.1"]
+                        If None, then all genes in the dataset will be fetched based on other filters.
+    :type gencode_ids: Optional[List[str]]
+    :param variant_ids: A list of variant IDs to fetch eQTLs for. Must be in format chr_pos_ref_alt_build, eg. chr1_205381100_C_T_b38.
+                        If None, then all variants in the dataset will be fetched based on other filters.
+    :type variant_ids: Optional[List[str]]
+    :param tissue_site_detail_ids: A list of tissue site details to fetch eQTLs for.
+                                   If None, then all tissue sites in the dataset will be fetched based on other filters.
+    :type tissue_site_detail_ids: Optional[List[str]], keys of gtex_openapi.models.tissue_site_detail_id.TissueSiteDetailId enum
+    :return: The paginated eqtl results
+    :rtype: PaginatedResponseSingleTissueEqtl
+    """
+    if tissue_site_detail_ids is not None:
+        tissue_site_detail_ids = [TissuesitedetailidInner(get_tissue_site_detail_id_enum(x)) for x in tissue_site_detail_ids] # type: ignore
+
+    dataset_id = get_dataset_id_enum(dataset_id)
+
+    with ApiClient(CONFIGURATION) as api_client:
+        instance = StaticAssociationEndpointsApi(api_client)
+
+        return fetch_all(
+            instance.get_significant_single_tissue_eqtls_api_v2_association_single_tissue_eqtl_get,
+            dataset_id=dataset_id,
+            gencode_id=gencode_ids,
+            variant_id=variant_ids,
+            tissue_site_detail_id=tissue_site_detail_ids,
             items_per_page=100000,
         )

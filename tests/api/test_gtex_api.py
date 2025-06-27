@@ -12,6 +12,7 @@ from app.utils.apis.gtex import (
     get_dynamic_eqtl,
     get_genes,
     get_independent_eqtls,
+    get_significant_single_tissue_eqtls,
     get_tissue_site_details,
     get_variants,
 )
@@ -232,3 +233,16 @@ def test_eqtl_fetch_equivalence():
     assert abs(single_dict["nes"] - bulk_dict["nes"]) < 1e-6
     assert abs(single_dict["tStatistic"] - bulk_dict["tStatistic"]) < 1e-6
     # Missing! maf, hetCount, homoAltCount, homoRefCount
+
+
+def test_significant_single_tissue_eqtl():
+    """Sanity check for single-tissue eQTL fetch"""
+    results = get_significant_single_tissue_eqtls(
+        dataset_id="gtex_v10",
+        gencode_ids=["ENSG00000005436.14", "ENSG00000225972.1"],
+        tissue_site_detail_ids=["Liver", "Adipose_Visceral_Omentum"],
+        variant_ids=None,
+    )
+
+    assert results.data is not None
+    assert len(results.data) > 0
