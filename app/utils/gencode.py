@@ -26,7 +26,7 @@ collapsed_genes_df_hg38 = pd.read_csv(
 )
 
 
-def get_genes_by_location(build: str, chrom: int, startbp: int, endbp: int) -> List[str]:
+def get_genes_by_location(build: str, chrom: int, startbp: int, endbp: int, gencode=False) -> List[str]:
     """
     Given a build and a region, return a list of genes that overlap that region.
     """
@@ -52,4 +52,6 @@ def get_genes_by_location(build: str, chrom: int, startbp: int, endbp: int) -> L
             )
         )
     ]
+    if gencode:
+        return list(genes_to_draw["ENSG_name"])
     return list(genes_to_draw["name"])

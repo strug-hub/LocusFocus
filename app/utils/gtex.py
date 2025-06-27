@@ -9,25 +9,15 @@ from gtex_openapi.exceptions import ApiException
 
 from app import mongo
 from app.utils import parse_region_text
+from app.utils.gencode import collapsed_genes_df_hg19, collapsed_genes_df_hg38
 from app.utils.errors import InvalidUsage
-from app.utils.apis.gtex import get_eqtl, get_genes, get_bulk_eqtl, get_independent_eqtls
+from app.utils.apis.gtex import get_genes, get_independent_eqtls
+
 
 client = None  # type: ignore
 
 with app.app_context():
     client: MongoClient = mongo.cx  # type: ignore
-    collapsed_genes_df_hg19 = pd.read_csv(
-        os.path.join(app.config["LF_DATA_FOLDER"], "collapsed_gencode_v19_hg19.gz"),
-        compression="gzip",
-        sep="\t",
-        encoding="utf-8",
-    )
-    collapsed_genes_df_hg38 = pd.read_csv(
-        os.path.join(app.config["LF_DATA_FOLDER"], "collapsed_gencode_v26_hg38.gz"),
-        compression="gzip",
-        sep="\t",
-        encoding="utf-8",
-    )
 
 # This is the main function to extract the data for a tissue and gene_id:
 def get_gtex(version, tissue, gene_id):
@@ -250,8 +240,9 @@ def fetch_gtex_eqtls(gtex_version: str, tissues: List[str], genes: List[str], sn
         raise NotImplementedError("COLOC2 not yet supported with the GTEx API")
     BUILD = "hg38"
     gtex_version = gtex_version.lower()
-    if gtex_version not in ["gtex_v8", "gtex_v10", "gtex_snrnaseq_pilot"]:
-        raise ValueError("gtex_version must be 'gtex_v8', 'gtex_v10', or 'gtex_snrnaseq_pilot' to fetch eQTLs from the GTEx Portal API")
+    if gtex_version not in ["gtex_v8", "gtex_v10"]:
+        # TODO: add gtex_snrnaseq_pilot to GTEx API
+        raise ValueError("gtex_version must be 'gtex_v8' or 'gtex_v10' to fetch eQTLs from the GTEx Portal API")
 
     # check for rsIDs
     snp_df = pd.Series(snp_list)
@@ -261,17 +252,17 @@ def fetch_gtex_eqtls(gtex_version: str, tissues: List[str], genes: List[str], sn
     b37_snps_mask = snp_df.str.endswith("_b37")
 
     if b37_snps_mask.any():
-        raise InvalidUsage(
+        raise ValueError(
             "b37 snps are not supported for fetching eQTLs via GTEx API; please use b38 or rsIDs instead"
         )
     
     if rsid_snps_mask.any() and b38_snps_mask.any():
-        raise InvalidUsage(
+        raise ValueError(
             "There is a mix of rsid and other variant id formats; please use a consistent format"
         )
     
     if not any([rsid_snps_mask.all(), b38_snps_mask.all()]):
-        raise InvalidUsage(
+        raise ValueError(
             "Variant naming format not supported; ensure all are rs ID's are formatted as chrom_pos_ref_alt_b37 eg. chr1_205720483_G_A_b38"
         )
     # technically we can support both rsids and b38 together, but we're trying to mimic get_gtex_data
@@ -279,7 +270,7 @@ def fetch_gtex_eqtls(gtex_version: str, tissues: List[str], genes: List[str], sn
     # Get gencode IDs
     gene_response = get_genes(build=BUILD, gene_symbols=genes)
     if len(gene_response.data) == 0:
-        raise InvalidUsage(f"Genes {genes} not found", status_code=410)
+        raise ValueError(f"Genes {genes} not found", status_code=410)
     gencodes = [x.gencode_id for x in gene_response.data]
 
     eqtl_response = get_independent_eqtls(
@@ -287,6 +278,7 @@ def fetch_gtex_eqtls(gtex_version: str, tissues: List[str], genes: List[str], sn
         gencode_ids=gencodes,
         tissue_sites=tissues
     )
+    assert len(eqtl_response.data) > 0
 
     # to_dict is shallow
     eqtls = [
@@ -324,3 +316,13 @@ def fetch_gtex_eqtls(gtex_version: str, tissues: List[str], genes: List[str], sn
         },
         inplace=True
     )
+
+    return eqtl_df
+
+    # Convert DF to (potentially sparse) of DFs, each corresponding to a single gene/tissue combination
+    # for tissue; for gene; row
+    eqtl_df = eqtl_df.groupby(["tissueSiteDetailId", "geneSymbol"])
+    eqtls = [
+        eqtl_df.get_group((x, y))
+        for x, y in zip(tissues, genes)
+    ]
