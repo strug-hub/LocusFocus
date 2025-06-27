@@ -8,8 +8,8 @@ from gtex_openapi.exceptions import BadRequestException
 
 from app.utils.apis.gtex import (
     fetch_all,
-    get_bulk_eqtl,
-    get_eqtl,
+    get_bulk_dynamic_eqtl,
+    get_dynamic_eqtl,
     get_genes,
     get_independent_eqtls,
     get_tissue_site_details,
@@ -104,7 +104,7 @@ def test_can_fetch_v8_variants_from_region_string():
 
 
 def test_can_fetch_eqtl():
-    results = get_eqtl(
+    results = get_dynamic_eqtl(
         dataset_id="gtex_v10",
         gencode_id="ENSG00000005436.14",
         tissue_site="Liver",
@@ -131,7 +131,7 @@ def test_can_fetch_eqtl_bulk():
         },
     ]
 
-    results = get_bulk_eqtl(dataset_id="gtex_v10", body=body)
+    results = get_bulk_dynamic_eqtl(dataset_id="gtex_v10", body=body)
 
     assert results.data is not None
     assert len(results.errors) == 0
@@ -199,7 +199,7 @@ def test_eqtl_fetch_equivalence():
     dataset_id = "gtex_v8"
 
     print("Fetching single eQTL...")
-    single_eqtl_results = get_eqtl(
+    single_eqtl_results = get_dynamic_eqtl(
         dataset_id=dataset_id,
         gencode_id=gencode_id,
         tissue_site=tissue_site,
@@ -210,7 +210,7 @@ def test_eqtl_fetch_equivalence():
     assert len(single_eqtl_results.data) > 0
 
     print("Fetching bulk eQTL...")
-    bulk_eqtl_results = get_bulk_eqtl(
+    bulk_eqtl_results = get_bulk_dynamic_eqtl(
         dataset_id=dataset_id,
         body=[
             {

@@ -95,7 +95,7 @@ def get_genes(build: str, gene_symbols: List[str]) -> PaginatedResponseGene:
             genome_build=build,
             items_per_page=100000,
         )
-    
+
 
 def get_independent_eqtls(
     dataset_id: str,
@@ -127,7 +127,7 @@ def get_independent_eqtls(
         )
 
 
-def get_eqtl(
+def get_dynamic_eqtl(
     dataset_id: str,
     gencode_id: str,
     tissue_site: str,
@@ -165,14 +165,14 @@ def get_eqtl(
         )
 
 
-def get_bulk_eqtl(dataset_id: str, body: List[Dict[str, Any]]) -> PostDynamicEqtlResult:
+def get_bulk_dynamic_eqtl(dataset_id: str, body: List[Dict[str, Any]]) -> PostDynamicEqtlResult:
     """Fetch dynamic EQTL Data in bulk
 
     :param dataset_id: The identifier of the gtex dataset (`gtex_v8`, `gtex_v10`)
     :type dataset_id: str
     :param body: A list of dictionaries containing the tissue site detail, variant_id, and gencode_id for each desired EQTL result
     :type body: List[Dict[Literal['gencode_id', 'tissue_site_detail_id', 'variant_id], Any]]
-                see docstring for `get_eqtl` for type details.
+                see docstring for `get_dynamic_eqtl` for type details.
     :return: The calculation result
     :rtype: PostDynamicEqtlResult
     :
