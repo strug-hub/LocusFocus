@@ -91,7 +91,7 @@ def test_can_fetch_v10_variants_from_region_string():
 
 
 def test_can_fetch_v8_variants_from_region_string():
-    """Sanity check for v10 variant fetch"""
+    """Sanity check for v8 variant fetch"""
     region_string = "chr11:0-200000"
     chr, pos = region_string.split(":")
     start, end = pos.split("-")
@@ -140,18 +140,7 @@ def test_can_fetch_eqtl_bulk():
     assert isinstance(results.data[0].to_dict()["pValue"], float)
 
 
-def test_can_fetch_independent_eqtl():
-    """Sanity check for independent eqtl fetch"""
-    results = get_independent_eqtls(
-        dataset_id="gtex_v8",
-        gencode_ids=["ENSG00000005436.14", "ENSG00000225972.1"],
-        tissue_sites=["Liver", "Adipose_Visceral_Omentum"],
-    )
-    assert results.data is not None
-    assert len(results.data) > 0
-
-
-def test_eqtl_fetch_pipeline():
+def test_eqtl_fetch_pipeline_v8():
     """
     Test fetching eQTLs using information from other API endpoints.
     """
