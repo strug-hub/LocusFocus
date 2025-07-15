@@ -11,7 +11,7 @@ import tqdm
 
 
 def register_cli(app: Flask):
-    @app.cli.command(name="download-smr-eqtl", help="Download mQTL files")
+    @app.cli.command(name="download-smr-mqtl", help="Download mQTL files")
     @click.option(
         "--lite",
         is_flag=True,
@@ -21,6 +21,7 @@ def register_cli(app: Flask):
         # https://yanglab.westlake.edu.cn/software/smr/#mQTLsummarydata
         file_list = [
             # Whole blood mQTL data set used in Hannon et al. (2018 AJHG).(121MB)
+            # Saved as US_mQTLS_SMR_format
             "https://yanglab.westlake.edu.cn/data/SMR/US_mQTLS_SMR_format.zip",
             # 42MB
             "https://yanglab.westlake.edu.cn/data/SMR/Hannon_Blood_dataset1.zip",
@@ -29,13 +30,17 @@ def register_cli(app: Flask):
             # https://yanglab.westlake.edu.cn/data/SMR/Hannon_FetalBrain.zip (4.8MB)
             "https://yanglab.westlake.edu.cn/data/SMR/Hannon_FetalBrain.zip",
             # mQTL summary data from a meta-analysis of samples of East Asian ancestry. (2.5GB)
+            # no particular tissue? saved as EAS
             "https://yanglab.westlake.edu.cn/data/SMR/EAS.tar.gz",
             # mQTL summary data from a meta-analysis of samples of European ancestry. (3.7GB)
+            # no particular tissue? saved as EUR
             "https://yanglab.westlake.edu.cn/data/SMR/EUR.tar.gz",
             # Brain-mMeta mQTL summary data (Qi et al. 2018 Nat Commun) in SMR binary (BESD) format: Brain-mMeta.tar.gz (893 MB)
+            # brain (from meta-analysis)
             "https://yanglab.westlake.edu.cn/data/SMR/Brain-mMeta.tar.gz",
         ] + (
             # Lite version of the McRae et al. mQTL data (only SNPs with P < 1e-5 are included; 241 MB)
+            # peripheral blood
             ["https://yanglab.westlake.edu.cn/data/SMR/LBC_BSGS_meta_lite.tar.gz"]
             if lite
             else [
@@ -44,10 +49,8 @@ def register_cli(app: Flask):
             ]
         )
 
-        data_dir = path.join(path.dirname(path.dirname(__file__)), "data", "smr_eqtl")
+        data_dir = path.join(path.dirname(path.dirname(__file__)), "data", "smr_mqtl")
         Path(data_dir).mkdir(exist_ok=True, parents=True)
-
-        file_list.reverse()
 
         for file_url in file_list:
             filename = path.basename(file_url)
