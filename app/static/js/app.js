@@ -544,3 +544,15 @@ function init() {
 }
 
 init();
+
+// Event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    // coordinate select
+    const coordinateSelect = document.getElementById('coordinate');
+    if (!coordinateSelect) {
+        return;
+    }
+    coordinateSelect.addEventListener('change', function() {
+        coordinateChange(this.value);
+    });
+});
