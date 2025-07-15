@@ -92,7 +92,7 @@
       <div class="row" id="plot-row" hidden>
         <div class="col-md-12">
           <h3>Colocalization Plot</h3>
-          <select id="selGene" onchange="optionChanged(this.value)"></select>
+          <select id="selGene"></select>
           <div id="plot_message" class="isa_info"></div>
 
           <div class="row">
@@ -101,7 +101,6 @@
                 type="checkbox"
                 id="pval-filter"
                 name="pval-filter"
-                onclick="plot_fullgwas(this)"
                 checked
               /><label for="pval-filter" style="margin: 0px; padding: 10px;
               height:42px" data-toggle="tooltip" data-html="true" title="
@@ -304,7 +303,6 @@
                   name="transpose-button"
                   class="btn btn-default"
                   value="Transpose"
-                  onclick="transposeTable();"
                 />
               </div>
             </div>
@@ -443,7 +441,6 @@
             type="button"
             class="btn btn-default"
             value="Download Session Data"
-            onclick="window.location.href = '/downloaddata/{{ sessionid }}';"
           />
         </div>
       </div>
@@ -605,6 +602,18 @@
         });
       }
 
+      // add event listener for above
+      document.addEventListener('DOMContentLoaded', function() {
+        // update button
+        const geneSelect = document.getElementById("selGene");
+        if (!geneSelect) {
+          return;
+        }
+        geneSelect.addEventListener('change', function() {
+          optionChanged(this.value);
+        });
+      });
+
       function transposeTable() {
         transpose = !transpose;
         d3.json("{{ url_for('static', filename=SSPvalues_file) }}").then(
@@ -624,6 +633,18 @@
           }
         );
       }
+
+      // add event listener for above
+      document.addEventListener('DOMContentLoaded', function() {
+        // transpose button
+        const transposeButton = document.getElementById("transpose-button");
+        if (!transposeButton) {
+          return;
+        }
+        transposeButton.addEventListener('click', function() {
+          transposeTable();
+        });
+      });
 
       function prepareResults(sessionData, sessionid, genesData, SSResponseJson, coloc2ResponseJson) {
         // All code for displaying results for simple sum, coloc2, etc.
@@ -769,6 +790,18 @@
           }
         );
       }
+
+      // add event listener for above
+      document.addEventListener('DOMContentLoaded', function() {
+        // redraw button
+        const pvalFilter = document.getElementById("pval-filter");
+        if (!pvalFilter) {
+          return;
+        }
+        pvalFilter.addEventListener('click', function() {
+          plot_fullgwas(this);
+        });
+      });
 
       // Listen for redraw click events:
       var coloc_plot_redraw_btn = d3.select("#colocPlot-redraw-btn");
@@ -952,6 +985,18 @@
         }
 
         saveSvg(heatmap_container, "SS-heatmap.svg", widthinput, heightinput);
+      });
+
+      // add event listener for download button
+      document.addEventListener('DOMContentLoaded', function() {
+        // download button
+        const downloadButton = document.getElementById("download-btn");
+        if (!downloadButton) {
+          return;
+        }
+        downloadButton.addEventListener('click', function() {
+          window.location.href = '/downloaddata/{{ sessionid }}';
+        });
       });
     </script>
     <!-- Bootstrap tooltips -->

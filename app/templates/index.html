@@ -104,7 +104,7 @@
             </div>
             <div class="row">
               <div class="col-md-6">
-                <input type="checkbox" id="markerCheckbox" name="markerCheckbox" onclick="inferVariant(this)" />
+                <input type="checkbox" id="markerCheckbox" name="markerCheckbox" />
                 <label
                   for="markerCheckbox" style="margin: 0px; padding: 10px;  height:42px" data-toggle="tooltip"
                   data-html="true"
@@ -132,7 +132,7 @@
             <hr>
             <div class="row">
               <div class="col-md-12">
-                <input type="checkbox" id="coloc2check" name="coloc2check" onclick="addColoc2Inputs(this)"><label
+                <input type="checkbox" id="coloc2check" name="coloc2check"><label
                   for="coloc2check" style="margin: 0px; padding: 10px;  height:42px" data-toggle="tooltip"
                   title='If you would also like to run and compare colocalization analysis with Coloc2 method, extra input fields are required.'>
                   Add COLOC2 method (additional fields required)
@@ -148,7 +148,7 @@
                   title="<p>Enter the region you would like to visualize on the colocalization plot.</p>
             <p>Your input format will be checked for correctness and genes in the region will be populated when selecting GTEx genes below.</p>">Coordinates </label>
                 <input class="form-control" id="locus" name="locus" type="text" value="1:205,500,000-206,000,000"
-                  onchange=checkLocusInput(this.value) data-html="true" data-toggle="tooltip"
+                  data-html="true" data-toggle="tooltip"
                   title="<p>Enter the region you would like to visualize on the colocalization plot.</p>
             <p>Your input format will be checked for correctness and genes in the region will be populated when selecting GTEx genes below.</p>">
                 <div class="input-error" id="locusErrorDiv"></div>

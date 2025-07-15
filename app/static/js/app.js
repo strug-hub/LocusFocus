@@ -545,14 +545,52 @@ function init() {
 
 init();
 
-// Event listeners
+// EVENT LISTENERS
+
+/* Coordinate select onchange */
 document.addEventListener('DOMContentLoaded', function() {
-    // coordinate select
-    const coordinateSelect = document.getElementById('coordinate');
-    if (!coordinateSelect) {
-        return;
-    }
-    coordinateSelect.addEventListener('change', function() {
-        coordinateChange(this.value);
-    });
+  // coordinate select
+  const coordinateSelect = document.getElementById('coordinate');
+  if (!coordinateSelect) {
+    return;
+  }
+  coordinateSelect.addEventListener('change', function() {
+    coordinateChange(this.value);
+  });
+});
+
+/* Infer variant checkbox */
+document.addEventListener('DOMContentLoaded', function() {
+  // variant inference setting
+  const markerCheckbox = document.getElementById('markerCheckbox');
+  if (!markerCheckbox) {
+    return;
+  }
+  markerCheckbox.addEventListener('click', function() {
+    inferVariant(this);
+  });
+});
+
+/* coloc2 checkbox */
+document.addEventListener('DOMContentLoaded', function() {
+  // coloc2 setting
+  const coloc2Checkbox = document.getElementById('coloc2check');
+  if (!coloc2Checkbox) {
+    return;
+  }
+  coloc2Checkbox.addEventListener('click', function() {
+    addColoc2Inputs(this);
+  });
+});
+
+/* locus input validation */
+document.addEventListener('DOMContentLoaded', function() {
+  // locus input
+  const locusInput = document.getElementById('locus');
+  if (!locusInput) {
+    return;
+  }
+  locusInput.addEventListener('change', function() {
+    checkLocusInput(this.value);
+  });
 });
