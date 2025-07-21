@@ -2,7 +2,7 @@ import os
 import re
 import subprocess
 from tempfile import NamedTemporaryFile
-from typing import List, TypedDict
+from typing import List, Literal, TypedDict
 
 import pandas as pd
 
@@ -11,45 +11,55 @@ data_dir = os.path.join(os.path.dirname(os.path.dirname(curr_dir)), "data", "smr
 
 
 class SMRDataset(TypedDict):
+    assembly: Literal["hg19", "hg38"]
     base_filename: str
     by_chr: bool
 
 
-datasets: dict[str, SMRDataset] = {
+smr_datasets: dict[str, SMRDataset] = {
     "Brain-mMeta": {
+        "assembly": "hg38",
         "by_chr": False,
         "base_filename": "Brain-mMeta",
     },
     "EAS": {
+        "assembly": "hg38",
         "by_chr": True,
         "base_filename": "EAS",
     },
     "EUR": {
+        "assembly": "hg38",
         "by_chr": True,
         "base_filename": "EUR",
     },
     "Hannon et al. Blood dataset1": {
+        "assembly": "hg19",
         "by_chr": False,
         "base_filename": "Aberdeen_Blood",
     },
     "Hannon et al. Blood dataset2": {
+        "assembly": "hg19",
         "by_chr": False,
         "base_filename": "UCL_Blood",
     },
     "Hannon et al. FetalBrain": {
+        "assembly": "hg19",
         "by_chr": False,
         "base_filename": "FB_Brain",
     },
     # TODO: confirm
     "LBC_BSGS_meta": {
+        "assembly": "hg19",
         "by_chr": True,
         "base_filename": "bl_mqtl",
     },
     "LBC_BSGS_meta_lite": {
+        "assembly": "hg19",
         "by_chr": True,
         "base_filename": "bl_mqtl_lite",
     },
     "US_mQTLS_SMR_format": {
+        "assembly": "hg19",
         "by_chr": False,
         "base_filename": "US_Blood",
     },
@@ -97,7 +107,11 @@ def run_smr_query(
 
 
 def query_smr(
-    chr: int, snps: List[str], dataset: str, thresh: float = 5.0e-8
+    chr: int,
+    snps: List[str],
+    dataset: str,
+    thresh: float = 5.0e-8,
+    assembly: Literal["hg19", "hg38"] = "hg38",
 ) -> pd.DataFrame:
     """Query mqtl data in smr format
 
@@ -109,18 +123,27 @@ def query_smr(
     :type dataset: str
     :param thresh: The p-value threshold, defaults to 5e-8
     :type thresh: float
+    :param assembly: The genome assembly to use, defaults to "hg38"
+    :type assembly: Literal["hg19", "hg38"]
     :raises FileNotFoundError: If the dataset does not exist
+    :raises ValueError: If the requested assembly does not match the dataset assembly
     :return: The SNPs and pvalues as a dataframe with the following columns:
     'SNP', 'Chr', 'BP', 'A1', 'A2', 'Freq', 'Probe', 'Probe_Chr',
     'Probe_bp', 'Gene', 'Orientation', 'b', 'SE', 'p', 'full_snp'
     Note that 'full_snp' is a combined column that takes the same format as those in ``snps``
     :rtype: pd.DataFrame
     """
-    if dataset not in datasets.keys():
+    if dataset not in smr_datasets.keys():
         raise FileNotFoundError(f"Dataset {dataset} does not exist!")
+
+    if smr_datasets[dataset]["assembly"] != assembly:
+        raise ValueError(
+            f"Dataset {dataset} uses {smr_datasets[dataset]['assembly']} but {assembly} was requested!"
+        )
+
     dataset_dir = os.path.join(data_dir, dataset)
     base_filepath = os.path.join(dataset_dir, dataset)
-    if datasets[dataset]["by_chr"]:
+    if smr_datasets[dataset]["by_chr"]:
         base_filepath = f"{base_filepath}_chr{chr}"
 
     regex = r"_(\d+)_"
@@ -131,7 +154,11 @@ def query_smr(
     end = max(snp_poses) // 1000 + 1
 
     query_result = run_smr_query(
-        query_path=base_filepath, chr=chr, thresh=thresh, start=start, end=end
+        query_path=base_filepath,
+        chr=chr,
+        thresh=thresh,
+        start=start,
+        end=end,
     )
 
     query_result["full_snp"] = query_result.apply(
