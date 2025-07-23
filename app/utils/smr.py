@@ -47,7 +47,6 @@ smr_datasets: dict[str, SMRDataset] = {
         "by_chr": False,
         "base_filename": "FB_Brain",
     },
-    # TODO: confirm
     "LBC_BSGS_meta": {
         "assembly": "hg19",
         "by_chr": True,
