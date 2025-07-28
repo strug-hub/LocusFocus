@@ -42,13 +42,21 @@ RUN apt-get update && \
   liblapack-dev \
   libpcre2-dev \
   xauth \
-  vim
+  vim \
+  zip
 
 # install plink
 RUN wget -O /tmp/plink.zip https://s3.amazonaws.com/plink1-assets/plink_linux_x86_64_20241022.zip \
   && unzip -d /tmp /tmp/plink.zip \
   && mv /tmp/plink /usr/local/bin/plink \
   && rm /tmp/*
+
+# install smr for mqtl querying
+RUN wget https://yanglab.westlake.edu.cn/software/smr/download/smr-1.3.2-linux-x86_64.zip \
+  && unzip smr-1.3.2-linux-x86_64.zip \
+  && mv smr-1.3.2-linux-x86_64/smr /usr/local/bin/ \
+  && rm smr-1.3.2-linux-x86_64.zip
+
 
 # Install Poetry
 # https://github.com/python-poetry/poetry/issues/6397#issuecomment-1236327500
