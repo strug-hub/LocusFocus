@@ -28,12 +28,20 @@ class BaseConfig:
             "https://*.googletagmanager.com",
             "https://cdnjs.cloudflare.com",
             "https://cdn.plot.ly",
+            "'unsafe-hashes'",
+            "'sha256-hphOYdb9WX9dW4pYcQdXa8E450mGtzl7k4kSIg1GOIo='", # d3.js
+            "'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU='", # mdb.min.js
+            "'sha256-OTeu7NEHDo6qutIWo0F2TmYrDhsKWCzrUgGoxxHGJ8o='", # mdb.min.js
         ],
         "style-src": [
             "'self'",
             "https://use.fontawesome.com",
             "https://cdnjs.cloudflare.com",
             "https://stackpath.bootstrapcdn.com",
+            "'unsafe-hashes'",
+            "'sha256-hphOYdb9WX9dW4pYcQdXa8E450mGtzl7k4kSIg1GOIo='", # d3.js
+            "'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU='", # mdb.min.js
+            "'sha256-OTeu7NEHDo6qutIWo0F2TmYrDhsKWCzrUgGoxxHGJ8o='", # mdb.min.js
         ],
         "font-src": [
             "'self'",

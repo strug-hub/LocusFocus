@@ -117,23 +117,23 @@
               <div class="alert alert-info">
                 <h5>Specify one or more regions in your dataset</h5>
                 <p>
-                  Please specify your region(s) of interest here with the following format: 
-                  <code>{CHROM}:{START}-{END}</code> 
+                  Please specify your region(s) of interest here with the following format:
+                  <code>{CHROM}:{START}-{END}</code>
                   <strong>Each region must be typed on a separate line as shown.</strong>
                 </p>
                 <p>
-                  If no LD is provided, LocusFocus will generate an LD matrix for each provided region, 
-                  and regions within 2 Mbps of each other will be combined. 
+                  If no LD is provided, LocusFocus will generate an LD matrix for each provided region,
+                  and regions within 2 Mbps of each other will be combined.
                   <strong>Regions may not be greater than 2,000,000 BPs in size.</strong>
                 </p>
                 <p>
-                  If no regions are provided, 
-                  LocusFocus will infer the regions from the provided GWAS dataset 
+                  If no regions are provided,
+                  LocusFocus will infer the regions from the provided GWAS dataset
                   (1 region per chromosome in dataset).
                 </p>
                 <p>
                   <strong>
-                    SNPs that are outside of these regions will be removed before LD calculation 
+                    SNPs that are outside of these regions will be removed before LD calculation
                     and before the set-based test.
                   </strong>
                   <br>
@@ -208,7 +208,7 @@
   </div> <!-- container closing div -->
 
   <!-- JS -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/5.9.1/d3.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/6.7.0/d3.min.js" integrity="sha512-cd6CHE+XWDQ33ElJqsi0MdNte3S+bQY819f7p3NUHgwQQLXSKjE4cPZTeGNI+vaxZynk1wVU3hoHmow3m089wA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
   <script src="{{ url_for('static', filename='js/app.js') }}"></script>
   <script src="{{ url_for('static', filename='js/inputChecker.js') }}"></script>
