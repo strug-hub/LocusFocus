@@ -26,20 +26,20 @@ class BaseConfig:
         "script-src": [
             "'self'",
             "https://*.googletagmanager.com",
-            "cdnjs.cloudflare.com",
-            "cdn.plot.ly",
+            "https://cdnjs.cloudflare.com",
+            "https://cdn.plot.ly",
         ],
         "style-src": [
             "'self'",
-            "use.fontawesome.com",
-            "cdnjs.cloudflare.com",
-            "stackpath.bootstrapcdn.com",
+            "https://use.fontawesome.com",
+            "https://cdnjs.cloudflare.com",
+            "https://stackpath.bootstrapcdn.com",
         ],
         "font-src": [
             "'self'",
-            "use.fontawesome.com",
-            "cdnjs.cloudflare.com",
-            "stackpath.bootstrapcdn.com",
+            "https://use.fontawesome.com",
+            "https://cdnjs.cloudflare.com",
+            "https://stackpath.bootstrapcdn.com",
         ],
         "connect-src": [
             "'self'",
