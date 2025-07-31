@@ -84,13 +84,21 @@ class BaseConfig:
 
     DISABLE_CELERY = os.environ.get("DISABLE_CELERY", "False").lower() == "true"
 
+    # Caching
+    DISABLE_CACHE = os.environ.get("DISABLE_CACHE", "False").lower() == "true"
+    CACHE_TYPE = "NullCache" if DISABLE_CACHE else "FileSystemCache"
+    CACHE_DEFAULT_TIMEOUT = 60*60*24*7  # 1 week
+    CACHE_DIR = os.path.join(LF_DATA_FOLDER, "cache")
+    CACHE_KEY_PREFIX = "locusfocus-"
+
 
 class DevConfig(BaseConfig):
     """
     Configuration options for development environment only.
     """
-
+    DISABLE_CACHE = os.environ.get("DISABLE_CACHE", "False").lower() == "true"
     MONGO_URI = os.environ.get("MONGO_CONNECTION_STRING")
+    CACHE_TYPE = "NullCache" if DISABLE_CACHE else "FileSystemCache"
 
 
 class ProdConfig(BaseConfig):
@@ -99,3 +107,4 @@ class ProdConfig(BaseConfig):
     """
 
     MONGO_URI = os.environ.get("MONGO_CONNECTION_STRING")
+    CACHE_TYPE = "FileSystemCache"

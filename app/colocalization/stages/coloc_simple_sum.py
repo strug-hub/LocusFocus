@@ -134,6 +134,7 @@ class ColocSimpleSumStage(PipelineStage):
         ss_std_snp_list = std_snp_list.loc[payload.gwas_indices_kept]
 
         gtex_tissues, gtex_genes = payload.get_gtex_selection()
+        
         if len(gtex_tissues) > 0:
             for tissue in gtex_tissues:
                 for agene in gtex_genes:
