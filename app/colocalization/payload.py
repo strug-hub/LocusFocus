@@ -357,10 +357,16 @@ class SessionPayload:
         Get the version of GTEx needed for fetching from MongoDB.
         One of "V7" or "V8".
         """
-        if self.get_coordinate() == "hg38":
-            return "V8"
-        else:
-            return "V7"
+        version = self.request_form.get("GTEx-version")
+        if version is None:
+            version = "V7"
+        version = version.upper()
+        if version not in ["V7", "V8"]:
+            raise InvalidUsage(
+                f"Invalid GTEx version: {version}. Must be one of 'V7' or 'V8'",
+                status_code=410,
+            )
+        return version
 
     def get_p_value_threshold(self) -> Union[float, str]:
         """

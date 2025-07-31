@@ -12,6 +12,7 @@ services:
       - ./poetry.lock:/code/poetry.lock
     ports:
       - "${FLASK_PORT}:${FLASK_PORT}"
+    restart: unless-stopped
     depends_on:
       - mongo
     networks:
@@ -25,9 +26,11 @@ services:
       - FLASK_SECRET_KEY
       - MONGO_CONNECTION_STRING
       - DISABLE_CELERY=true
+      - DISABLE_CACHE=${DISABLE_CACHE:-true}
     entrypoint: ["python3", "-m", "app.wsgi"]
   mongo:
     image:  mongo:6
+    restart: unless-stopped
     volumes:
       - mongo-data:/data/db
     environment:
