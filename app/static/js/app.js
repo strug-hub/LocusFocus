@@ -42,20 +42,16 @@ function updateGtexVersionsAllowed(newCoordinate) {
   if (newCoordinate.toLowerCase() === "hg19") {
     $("#gtex-v7").prop("disabled", false);
     $("#gtex-v8").prop("disabled", true);
-    $("#gtex-v10").prop("disabled", true);
 
     $("#gtex-v7").prop("selected", true);
     $("#gtex-v8").prop("selected", false);
-    $("#gtex-v10").prop("selected", false);
     gtex_version = "v7";
   } else {
     $("#gtex-v7").prop("disabled", true);
     $("#gtex-v8").prop("disabled", false);
-    $("#gtex-v10").prop("disabled", false);
 
     $("#gtex-v7").prop("selected", false);
     $("#gtex-v8").prop("selected", true);
-    $("#gtex-v10").prop("selected", false);
     gtex_version = "v8";
   }
   gtexTissuesMsgDiv.text(`Select GTEx (${gtex_version.toUpperCase()}) Tissues`);
