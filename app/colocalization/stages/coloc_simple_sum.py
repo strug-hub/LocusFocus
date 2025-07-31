@@ -9,7 +9,7 @@ from app.utils import clean_snps, standardize_snps, write_list, write_matrix
 from app.pipeline.pipeline_stage import PipelineStage
 from app.scripts import ScriptError, coloc2, simple_sum
 from app.utils.errors import InvalidUsage, ServerError
-from app.utils.gtex import fetch_gtex_eqtls, get_gtex_data
+from app.utils.gtex import get_gtex_data
 
 
 class ColocSimpleSumStage(PipelineStage):
@@ -136,62 +136,57 @@ class ColocSimpleSumStage(PipelineStage):
         gtex_tissues, gtex_genes = payload.get_gtex_selection()
         
         if len(gtex_tissues) > 0:
-            if gtex_version != "V10":
-                # GTEx V7 and V8 only
-                for tissue in gtex_tissues:
-                    for agene in gtex_genes:
-                        gtex_eqtl_df = get_gtex_data(
-                            gtex_version, tissue, agene, ss_std_snp_list
-                        )
-                        if len(gtex_eqtl_df) > 0:
-                            pvalues = list(gtex_eqtl_df["pval"])
-                            if payload.coloc2:
-                                tempdf = gtex_eqtl_df.rename(
-                                    columns={
-                                        "rs_id": "SNPID",
-                                        "pval": "PVAL",
-                                        "beta": "BETA",
-                                        "se": "SE",
-                                        "sample_maf": "MAF",
-                                        "chr": "CHR",
-                                        "variant_pos": "POS",
-                                        "ref": "A2",
-                                        "alt": "A1",
-                                    }
+            for tissue in gtex_tissues:
+                for agene in gtex_genes:
+                    gtex_eqtl_df = get_gtex_data(
+                        gtex_version, tissue, agene, ss_std_snp_list
+                    )
+                    if len(gtex_eqtl_df) > 0:
+                        pvalues = list(gtex_eqtl_df["pval"])
+                        if payload.coloc2:
+                            tempdf = gtex_eqtl_df.rename(
+                                columns={
+                                    "rs_id": "SNPID",
+                                    "pval": "PVAL",
+                                    "beta": "BETA",
+                                    "se": "SE",
+                                    "sample_maf": "MAF",
+                                    "chr": "CHR",
+                                    "variant_pos": "POS",
+                                    "ref": "A2",
+                                    "alt": "A1",
+                                }
+                            )
+                            tempdf.dropna(inplace=True)
+                            if len(tempdf.index) != 0:
+                                numsamples = round(
+                                    tempdf["ma_count"].tolist()[0]
+                                    / tempdf["MAF"].tolist()[0]
                                 )
-                                tempdf.dropna(inplace=True)
-                                if len(tempdf.index) != 0:
-                                    numsamples = round(
-                                        tempdf["ma_count"].tolist()[0]
-                                        / tempdf["MAF"].tolist()[0]
-                                    )
-                                    numsampleslist = np.repeat(
-                                        numsamples, tempdf.shape[0]
-                                    ).tolist()
-                                    tempdf = pd.concat(
-                                        [tempdf, pd.Series(numsampleslist, name="N")],
-                                        axis=1,
-                                    )
-                                    probeid = str(tissue) + ":" + str(agene)
-                                    probeidlist = np.repeat(
-                                        probeid, tempdf.shape[0]
-                                    ).tolist()
-                                    tempdf = pd.concat(
-                                        [tempdf, pd.Series(probeidlist, name="ProbeID")],
-                                        axis=1,
-                                    )
-                                    tempdf = tempdf.reindex(
-                                        columns=self.COLOC2_EQTL_COLNAMES
-                                    )
-                                    coloc2eqtl_df = pd.concat(
-                                        [coloc2eqtl_df, tempdf], axis=0
-                                    )
-                        else:
-                            pvalues = np.repeat(np.nan, len(ss_std_snp_list))
-                        p_value_matrix.append(pvalues)
-            else:
-                # GTEx V10
-                gtex_eqtl_df = fetch_gtex_eqtls(gtex_version, gtex_tissues, gtex_genes, list(ss_std_snp_list))
+                                numsampleslist = np.repeat(
+                                    numsamples, tempdf.shape[0]
+                                ).tolist()
+                                tempdf = pd.concat(
+                                    [tempdf, pd.Series(numsampleslist, name="N")],
+                                    axis=1,
+                                )
+                                probeid = str(tissue) + ":" + str(agene)
+                                probeidlist = np.repeat(
+                                    probeid, tempdf.shape[0]
+                                ).tolist()
+                                tempdf = pd.concat(
+                                    [tempdf, pd.Series(probeidlist, name="ProbeID")],
+                                    axis=1,
+                                )
+                                tempdf = tempdf.reindex(
+                                    columns=self.COLOC2_EQTL_COLNAMES
+                                )
+                                coloc2eqtl_df = pd.concat(
+                                    [coloc2eqtl_df, tempdf], axis=0
+                                )
+                    else:
+                        pvalues = np.repeat(np.nan, len(ss_std_snp_list))
+                    p_value_matrix.append(pvalues)
 
         # 3. Uploaded secondary datasets
         if (

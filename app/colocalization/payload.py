@@ -361,9 +361,9 @@ class SessionPayload:
         if version is None:
             version = "V7"
         version = version.upper()
-        if version not in ["V7", "V8", "V10"]:
+        if version not in ["V7", "V8"]:
             raise InvalidUsage(
-                f"Invalid GTEx version: {version}. Must be one of 'V7', 'V8', or 'V10'",
+                f"Invalid GTEx version: {version}. Must be one of 'V7' or 'V8'",
                 status_code=410,
             )
         return version

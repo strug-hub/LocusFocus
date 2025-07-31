@@ -1,17 +1,13 @@
-import os
-from typing import List
 
 import pandas as pd
 from flask import current_app as app
 from pymongo import MongoClient
-from gtex_openapi.exceptions import ApiException
 
 
 from app import mongo
 from app.utils import parse_region_text
 from app.utils.gencode import collapsed_genes_df_hg19, collapsed_genes_df_hg38
 from app.utils.errors import InvalidUsage
-from app.utils.apis.gtex import get_genes, get_independent_eqtls
 
 
 client = None  # type: ignore
@@ -217,112 +213,3 @@ def gene_names(genename, build):
             list(collapsed_genes_df["ENSG_name"]).index(genename)
         ]
     return genename, ensg_gene
-
-
-def fetch_gtex_eqtls(gtex_version: str, tissues: List[str], genes: List[str], snp_list: List[str], coloc2=False):
-    """Fetch independent eQTLs from GTEx using the API, and merges them with the provided snp_list.
-    Output dataframe is the exact same format as get_gtex_data, except as a list of results.
-
-    :param gtex_version: The GTEx version to use. One of "gtex_v8", "gtex_v10", "gtex_snrnaseq_pilot".
-    :type gtex_version: str
-    :param tissues: The tissues to fetch eQTLs for.
-    :type tissues: List[str], keys of gtex_openapi.models.tissue_site_detail_id.TissueSiteDetailId enum
-    :param genes: A list of gene symbols (eg. ["NUCKS1"]), OR a Gencode ID (eg. ["ENSG00000005436.14"])
-    :type genes: List[str]
-    :param snp_list: A list of SNPs to fetch eQTLs for. Must be in format chr_pos_ref_alt_build, eg. chr1_205381100_C_T_b38
-    :type snp_list: List[str]
-    :param coloc2: Whether to fetch COLOC2 data. Some fields are not available in the bulk fetch API that are required for COLOC2 (ie. maf, sample count)
-    :type coloc2: bool
-    :return: A pandas DataFrame containing the eQTLs
-    :rtype: pd.DataFrame
-    """
-    if coloc2:
-        raise NotImplementedError("COLOC2 not yet supported with the GTEx API")
-    BUILD = "hg38"
-    gtex_version = gtex_version.lower()
-    if gtex_version not in ["gtex_v8", "gtex_v10"]:
-        # TODO: add gtex_snrnaseq_pilot to GTEx API
-        raise ValueError("gtex_version must be 'gtex_v8' or 'gtex_v10' to fetch eQTLs from the GTEx Portal API")
-
-    # check for rsIDs
-    snp_df = pd.Series(snp_list)
-
-    rsid_snps_mask = snp_df.str.startswith("rs")
-    b38_snps_mask = snp_df.str.endswith("_b38")
-    b37_snps_mask = snp_df.str.endswith("_b37")
-
-    if b37_snps_mask.any():
-        raise ValueError(
-            "b37 snps are not supported for fetching eQTLs via GTEx API; please use b38 or rsIDs instead"
-        )
-    
-    if rsid_snps_mask.any() and b38_snps_mask.any():
-        raise ValueError(
-            "There is a mix of rsid and other variant id formats; please use a consistent format"
-        )
-    
-    if not any([rsid_snps_mask.all(), b38_snps_mask.all()]):
-        raise ValueError(
-            "Variant naming format not supported; ensure all are rs ID's are formatted as chrom_pos_ref_alt_b37 eg. chr1_205720483_G_A_b38"
-        )
-    # technically we can support both rsids and b38 together, but we're trying to mimic get_gtex_data
-
-    # Get gencode IDs
-    gene_response = get_genes(build=BUILD, gene_symbols=genes)
-    if len(gene_response.data) == 0:
-        raise ValueError(f"Genes {genes} not found", status_code=410)
-    gencodes = [x.gencode_id for x in gene_response.data]
-
-    eqtl_response = get_independent_eqtls(
-        dataset_id=gtex_version,
-        gencode_ids=gencodes,
-        tissue_sites=tissues
-    )
-    assert len(eqtl_response.data) > 0
-
-    # to_dict is shallow
-    eqtls = [
-        {
-            **x.to_dict(),
-            "tissueSiteDetailId": x.tissue_site_detail_id.value,
-            "ontologyId": x.ontology_id.value,
-            "datasetId": x.dataset_id.value,
-            "chromosome": x.chromosome.value,
-        }
-        for x in eqtl_response.data
-    ]
-
-    # important columns: pValue, tissueSiteDetailId, variantId
-    eqtl_df = pd.DataFrame(eqtls)
-
-    # merge with snp list
-    rsid_mask = eqtl_df["snpId"].isin(snp_df[rsid_snps_mask])
-    b38_mask = eqtl_df["snpId"].isin(snp_df[b38_snps_mask])
-
-    eqtl_df = eqtl_df[rsid_mask | b38_mask]
-
-    # Rename columns to match get_gtex response df
-    eqtl_df.rename(
-        columns={
-            "variantId": "variant_id",
-            "snpId": "rs_id",
-            "pValue": "pval",
-            "maf": "sample_maf",
-            "nes": "beta",
-            "chromosome": "chr",
-            "pos": "variant_pos",
-            # error / se is missing
-            # ma_samples, ma_count are missing
-        },
-        inplace=True
-    )
-
-    return eqtl_df
-
-    # Convert DF to (potentially sparse) of DFs, each corresponding to a single gene/tissue combination
-    # for tissue; for gene; row
-    eqtl_df = eqtl_df.groupby(["tissueSiteDetailId", "geneSymbol"])
-    eqtls = [
-        eqtl_df.get_group((x, y))
-        for x, y in zip(tissues, genes)
-    ]
