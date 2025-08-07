@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import List
 
 import pandas as pd
 import numpy as np
@@ -132,9 +131,9 @@ class ReadGWASFileStage(PipelineStage):
         # instead, we can just use the same column name everywhere.
         old_gwas_columns = list(gwas_data.columns)  # Columns in gwas_file
 
-        column_mapper = {}  # maps user input -> default
+        column_mapper = {}  # maps user input OR default -> default
         column_inputs = {}  # maps default -> raw user input
-        column_input_list = []  # for duplicate checks
+        column_input_list = []  # all user input
 
         for column in self.GWAS_COLUMNS:
             column_input_list.append(
@@ -151,6 +150,8 @@ class ReadGWASFileStage(PipelineStage):
 
         # Rename columns to match GWAS_COLUMNS.
         # All checks from this point forward should be based on GWAS_COLUMNS
+        non_gwas_columns = [c for c in gwas_data.columns if c not in column_input_list]
+        gwas_data = gwas_data.drop(columns=non_gwas_columns)
         gwas_data = gwas_data.rename(columns=column_mapper)
 
         # Get P value column (always needed)
