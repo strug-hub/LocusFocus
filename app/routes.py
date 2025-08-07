@@ -1614,7 +1614,7 @@ def getGeneNames(build):
 @app.route("/genenames/<build>/<chrom>/<startbp>/<endbp>")
 def getGenesInRange(build, chrom, startbp, endbp):
     genes = get_genes_by_location(build, chrom, startbp, endbp)
-    return jsonify(genes)
+    return jsonify(sorted(genes))
 
 
 @app.route("/gtex/<version>/tissues_list")
@@ -1634,7 +1634,7 @@ def list_tissues(version):
         _tissues = get_tissue_site_details(version)
         tissues = [d.tissue_site_detail_id for d in _tissues.data]
 
-    return jsonify(tissues)
+    return jsonify(sorted(tissues))
 
 
 @app.route("/gtex/<version>/<tissue>/<gene_id>")

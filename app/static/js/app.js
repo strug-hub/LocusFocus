@@ -547,7 +547,7 @@ function init() {
         },
       });
       $("#GTEx-tissues").multiselect({
-        enableFiltering: true,
+        enableCaseInsensitiveFiltering: true,
         includeSelectAllOption: true,
         maxHeight: 400,
         buttonWidth: "400px",
@@ -556,7 +556,7 @@ function init() {
         },
       });
       $("#region-genes").multiselect({
-        enableFiltering: true,
+        enableCaseInsensitiveFiltering: true,
         includeSelectAllOption: true,
         maxHeight: 400,
         buttonWidth: "400px",
