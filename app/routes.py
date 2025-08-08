@@ -8,7 +8,6 @@ from tqdm import tqdm
 import uuid
 import subprocess
 from datetime import datetime
-from bs4 import BeautifulSoup as bs
 import re
 import pysam
 import glob
@@ -31,10 +30,14 @@ from pymongo.errors import ConnectionFailure
 
 from app.tasks import get_is_celery_running, run_pipeline_async
 from app.utils import download_file
+from app.utils.gencode import get_genes_by_location
+from app.utils.gtex import get_gtex, get_gtex_data
+from app.utils.apis.gtex import get_tissue_site_details
 from app.utils.errors import InvalidUsage, ServerError
 from app.utils.numpy_encoder import NumpyEncoder
 
 from app import ext, mongo
+from app.cache import cache
 
 client = mongo.cx
 db = client.GTEx_V7
@@ -1422,169 +1425,6 @@ def plink_ld_pairwise(build, pop, chrom, snp_positions, snp_pvalues, outfilename
     return merged_df, new_lead_snp_position
 
 
-####################################
-# Getting GTEx Data from Local MongoDB Database
-####################################
-
-
-# This is the main function to extract the data for a tissue and gene_id:
-def get_gtex(version, tissue, gene_id):
-    if version.upper() == "V8":
-        db = client.GTEx_V8
-        collapsed_genes_df = collapsed_genes_df_hg38
-    elif version.upper() == "V7":
-        db = client.GTEx_V7
-        collapsed_genes_df = collapsed_genes_df_hg19
-
-    tissue = tissue.replace(" ", "_")
-    # gene_id = gene_id.upper()
-    ensg_name = ""
-    if tissue not in db.list_collection_names():
-        raise InvalidUsage(f"Tissue {tissue} not found", status_code=410)
-    collection = db[tissue]
-    if gene_id.startswith("ENSG"):
-        i = list(collapsed_genes_df["ENSG_name"]).index(gene_id)
-        ensg_name = list(collapsed_genes_df["ENSG_name"])[i]
-    elif gene_id in list(collapsed_genes_df["name"]):
-        i = list(collapsed_genes_df["name"]).index(gene_id)
-        ensg_name = list(collapsed_genes_df["ENSG_name"])[i]
-    else:
-        raise InvalidUsage(f"Gene name {gene_id} not found", status_code=410)
-    results = list(collection.find({"gene_id": ensg_name}))
-    response = []
-    try:
-        response = results[0]["eqtl_variants"]
-    except:
-        return pd.DataFrame([{"error": f"No eQTL data for {gene_id} in {tissue}"}])
-    results_df = pd.DataFrame(response)
-    chrom = int(list(results_df["variant_id"])[0].split("_")[0].replace("X", "23"))
-    positions = [int(x.split("_")[1]) for x in list(results_df["variant_id"])]
-    variants_query = db.variant_table.find(
-        {
-            "$and": [
-                {"chr": chrom},
-                {"variant_pos": {"$gte": min(positions), "$lte": max(positions)}},
-            ]
-        }
-    )
-    variants_list = list(variants_query)
-    variants_df = pd.DataFrame(variants_list)
-    variants_df = variants_df.drop(["_id"], axis=1)
-    x = pd.merge(results_df, variants_df, on="variant_id")
-    if version.upper() == "V7":
-        x.rename(columns={"rs_id_dbSNP147_GRCh37p13": "rs_id"}, inplace=True)
-    elif version.upper() == "V8":
-        x.rename(columns={"rs_id_dbSNP151_GRCh38p7": "rs_id"}, inplace=True)
-    return x
-
-
-# Function to merge the GTEx data with a particular snp_list
-def get_gtex_data(version, tissue, gene, snp_list, raiseErrors=False):
-    build = "hg19"
-    if version.upper() == "V8":
-        build = "hg38"
-    gtex_data = []
-    rsids = True
-
-    has_rsid_snps = any(x.startswith("rs") for x in snp_list)
-    has_b37_snps = any(x.endswith("_b37") for x in snp_list)
-    has_b38_snps = any(x.endswith("_b38") for x in snp_list)
-
-    if has_rsid_snps and (has_b37_snps or has_b38_snps):
-        raise InvalidUsage(
-            "There is a mix of rsid and other variant id formats; please use a consistent format"
-        )
-    elif has_rsid_snps:
-        rsids = True
-    elif has_b37_snps or has_b38_snps:
-        rsids = False
-    else:
-        raise InvalidUsage(
-            "Variant naming format not supported; ensure all are rs ID's are formatted as chrom_pos_ref_alt_b37 eg. 1_205720483_G_A_b37"
-        )
-    hugo_gene, ensg_gene = genenames(gene, build)
-    #    print(f'Gathering eQTL data for {hugo_gene} ({ensg_gene}) in {tissue}')
-    response_df = pd.DataFrame({})
-    if version.upper() == "V7":
-        response_df = get_gtex("V7", tissue, gene)
-    elif version.upper() == "V8":
-        response_df = get_gtex("V8", tissue, gene)
-    if "error" not in response_df.columns:
-        eqtl = response_df
-        if rsids:
-            snp_df = pd.DataFrame(snp_list, columns=["rs_id"])
-            # idx = pd.Index(list(snp_df['rs_id']))
-            idx2 = pd.Index(list(eqtl["rs_id"]))
-            # snp_df = snp_df[~idx.duplicated()]
-            eqtl = eqtl[~idx2.duplicated()]
-            # print('snp_df.shape' + str(snp_df.shape))
-            gtex_data = (
-                snp_df.reset_index()
-                .merge(eqtl, on="rs_id", how="left", sort=False)
-                .sort_values("index")
-            )
-            # print('gtex_data.shape' + str(gtex_data.shape))
-            # print(gtex_data)
-        else:
-            # Make sure that SNP ID format is correct
-            # Remove 'chr' from chrom part
-            snp_list = [x.replace("chr", "") for x in snp_list]
-            snp_df = pd.DataFrame(snp_list, columns=["variant_id"])
-            gtex_data = (
-                snp_df.reset_index()
-                .merge(eqtl, on="variant_id", how="left", sort=False)
-                .sort_values("index")
-            )
-    else:
-        try:
-            error_message = list(response_df["error"])[0]
-            gtex_data = pd.DataFrame({})
-        except:
-            if raiseErrors:
-                raise InvalidUsage(
-                    "No response for tissue "
-                    + tissue.replace("_", " ")
-                    + " and gene "
-                    + hugo_gene
-                    + " ( "
-                    + ensg_gene
-                    + " )",
-                    status_code=410,
-                )
-    return gtex_data
-
-
-# This function simply merges the eqtl_data extracted with the snp_list,
-# then returns a list of the eQTL pvalues for snp_list (if available)
-def get_gtex_data_pvalues(eqtl_data, snp_list):
-    rsids = True
-    if snp_list[0].startswith("rs"):
-        rsids = True
-    elif snp_list[0].endswith("_b37"):
-        rsids = False
-    elif snp_list[0].endswith("_b38"):
-        rsids = False
-    else:
-        raise InvalidUsage(
-            "Variant naming format not supported; ensure all are rs ID's or formatted as chrom_pos_ref_alt_b37 eg. 1_205720483_G_A_b37"
-        )
-    if rsids:
-        gtex_data = pd.merge(
-            eqtl_data,
-            pd.DataFrame(snp_list, columns=["rs_id"]),
-            on="rs_id",
-            how="right",
-        )
-    else:
-        gtex_data = pd.merge(
-            eqtl_data,
-            pd.DataFrame(snp_list, columns=["variant_id"]),
-            on="variant_id",
-            how="right",
-        )
-    return list(gtex_data["pval"])
-
-
 def read_gwasfile(infile, sep="\t"):
     try:
         gwas_data = pd.read_csv(infile, sep=sep, encoding="utf-8")
@@ -1773,40 +1613,28 @@ def getGeneNames(build):
 
 @app.route("/genenames/<build>/<chrom>/<startbp>/<endbp>")
 def getGenesInRange(build, chrom, startbp, endbp):
-    collapsed_genes_df = collapsed_genes_df_hg19
-    if build.lower() == "hg38":
-        collapsed_genes_df = collapsed_genes_df_hg38
-    regiontext = str(chrom) + ":" + startbp + "-" + endbp
-    chrom, startbp, endbp = parseRegionText(regiontext, build)
-    genes_to_draw = collapsed_genes_df.loc[
-        (collapsed_genes_df["chrom"] == ("chr" + str(chrom).replace("23", "X")))
-        & (
-            (
-                (collapsed_genes_df["txStart"] >= startbp)
-                & (collapsed_genes_df["txStart"] <= endbp)
-            )
-            | (
-                (collapsed_genes_df["txEnd"] >= startbp)
-                & (collapsed_genes_df["txEnd"] <= endbp)
-            )
-            | (
-                (collapsed_genes_df["txStart"] <= startbp)
-                & (collapsed_genes_df["txEnd"] >= endbp)
-            )
-        )
-    ]
-    return jsonify(list(genes_to_draw["name"]))
+    genes = get_genes_by_location(build, chrom, startbp, endbp)
+    return jsonify(sorted(genes))
 
 
 @app.route("/gtex/<version>/tissues_list")
+@cache.cached()
 def list_tissues(version):
-    if version.upper() == "V8":
-        db = client.GTEx_V8
-    elif version.upper() == "V7":
+    version = version.upper()
+    if version == "V7":
         db = client.GTEx_V7
-    tissues = list(db.list_collection_names())
-    tissues.remove("variant_table")
-    return jsonify(tissues)
+        tissues = list(db.list_collection_names())
+        tissues.remove("variant_table")
+    elif version == "V8":
+        db = client.GTEx_V8
+        tissues = list(db.list_collection_names())
+        tissues.remove("variant_table")
+    elif version == "V10":
+        version = f"gtex_{version.lower()}"
+        _tissues = get_tissue_site_details(version)
+        tissues = [d.tissue_site_detail_id for d in _tissues.data]
+
+    return jsonify(sorted(tissues))
 
 
 @app.route("/gtex/<version>/<tissue>/<gene_id>")

@@ -1,4 +1,4 @@
-FROM python:3.10-slim
+FROM python:3.10-slim as base
 
 ARG USERNAME=flask
 ARG USER_UID=1000
@@ -81,15 +81,31 @@ RUN install2.r --error \
   remotes \
   zeallot
 
-RUN R -e "BiocManager::install(c('GenomicRanges, biomaRt'))"
+RUN R -e "BiocManager::install('GenomicRanges')"
+RUN R -e "BiocManager::install('biomaRt')"
 
-# Link plink and liftOver to work dir
-RUN ln -s /usr/local/bin/plink /code/plink && \
-  ln -s /usr/local/bin/liftOver /code/liftOver
+# this seems not to respect user install path, might need to install as root and copy over
+# RUN R -e "remotes::install_version('Matrix', version = '1.2')" # this seems to be already installed via other deps, however
+
+# Link plink to work dir
+RUN ln -s /usr/local/bin/plink /code/plink
+RUN ln -s /usr/local/bin/liftOver /code/liftOver
+
+FROM base AS dev
+
+COPY --chown=$USERNAME:$USERNAME ./pyproject.toml /code/pyproject.toml
+COPY --chown=$USERNAME:$USERNAME ./poetry.lock /code/poetry.lock
+COPY --chown=$USERNAME:$USERNAME ./README.md /code/README.md
+COPY --chown=$USERNAME:$USERNAME ./app /code/app
+COPY --chown=$USERNAME:$USERNAME ./tests /code/app
+
+RUN poetry install --with dev
+
+FROM base AS prod
 
 COPY --chown=$USERNAME:$USERNAME ./pyproject.toml /code/pyproject.toml
 COPY --chown=$USERNAME:$USERNAME ./poetry.lock /code/poetry.lock
 COPY --chown=$USERNAME:$USERNAME ./README.md /code/README.md
 COPY --chown=$USERNAME:$USERNAME ./app /code/app
 
-RUN poetry install --with dev
+RUN poetry install --no-dev
