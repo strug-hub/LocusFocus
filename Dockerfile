@@ -33,6 +33,15 @@ ENV EDITOR vim
 ENV R_BASE_VERSION 3.6.3
 ENV R_LIBS_USER /home/${USERNAME}/Rlibs
 
+# RUN echo "deb http://archive.debian.org/debian/ buster main non-free contrib\ndeb-src http://archive.debian.org/debian/ stretch main non-free contrib\n" > /etc/apt/sources.list && \
+#   echo "deb http://archive.debian.org/debian-security/ stretch/updates main non-free contrib\ndeb-src http://archive.debian.org/debian-security/ stretch/updates main non-free contrib\n" >> /etc/apt/sources.list
+
+RUN sed -i 's/deb\./archive\./' /etc/apt/sources.list
+
+RUN cat etc/apt/sources.list
+
+#RUN echo "deb http://security.debian.org/debian-security buster-security main contrib non-free" > /etc/apt/sources.list
+
 RUN apt-get update && \
   apt-get install -y \
   libblas-dev \
