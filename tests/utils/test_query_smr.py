@@ -84,7 +84,7 @@ def test_query_smr(mock: Mock):
     dataset = "EUR"
     thresh = 1
 
-    res = query_smr(chr, snps, dataset, thresh)
+    res = query_smr(chr, snps, dataset, thresh, "hg38")
 
     assert len(res) == 2
 
