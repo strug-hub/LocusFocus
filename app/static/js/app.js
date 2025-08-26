@@ -18,6 +18,107 @@ var altColDiv = d3.select("#alt");
 var statsDiv = d3.select("#statsDiv");
 var statsDiv2 = d3.select("#statsDiv2");
 
+const formFields = {
+  locus: {
+    selector: "#locus",
+    type: "input",
+  },
+  snpCol: {
+    selector: "#snp-col",
+    type: "input",
+  },
+  ssLocus: {
+    selector: "#SSlocus",
+    type: "input",
+  },
+  leanSnp: {
+    selector: "#leadsnp",
+    type: "input",
+  },
+  setBasedP: {
+    selector: "#setbasedP",
+    type: "input",
+  },
+  coordinate: {
+    selector: "#coordinate",
+    type: "input",
+  },
+  chrom: {
+    selector: "#chrom input",
+    type: "input",
+  },
+  pos: {
+    selector: "#pos input",
+    type: "input",
+  },
+  ref: {
+    selector: "#ref input",
+    type: "input",
+  },
+  alt: {
+    selector: "#alt input",
+    type: "input",
+  },
+  ldPop: {
+    selector: "#LD-populations",
+    type: "input",
+  },
+  getxVersion: {
+    selector: "#GTEx-version",
+    type: "select",
+  },
+  gtexTissues: {
+    selector: "#GTEx-tissues",
+    type: "multiselect",
+  },
+  regionGenes: {
+    selector: "#region-genes",
+    type: "multiselect",
+  },
+};
+
+function storeFormArgs(e) {
+  const vals = Object.entries(formFields)
+    .map(([k, v]) => {
+      if (v.type === "input") {
+        return { [k]: d3.select(v.selector).node().value };
+      } else if (v.type === "select") {
+        return { [k]: d3.select(v.selector).node().value };
+      } else if (v.type === "multiselect") {
+        return { [k]: $(v.selector).val() };
+      }
+    })
+    .reduce((acc, curr) => ({
+      ...acc,
+      ...curr,
+    }));
+
+  localStorage.setItem("formVals", JSON.stringify(vals));
+}
+
+d3.select(".inputs-and-upload-form form").on("submit", storeFormArgs);
+
+$(document).ready(function () {
+  const inputs = localStorage.getItem("formVals");
+
+  if (inputs) {
+    const formVals = JSON.parse(inputs);
+
+    Object.entries(formVals).forEach(([k, v]) => {
+      if (formFields[k].type === "input") {
+        d3.select(formFields[k].selector).node().value = v;
+      } else if (formFields[k].type === "select") {
+        d3.select(formFields[k].selector).node().value = v;
+      } else if (formFields[k].type === "multiselect") {
+        if (v) {
+          $(formFields[k].selector).val(v);
+          $(formFields[k].selector).multiselect("refresh");
+        }
+      }
+    });
+  }
+});
+
 var locText = d3.select("#locusText").empty()
   ? null
   : d3.select("#locusText").text();
@@ -68,9 +169,7 @@ function coordinateChange(newCoordinate) {
     `${startingChr}:${startingPos}-${endingPos}`
   );
   if (!["hg38", "hg19"].includes(newCoordinate)) {
-    alert(
-      "Invalid coordinate system. Please select hg38 or hg19 coordinates."
-    );
+    alert("Invalid coordinate system. Please select hg38 or hg19 coordinates.");
     return;
   }
   setLoading(true);
@@ -320,10 +419,14 @@ function askColocInputs() {
 function inferVariant(snpbox) {
   if (snpbox.checked) {
     $("#variantInputs").hide();
-    ["#chrom-col", "#pos-col", "#ref-col", "#alt-col"].forEach((id) => $(id).prop("disabled", true));
+    ["#chrom-col", "#pos-col", "#ref-col", "#alt-col"].forEach((id) =>
+      $(id).prop("disabled", true)
+    );
   } else {
     $("#variantInputs").show();
-    ["#chrom-col", "#pos-col", "#ref-col", "#alt-col"].forEach((id) => $(id).prop("disabled", false));
+    ["#chrom-col", "#pos-col", "#ref-col", "#alt-col"].forEach((id) =>
+      $(id).prop("disabled", false)
+    );
   }
   // re-initialize popover and tooltip
   $(function () {
@@ -450,7 +553,10 @@ function handleLDPopulations() {
 function updateChrXWarning() {
   const regionText = $("#locus").val().toLowerCase();
   const selectedAssembly = $("#coordinate").val();
-  const uploadedFileNames = $.map($("#file-upload").prop("files"), f => f.name);
+  const uploadedFileNames = $.map(
+    $("#file-upload").prop("files"),
+    (f) => f.name
+  );
 
   console.log(
     `[updateChrXWarning]
@@ -459,9 +565,11 @@ function updateChrXWarning() {
     uploadedFileNames: ${uploadedFileNames}`
   );
 
-  const hideWarning = !((["x", "23", "chrx"].some(start => regionText.startsWith(start)))  // x chromosome
-                        && (selectedAssembly.toLowerCase() === "hg38")  // hg38
-                        && (uploadedFileNames.every(name => !(name.toLowerCase().endsWith(".ld")))));  // no LD provided
+  const hideWarning = !(
+    ["x", "23", "chrx"].some((start) => regionText.startsWith(start)) && // x chromosome
+    selectedAssembly.toLowerCase() === "hg38" && // hg38
+    uploadedFileNames.every((name) => !name.toLowerCase().endsWith(".ld"))
+  ); // no LD provided
 
   $("#chrX-warning").prop("hidden", hideWarning);
 }
@@ -502,7 +610,6 @@ function init() {
   console.log("Loading genes:");
   loadGenes(coordinate, "1:205,500,000-206,000,000");
 
-  
   d3.json(gtexurl).then((response) => {
     var gtex_tissues = response.map((k) => k);
 
@@ -584,7 +691,9 @@ function init() {
   });
 
   // add warning listeners
-  ["#locus", "#coordinate", "#file-upload"].forEach(id => $(id).on("change", updateChrXWarning));
+  ["#locus", "#coordinate", "#file-upload"].forEach((id) =>
+    $(id).on("change", updateChrXWarning)
+  );
 }
 
 init();
