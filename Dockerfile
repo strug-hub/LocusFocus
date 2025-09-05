@@ -5,8 +5,8 @@ RUN sed -i 's|http://deb.debian.org/debian|http://archive.debian.org/debian|g' /
     sed -i 's|http://security.debian.org/debian-security|http://archive.debian.org/debian-security|g' /etc/apt/sources.list && \
     sed -i '/stretch-updates/d' /etc/apt/sources.list
 
-ARG USERNAME=flask
-ARG USER_UID=1000
+ARG USERNAME=locusfocus
+ARG USER_UID=4644
 ARG USER_GID=$USER_UID
 
 RUN mkdir code \
