@@ -1,4 +1,4 @@
-FROM python:3.10-buster as base
+FROM python:3.10-slim as base
 
 ARG USERNAME=flask
 ARG USER_UID=1000
