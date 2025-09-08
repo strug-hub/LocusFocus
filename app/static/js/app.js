@@ -96,26 +96,53 @@ function storeFormArgs(e) {
   localStorage.setItem("formVals", JSON.stringify(vals));
 }
 
+const addLoadingIndicator = () => {
+  $("#loading-modal").modal({ closeClass: "icon-remove" });
+};
+
+const closeActiveModal = () => $.modal.close();
+
+const setErrorModalOpen = (message) => {
+  d3.select("#error-modal p.message").text(message);
+  $("#error-modal").modal();
+};
+
 d3.select(".inputs-and-upload-form form").on("submit", storeFormArgs);
 
-$(document).ready(function () {
-  const inputs = localStorage.getItem("formVals");
+$(".inputs-and-upload-form form").on("submit", async (e) => {
+  e.preventDefault();
 
-  if (inputs) {
-    const formVals = JSON.parse(inputs);
+  addLoadingIndicator();
 
-    Object.entries(formVals).forEach(([k, v]) => {
-      if (formFields[k].type === "input") {
-        d3.select(formFields[k].selector).node().value = v;
-      } else if (formFields[k].type === "select") {
-        d3.select(formFields[k].selector).node().value = v;
-      } else if (formFields[k].type === "multiselect") {
-        if (v) {
-          $(formFields[k].selector).val(v);
-          $(formFields[k].selector).multiselect("refresh");
-        }
-      }
+  try {
+    const res = await fetch("/", {
+      method: "POST",
+      body: new FormData(e.currentTarget),
     });
+
+    if (!res.status.toString().startsWith("2")) {
+      throw res;
+    }
+
+    const content = await res.json();
+
+    if (!content.queued) {
+      window.location = `${window.location}/session_id/${content.session_id}`;
+    } else {
+      //query endpoint in a loop
+    }
+  } catch (e) {
+    closeActiveModal();
+    console.error(e);
+    if (e?.status.toString().startsWith("4")) {
+      const error = await e.json();
+      const message = error.message;
+      setErrorModalOpen(message);
+    } else {
+      setErrorModalOpen(
+        "The job failed due to an unexpected error, please try again later."
+      );
+    }
   }
 });
 
@@ -607,7 +634,6 @@ function init() {
   //     });
   // });
 
-  console.log("Loading genes:");
   loadGenes(coordinate, "1:205,500,000-206,000,000");
 
   d3.json(gtexurl).then((response) => {
@@ -677,6 +703,25 @@ function init() {
           return "multiselect[]";
         },
       });
+
+      const inputs = localStorage.getItem("formVals");
+
+      if (inputs) {
+        const formVals = JSON.parse(inputs);
+
+        Object.entries(formVals).forEach(([k, v]) => {
+          if (formFields[k].type === "input") {
+            d3.select(formFields[k].selector).node().value = v;
+          } else if (formFields[k].type === "select") {
+            d3.select(formFields[k].selector).node().value = v;
+          } else if (formFields[k].type === "multiselect") {
+            if (v) {
+              $(formFields[k].selector).val(v);
+              $(formFields[k].selector).multiselect("refresh");
+            }
+          }
+        });
+      }
     });
   });
 
