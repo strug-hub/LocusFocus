@@ -107,6 +107,17 @@ const setErrorModalOpen = (message) => {
   $("#error-modal").modal();
 };
 
+const setPendingModalOpen = () => {
+  $("#job-pending-modal").modal({ closeClass: "icon-remove" });
+};
+
+const setRunningModalOpen = (stage_index, stage_count) => {
+  $("#job-running-modal").modal({ closeClass: "icon-remove" });
+  d3.select("#job-running-modal h4.stage").text(
+    `Currently on stage ${stage_index} of ${stage_count}`
+  );
+};
+
 d3.select(".inputs-and-upload-form form").on("submit", storeFormArgs);
 
 $(".inputs-and-upload-form form").on("submit", async (e) => {
@@ -129,7 +140,7 @@ $(".inputs-and-upload-form form").on("submit", async (e) => {
     if (!content.queued) {
       window.location = `${window.location}/session_id/${content.session_id}`;
     } else {
-      //query endpoint in a loop
+      handleJobStatus(`/job/status/${content.session_id}`, content.session_id);
     }
   } catch (e) {
     closeActiveModal();
@@ -145,6 +156,44 @@ $(".inputs-and-upload-form form").on("submit", async (e) => {
     }
   }
 });
+
+/**
+ * Handle checking the status of a job and
+ * updating the progress bar on the waiting page.
+ */
+async function handleJobStatus(jobStatusURL, sessionId) {
+  const statusResponse = await fetch(jobStatusURL);
+  const statusData = await statusResponse.json();
+  const jobStatus = statusData.status;
+  if (jobStatus == "PENDING") {
+    closeActiveModal();
+    setPendingModalOpen();
+    await new Promise((resolve) =>
+      setTimeout(() => resolve(handleJobStatus(jobStatusURL, sessionId)), 10000)
+    );
+  }
+
+  if (jobStatus == "RUNNING") {
+    const stage_index = statusData.stage_index + 1;
+    const stage_count = statusData.stage_count;
+    closeActiveModal();
+    setRunningModalOpen(stage_index, stage_count);
+    await new Promise((resolve) =>
+      setTimeout(() => resolve(handleJobStatus(jobStatusURL, sessionId)), 500)
+    );
+  }
+
+  if (jobStatus == "FAILURE") {
+    setErrorModalOpen(
+      `Error: ${statusData.error_title}; Details: ${statusData.error_message}`
+    );
+  }
+
+  if (jobStatus == "SUCCESS") {
+    const { redirect_url } = statusData;
+    window.location = redirect_url;
+  }
+}
 
 var locText = d3.select("#locusText").empty()
   ? null

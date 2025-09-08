@@ -120,15 +120,15 @@ bottom: .5em;
   height: auto;
 }
 
-#error-modal a[href$="#close-modal"], #loading-modal a[href$="#close-modal"] {
+#error-modal a[href$="#close-modal"] {
     top: 3px;
     right: 3px;
 }
 
-#loading-modal {
+#loading-modal, #error-modal, #job-running-modal, #job-pending-modal {
   text-align: center;
 }
 
-#loading-modal .icon-remove {
+#loading-modal .icon-remove, #job-running-modal .icon-remove, #job-pending-modal .icon-remove {
   display: none
 }
