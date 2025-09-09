@@ -1666,7 +1666,11 @@ def prev_session():
         old_session_id = request.form["session-id"].strip()
 
         # Check celery session
-        if not app.config["DISABLE_CELERY"] and get_is_celery_running() and old_session_id != "example-output":
+        if (
+            not app.config["DISABLE_CELERY"]
+            and get_is_celery_running()
+            and old_session_id != "example-output"
+        ):
             celery_result = AsyncResult(old_session_id, app=app.extensions["celery"])
             if celery_result.status == "PENDING":
                 raise InvalidUsage(f"Session {old_session_id} does not exist.")
@@ -1725,7 +1729,11 @@ def prev_session():
 def prev_session_input(old_session_id):
 
     # Check celery session
-    if not app.config["DISABLE_CELERY"] and get_is_celery_running() and old_session_id != "example-output":
+    if (
+        not app.config["DISABLE_CELERY"]
+        and get_is_celery_running()
+        and old_session_id != "example-output"
+    ):
         celery_result = AsyncResult(old_session_id, app=app.extensions["celery"])
         if celery_result.status == "PENDING":
             raise InvalidUsage(f"Session {old_session_id} does not exist.")
@@ -1885,7 +1893,9 @@ def index():
         file = request.files.get(name)
         if file:
             filepath = download_file(file)
-            if filepath is not None and any(str(filepath).endswith(ext) for ext in extensions):
+            if filepath is not None and any(
+                str(filepath).endswith(ext) for ext in extensions
+            ):
                 filepaths.append(filepath)
         elif required:
             raise InvalidUsage(f"Missing required file: {description}", status_code=410)
@@ -1901,20 +1911,13 @@ def index():
         from app.colocalization.pipeline import ColocalizationPipeline
 
         pipeline = ColocalizationPipeline(id=session_id)
-        result = pipeline.process(request_form, filepaths)
-
-        return render_template(
-            "plot.html",
-            **result.file.get_plot_template_paths(session_id=str(result.session_id)),
-        )
+        pipeline.process(request_form, filepaths)
+        return jsonify({"session_id": session_id, "queued": False})
 
     job_result = run_pipeline_async("colocalization", request_form, filepaths)
     session_id = job_result.id
 
-    return render_template(
-        "waiting_page.html",
-        session_id=session_id,
-    )
+    return jsonify({"session_id": session_id, "queued": True})
 
 
 ALLOWED_SBT_EXTENSIONS = set(["txt", "tsv", "ld"])

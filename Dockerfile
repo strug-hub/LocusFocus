@@ -33,6 +33,10 @@ ENV EDITOR vim
 ENV R_BASE_VERSION 3.6.3
 ENV R_LIBS_USER /home/${USERNAME}/Rlibs
 
+
+# buster has reached EOL and now we need to fetch from archives....
+RUN sed -i 's/deb\./archive\./' /etc/apt/sources.list
+
 RUN apt-get update && \
   apt-get install -y \
   libblas-dev \
