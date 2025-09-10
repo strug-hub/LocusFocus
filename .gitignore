@@ -153,3 +153,4 @@ app/static/upload/*
 _data
 data/cache/*
 !data/cache/.gitkeep
+!setup-locusfocus-user.sh
