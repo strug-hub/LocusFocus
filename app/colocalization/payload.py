@@ -283,7 +283,7 @@ class SessionPayload:
             lead_snp = str(gwas.iloc[gwas["P"].argmin()]["SNP"]).split(";")[0]  # type: ignore
         if lead_snp not in snps:
             raise InvalidUsage("Lead SNP not found", status_code=410)
-        return gwas.index[gwas["SNP"] == lead_snp].tolist()[0]
+        return gwas.index.get_loc(gwas[gwas["SNP"] == lead_snp].index[0])
 
     def get_ss_locus(self) -> str:
         """
