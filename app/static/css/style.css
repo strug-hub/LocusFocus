@@ -126,3 +126,6 @@ label .marker-checkbox-id-label, #coloc2check label {
   height:42px
 }
 
+#loading {
+  display: none;
+}
