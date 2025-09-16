@@ -33,8 +33,11 @@ class BaseConfig:
             "'self'",
             "'sha256-OTeu7NEHDo6qutIWo0F2TmYrDhsKWCzrUgGoxxHGJ8o='",
             "'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU='",
+            # plotly
+            "'sha256-vCpS8VyHtSqXbN/JkDhke+jauUq+p7lBAVCL+C75wZo='",
             "use.fontawesome.com",
             "cdnjs.cloudflare.com",
+            "cdn.plot.ly",
             "stackpath.bootstrapcdn.com",
         ],
         "font-src": [

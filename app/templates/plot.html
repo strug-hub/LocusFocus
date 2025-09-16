@@ -469,8 +469,7 @@
       src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"
     ></script>
     <!-- Plotly -->
-    <!-- also refuses unsafe eval -->
-    <!-- <script src="https://cdn.plot.ly/plotly-latest.min.js"></script> -->
+   <script src="https://cdn.plot.ly/plotly-2.19.0.min.js" charset="utf-8"></script>
     <script
       type="text/javascript"
       src="{{ url_for('static', filename='js/params_table.js') }}"
@@ -521,10 +520,10 @@
     ></script>
 
     <!-- this one uses eval....? -->
-    <!-- <script
+    <script
       type="text/javascript"
       src="{{ url_for('static', filename='DataTables/datatables.min.js') }}"
-    ></script> -->
+    ></script>
     <script
       type="application/javascript"
       src="{{ url_for('static', filename='js/plot_coloc.js') }}"

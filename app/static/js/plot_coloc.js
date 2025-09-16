@@ -15,6 +15,16 @@ function getResourceUrl(resource) {
   return `${staticEndpoint}/${resource}`;
 }
 
+function getJsonD3(endpoint) {
+  return new Promise((resolve, reject) => {
+    try {
+      d3.json(endpoint, (g) => resolve(g));
+    } catch (e) {
+      reject(e);
+    }
+  });
+}
+
 function showSection(name, hidden = false) {
   let rowId = "#" + name + "-row";
   let dividerId = "#" + name + "-divider";
@@ -34,14 +44,15 @@ function init() {
     .text(sessionid);
 
   let filePromises = [
-    d3.json(getResourceUrl(sessionfile)),
-    d3.json(getResourceUrl(metadata_file)),
+    getJsonD3(getResourceUrl(sessionfile)),
+    getJsonD3(getResourceUrl(metadata_file)),
   ];
 
   Promise.allSettled(filePromises).then((results) => {
-    let [sessionData, metadataResponseJson] = results.map((v) =>
-      v.status === "fulfilled" ? v.value : null
-    );
+    let [sessionData, metadataResponseJson] = results.map((v) => {
+      return v.status === "fulfilled" ? v.value : null;
+    });
+
     $("#loading-spinner").remove();
     if (
       metadataResponseJson !== null &&
@@ -53,9 +64,9 @@ function init() {
     } else {
       // fetch other files for default tests
       Promise.allSettled([
-        d3.json(getResourceUrl(genesfile)),
-        d3.json(getResourceUrl(SSPvalues_file)),
-        d3.json(getResourceUrl(coloc2_file)),
+        getJsonD3(getResourceUrl(genesfile)),
+        getJsonD3(getResourceUrl(SSPvalues_file)),
+        getJsonD3(getResourceUrl(coloc2_file)),
       ]).then((SSfiles) => {
         let [genesData, SSResponseJson, coloc2ResponseJson] = SSfiles.map((v) =>
           v.status === "fulfilled" ? v.value : null
@@ -108,38 +119,34 @@ function optionChanged(newgene) {
     .classed("fa-info-circle", true)
     .text(`Please wait while re-drawing eQTLs for gene ${newgene}`);
   // d3.json("{{ url_for('update_colocalizing_gene', session_id=sessionid, newgene=newgene) }}").then(response => {
-  d3.json(newurl).then((newresponse) => {
-    d3.json("{{ url_for('static', filename=genesfile) }}").then(
-      (genesResponse) => {
-        var newdata = newresponse;
-        var genesdata = genesResponse;
-        plot_gwas(newdata, genesdata);
-        d3.select("#plot_message").text("");
-        // plot_heatmap(SSResponse.Genes, SSResponse.Tissues, SSResponse.SSPvalues);
-        // buildTable(SSResponse.Genes, SSResponse.Tissues, SSResponse.SSPvalues);
-      }
-    );
+  getJsonD3(newurl).then((newresponse) => {
+    getJsonD3(getResourceUrl(genesfile)).then((genesResponse) => {
+      var newdata = newresponse;
+      var genesdata = genesResponse;
+      plot_gwas(newdata, genesdata);
+      d3.select("#plot_message").text("");
+      // plot_heatmap(SSResponse.Genes, SSResponse.Tissues, SSResponse.SSPvalues);
+      // buildTable(SSResponse.Genes, SSResponse.Tissues, SSResponse.SSPvalues);
+    });
   });
 }
 
 function transposeTable() {
   transpose = !transpose;
-  d3.json("{{ url_for('static', filename=SSPvalues_file) }}").then(
-    (SSResponse) => {
-      buildTable(
-        SSResponse.Genes,
-        SSResponse.Tissues,
-        SSResponse.SSPvalues,
-        transpose
-      );
-      buildNTable(
-        SSResponse.Genes,
-        SSResponse.Tissues,
-        SSResponse.Num_SNPs_Used_for_SS,
-        transpose
-      );
-    }
-  );
+  getJsonD3(getResourceUrl(SSPvalues_file)).then((SSResponse) => {
+    buildTable(
+      SSResponse.Genes,
+      SSResponse.Tissues,
+      SSResponse.SSPvalues,
+      transpose
+    );
+    buildNTable(
+      SSResponse.Genes,
+      SSResponse.Tissues,
+      SSResponse.Num_SNPs_Used_for_SS,
+      transpose
+    );
+  });
 }
 
 function prepareResults(
@@ -257,35 +264,33 @@ function plot_fullgwas(pval_filter_box) {
     .classed("fa", true)
     .classed("fa-info-circle", true)
     .text(`Please wait while re-drawing`);
-  d3.json("{{ url_for('static', filename=sessionfile) }}").then((response) => {
-    d3.json("{{ url_for('static', filename=genesfile) }}").then(
-      (genesResponse) => {
-        var data = response;
-        var genesdata = genesResponse;
-        if (pval_filter_box.checked === false) {
-          // d3.select('#plot_message').append("p").attr("class","text-warning").text(`Please wait while re-drawing with all GWAS points (slow)`);
-          d3.select("#plot_message")
-            .append("i")
-            .classed("fa", true)
-            .classed("fa-info-circle", true)
-            .text(`Please wait while re-drawing with all GWAS points (slow)`);
-          plot_gwas(
-            data,
-            genesdata,
-            (eqtl_smoothing_window_size = -1),
-            (percent_occupied_by_one_char = 0.02),
-            (inputHeight = 720),
-            (inputWidth = 1080),
-            (font_size = 14),
-            (legend_offset = 0.1),
-            (pval_filter = false)
-          );
-        } else {
-          plot_gwas(data, genesdata);
-        }
-        d3.select("#plot_message").text("");
+  getJsonD3(getResourceUrl(sessionfile)).then((response) => {
+    getJsonD3(getResourceUrl(genesfile)).then((genesResponse) => {
+      var data = response;
+      var genesdata = genesResponse;
+      if (pval_filter_box.checked === false) {
+        // d3.select('#plot_message').append("p").attr("class","text-warning").text(`Please wait while re-drawing with all GWAS points (slow)`);
+        d3.select("#plot_message")
+          .append("i")
+          .classed("fa", true)
+          .classed("fa-info-circle", true)
+          .text(`Please wait while re-drawing with all GWAS points (slow)`);
+        plot_gwas(
+          data,
+          genesdata,
+          (eqtl_smoothing_window_size = -1),
+          (percent_occupied_by_one_char = 0.02),
+          (inputHeight = 720),
+          (inputWidth = 1080),
+          (font_size = 14),
+          (legend_offset = 0.1),
+          (pval_filter = false)
+        );
+      } else {
+        plot_gwas(data, genesdata);
       }
-    );
+      d3.select("#plot_message").text("");
+    });
   });
 }
 
@@ -327,23 +332,21 @@ coloc_plot_redraw_btn.on("click", function () {
   d3.select("#plot").text("");
 
   // Redraw colocalization plot with updated parameters
-  d3.json(url).then((response) => {
-    d3.json("{{ url_for('static', filename=genesfile) }}").then(
-      (genesResponse) => {
-        var data = response;
-        var genesdata = genesResponse;
-        plot_gwas(
-          data,
-          genesdata,
-          (eqtl_smoothing_window_size = +eqtl_window_size),
-          (percent_occupied_by_one_char = +percent_occupied_by_one_char),
-          (inputHeight = +coloc_plot_height),
-          (inputWidth = +coloc_plot_width),
-          (font_size = +coloc_plot_fontsize),
-          (legend_offset = +legendOffset)
-        );
-      }
-    );
+  getJsonD3(url).then((response) => {
+    getJsonD3(getResourceUrl(genesfile)).then((genesResponse) => {
+      var data = response;
+      var genesdata = genesResponse;
+      plot_gwas(
+        data,
+        genesdata,
+        (eqtl_smoothing_window_size = +eqtl_window_size),
+        (percent_occupied_by_one_char = +percent_occupied_by_one_char),
+        (inputHeight = +coloc_plot_height),
+        (inputWidth = +coloc_plot_width),
+        (font_size = +coloc_plot_fontsize),
+        (legend_offset = +legendOffset)
+      );
+    });
   });
 
   // initialize popover and tooltip
@@ -398,7 +401,6 @@ function saveSvg(svgDiv, name, w = 1080, h = 720) {
   svgData += "</svg>";
   svgData = svgData.replace('"<', '"&lt;');
   svgData = svgData.replace("<br>", "\\r\\n");
-  // console.log(svgData);
   var preface = '<?xml version="1.0" standalone="no"?>\r\n';
   var svgBlob = new Blob([preface, svgData], {
     type: "image/svg+xml;charset=utf-8",
@@ -430,19 +432,17 @@ heatmap_redraw_btn.on("click", function () {
   d3.select("#heatmap").text("");
 
   // Redraw heatmap with updated width and height
-  d3.json("{{ url_for('static', filename=SSPvalues_file) }}").then(
-    (SSResponse) => {
-      plot_heatmap(
-        SSResponse.Genes,
-        SSResponse.Tissues,
-        SSResponse.SSPvalues,
-        SSResponse.SSPvalues_secondary,
-        widthinput,
-        heightinput,
-        heatmap_fontsize
-      );
-    }
-  );
+  getJsonD3(getResourceUrl(SSPvalues_file)).then((SSResponse) => {
+    plot_heatmap(
+      SSResponse.Genes,
+      SSResponse.Tissues,
+      SSResponse.SSPvalues,
+      SSResponse.SSPvalues_secondary,
+      widthinput,
+      heightinput,
+      heatmap_fontsize
+    );
+  });
 });
 
 // Listen for svg plot requests for heatmap plot:
