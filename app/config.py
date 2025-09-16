@@ -25,15 +25,14 @@ class BaseConfig:
         ],
         "script-src": [
             "'self'",
-            "'unsafe-inline'",  # TODO
-            "'unsafe-eval'",  # TODO
             "https://*.googletagmanager.com",
             "cdnjs.cloudflare.com",
             "cdn.plot.ly",
         ],
         "style-src": [
             "'self'",
-            "'unsafe-inline'",  # TODO
+            "'sha256-OTeu7NEHDo6qutIWo0F2TmYrDhsKWCzrUgGoxxHGJ8o='",
+            "'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU='",
             "use.fontawesome.com",
             "cdnjs.cloudflare.com",
             "stackpath.bootstrapcdn.com",
@@ -87,7 +86,7 @@ class BaseConfig:
     # Caching
     DISABLE_CACHE = os.environ.get("DISABLE_CACHE", "False").lower() == "true"
     CACHE_TYPE = "NullCache" if DISABLE_CACHE else "FileSystemCache"
-    CACHE_DEFAULT_TIMEOUT = 60*60*24*7  # 1 week
+    CACHE_DEFAULT_TIMEOUT = 60 * 60 * 24 * 7  # 1 week
     CACHE_DIR = os.path.join(LF_DATA_FOLDER, "cache")
     CACHE_KEY_PREFIX = "locusfocus-"
 
@@ -96,6 +95,7 @@ class DevConfig(BaseConfig):
     """
     Configuration options for development environment only.
     """
+
     DISABLE_CACHE = os.environ.get("DISABLE_CACHE", "False").lower() == "true"
     MONGO_URI = os.environ.get("MONGO_CONNECTION_STRING")
     CACHE_TYPE = "NullCache" if DISABLE_CACHE else "FileSystemCache"
