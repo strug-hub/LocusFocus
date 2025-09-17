@@ -570,6 +570,12 @@ function init() {
           return "multiselect[]";
         },
       });
+      $("#html-file-coordinate").multiselect({
+        buttonWidth: "100%",
+        checkboxName: function (option) {
+          return "multiselect[]";
+        },
+      });
     });
   });
 

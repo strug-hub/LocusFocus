@@ -22,13 +22,17 @@ from app.colocalization.stages.get_ld_matrix import GetLDMatrixStage
 from app.colocalization.stages.ss_subset_gwas import SimpleSumSubsetGWASStage
 from app.colocalization.stages.coloc_simple_sum import ColocSimpleSumStage
 from app.colocalization.stages.finalize_results import FinalizeResultsStage
+from app.colocalization.stages.liftover_gwas_file import LiftoverGWASFile
+from app.colocalization.stages.liftover_secondary_datasets import LiftoverSecondaryDatasets
 
 
 __all__ = [
     "CreateSessionStage",
     "CollectUserInputStage",
     "ReadGWASFileStage",
+    "LiftoverGWASFile",
     "ReadSecondaryDatasetsStage",
+    "LiftoverSecondaryDatasets",
     "ReportGTExDataStage",
     "GetLDMatrixStage",
     "SimpleSumSubsetGWASStage",

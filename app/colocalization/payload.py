@@ -127,6 +127,7 @@ class SessionPayload:
     )  # Boolean Array of GWAS SNPs kept (excludes non-lifted over rows as well, if applicatble)
     ld_matrix: Optional[np.matrix] = None
     secondary_datasets: Optional[Dict[str, dict]] = None
+    secondary_datasets_unlifted_indices: Optional[Dict[str, List[int]]] = None
     file: SessionFiles = field(init=False)
 
     # LD Matrix data
@@ -178,6 +179,22 @@ class SessionPayload:
 
             self.coordinate = self.request_form.get("coordinate")
         return self.coordinate  # type: ignore
+    
+    def get_secondary_coordinate(self) -> str:
+        """
+        Get the form input for coordinate for optional secondary dataset (aka. HTML file).
+
+        Return either 'hg19' or 'hg38'. If value is 'gwas', then get_coordinate() is used.
+        """
+        if self.request_form.get("html-file-coordinate") not in [*VALID_COORDINATES, "gwas"]:
+            raise InvalidUsage(
+                f"Invalid secondary dataset coordinate: '{self.request_form.get('html-file-coordinate')}'"
+            )
+        
+        if self.request_form.get("html-file-coordinate") == "gwas":
+            return self.get_coordinate()
+        else:
+            return self.request_form.get("html-file-coordinate")
 
     def get_locus(self) -> str:
         """
