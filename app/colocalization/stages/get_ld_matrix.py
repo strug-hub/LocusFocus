@@ -5,7 +5,6 @@ import pandas as pd
 import numpy as np
 from flask import current_app as app
 
-from app.colocalization.constants import LD_MAT_DIAG_CONSTANT
 from app.colocalization.payload import SessionPayload
 from app.utils import get_file_with_ext, x_to_23
 from app.colocalization.plink import plink_ld_pairwise, plink_ldmat
@@ -33,6 +32,9 @@ class GetLDMatrixStage(PipelineStage):
 
     def name(self) -> str:
         return "get-ld-matrix"
+
+    def description(self) -> str:
+        return "Get LD matrix, from user or from PLINK"
 
     def invoke(self, payload: SessionPayload) -> SessionPayload:
 

@@ -10,6 +10,9 @@ class LiftoverSecondaryDatasets(PipelineStage):
 
     def name(self) -> str:
         return "liftover-secondary-datasets"
+    
+    def description(self) -> str:
+        return "LiftOver secondary datasets (if needed, may be skipped)"
 
     def invoke(self, payload: SessionPayload) -> object:
 

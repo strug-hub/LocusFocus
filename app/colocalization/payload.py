@@ -34,6 +34,7 @@ class SessionFiles:
         self.SSPvalues_filepath = get_session_filepath(f"SSPvalues-{session_id}.json")
         self.coloc2_filepath = get_session_filepath(f"coloc2result-{session_id}.json")
         self.metadata_filepath = get_session_filepath(f"metadata-{session_id}.json")
+        self.liftover_filepath = get_session_filepath(f"liftover-{session_id}.json")
 
         # Simple Sum files
         self.p_value_filepath = get_session_filepath(f"Pvalues-{session_id}.txt")
@@ -420,6 +421,21 @@ class SessionPayload:
         Return True if the user has uploaded their own LD matrix, False otherwise.
         """
         return any(str(filepath).endswith("ld") for filepath in self.uploaded_files)
+    
+    def report_liftover(self) -> dict:
+        """
+        Report the indices of rows that were not lifted over.
+        """
+        data = {}
+
+        if len(self.unlifted_over_indices) > 0:
+            data["gwas_unlifted"] = self.unlifted_over_indices
+
+        if self.secondary_datasets_unlifted_indices is not None:
+            data["secondary_datasets_unlifted"] = {}
+            for table_title, indices in self.secondary_datasets_unlifted_indices.items():
+                data["secondary_datasets_unlifted"][table_title] = indices
+        return data
 
     def dump_session_data(self):
         """
