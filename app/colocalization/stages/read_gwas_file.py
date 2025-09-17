@@ -81,6 +81,8 @@ class ReadGWASFileStage(PipelineStage):
 
         self._snp_format_check(gwas_data)
 
+        payload.gwas_data_original = gwas_data.copy() # ouch
+
         return payload
 
     def _read_gwas_file(self, payload: SessionPayload) -> pd.DataFrame:
