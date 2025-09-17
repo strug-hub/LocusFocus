@@ -27,18 +27,22 @@ class BaseConfig:
             "'self'",
             "https://*.googletagmanager.com",
             "cdnjs.cloudflare.com",
+            "cdn.datatables.net",
             "cdn.plot.ly",
+            "stackpath.bootstrapcdn.com",
         ],
         "style-src": [
+            "'unsafe-inline'",
             "'self'",
             "'sha256-OTeu7NEHDo6qutIWo0F2TmYrDhsKWCzrUgGoxxHGJ8o='",
-            "'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU='",
             # plotly
+            "'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU='",
             "'sha256-vCpS8VyHtSqXbN/JkDhke+jauUq+p7lBAVCL+C75wZo='",
             "use.fontawesome.com",
             "cdnjs.cloudflare.com",
             "cdn.plot.ly",
             "stackpath.bootstrapcdn.com",
+            "cdn.datatables.net",
         ],
         "font-src": [
             "'self'",
@@ -48,6 +52,8 @@ class BaseConfig:
         ],
         "connect-src": [
             "'self'",
+            "cdnjs.cloudflare.com",
+            "stackpath.bootstrapcdn.com",
             "https://*.google-analytics.com",
             "https://*.analytics.google.com",
             "https://*.googletagmanager.com",

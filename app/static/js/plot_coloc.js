@@ -15,16 +15,6 @@ function getResourceUrl(resource) {
   return `${staticEndpoint}/${resource}`;
 }
 
-function getJsonD3(endpoint) {
-  return new Promise((resolve, reject) => {
-    try {
-      d3.json(endpoint, (g) => resolve(g));
-    } catch (e) {
-      reject(e);
-    }
-  });
-}
-
 function showSection(name, hidden = false) {
   let rowId = "#" + name + "-row";
   let dividerId = "#" + name + "-divider";
@@ -44,8 +34,8 @@ function init() {
     .text(sessionid);
 
   let filePromises = [
-    getJsonD3(getResourceUrl(sessionfile)),
-    getJsonD3(getResourceUrl(metadata_file)),
+    d3.json(getResourceUrl(sessionfile)),
+    d3.json(getResourceUrl(metadata_file)),
   ];
 
   Promise.allSettled(filePromises).then((results) => {
@@ -64,9 +54,9 @@ function init() {
     } else {
       // fetch other files for default tests
       Promise.allSettled([
-        getJsonD3(getResourceUrl(genesfile)),
-        getJsonD3(getResourceUrl(SSPvalues_file)),
-        getJsonD3(getResourceUrl(coloc2_file)),
+        d3.json(getResourceUrl(genesfile)),
+        d3.json(getResourceUrl(SSPvalues_file)),
+        d3.json(getResourceUrl(coloc2_file)),
       ]).then((SSfiles) => {
         let [genesData, SSResponseJson, coloc2ResponseJson] = SSfiles.map((v) =>
           v.status === "fulfilled" ? v.value : null
@@ -119,8 +109,8 @@ function optionChanged(newgene) {
     .classed("fa-info-circle", true)
     .text(`Please wait while re-drawing eQTLs for gene ${newgene}`);
   // d3.json("{{ url_for('update_colocalizing_gene', session_id=sessionid, newgene=newgene) }}").then(response => {
-  getJsonD3(newurl).then((newresponse) => {
-    getJsonD3(getResourceUrl(genesfile)).then((genesResponse) => {
+  d3.json(newurl).then((newresponse) => {
+    d3.json(getResourceUrl(genesfile)).then((genesResponse) => {
       var newdata = newresponse;
       var genesdata = genesResponse;
       plot_gwas(newdata, genesdata);
@@ -133,7 +123,7 @@ function optionChanged(newgene) {
 
 function transposeTable() {
   transpose = !transpose;
-  getJsonD3(getResourceUrl(SSPvalues_file)).then((SSResponse) => {
+  d3.json(getResourceUrl(SSPvalues_file)).then((SSResponse) => {
     buildTable(
       SSResponse.Genes,
       SSResponse.Tissues,
@@ -264,8 +254,8 @@ function plot_fullgwas(pval_filter_box) {
     .classed("fa", true)
     .classed("fa-info-circle", true)
     .text(`Please wait while re-drawing`);
-  getJsonD3(getResourceUrl(sessionfile)).then((response) => {
-    getJsonD3(getResourceUrl(genesfile)).then((genesResponse) => {
+  d3.json(getResourceUrl(sessionfile)).then((response) => {
+    d3.json(getResourceUrl(genesfile)).then((genesResponse) => {
       var data = response;
       var genesdata = genesResponse;
       if (pval_filter_box.checked === false) {
@@ -332,8 +322,8 @@ coloc_plot_redraw_btn.on("click", function () {
   d3.select("#plot").text("");
 
   // Redraw colocalization plot with updated parameters
-  getJsonD3(url).then((response) => {
-    getJsonD3(getResourceUrl(genesfile)).then((genesResponse) => {
+  d3.json(url).then((response) => {
+    d3.json(getResourceUrl(genesfile)).then((genesResponse) => {
       var data = response;
       var genesdata = genesResponse;
       plot_gwas(
@@ -432,7 +422,7 @@ heatmap_redraw_btn.on("click", function () {
   d3.select("#heatmap").text("");
 
   // Redraw heatmap with updated width and height
-  getJsonD3(getResourceUrl(SSPvalues_file)).then((SSResponse) => {
+  d3.json(getResourceUrl(SSPvalues_file)).then((SSResponse) => {
     plot_heatmap(
       SSResponse.Genes,
       SSResponse.Tissues,

@@ -34,14 +34,19 @@
       rel="stylesheet"
     />
     <!-- DataTables -->
-    <link
+    <!-- <link
       rel="stylesheet"
       href="{{ url_for('static', filename='css/jquery.dataTables.min.css') }}"
     />
     <link
       rel="stylesheet"
       href="{{ url_for('static', filename='DataTables/datatables.min.css') }}"
-    />
+    /> -->
+
+    <link href="https://cdn.datatables.net/v/dt/jq-3.7.0/dt-2.3.4/datatables.min.css" rel="stylesheet"
+    integrity="sha384-R5Azes02wvL9ervyq6xo5WLyg1ufX0qwun0F/0qos0E0wNjnnRTADTQpjpnNLakj" crossorigin="anonymous">
+
+    <!--local stylesheets-->
     <link
       rel="stylesheet"
       type="text/css"
@@ -456,20 +461,40 @@
     <!-- container closing div -->
 
     <!-- JS -->
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/5.9.1/d3.js"></script>
 
     <!-- Filesaver -->
     <script
-      type="module"
-      src="{{ url_for('static', filename='js/file-saver/src/FileSaver.js') }}"
+    type="module"
+    src="{{ url_for('static', filename='js/file-saver/src/FileSaver.js') }}"
     ></script>
     <!-- JQuery -->
     <script
-      type="text/javascript"
-      src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"
+    type="text/javascript"
+    src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"
     ></script>
     <!-- Plotly -->
-   <script src="https://cdn.plot.ly/plotly-2.19.0.min.js" charset="utf-8"></script>
+    <script src="https://cdn.plot.ly/plotly-3.1.0.min.js" charset="utf-8"></script>
+    <!-- datatables -->
+    <script src="https://cdn.datatables.net/v/dt/jq-3.7.0/dt-2.3.4/datatables.min.js" integrity="sha384-mtJ3+H/dkUyvhmcXYSyIZyaeG0TnEkh91c1JwFkrkBLHBv8oQ3lFjUp8xfDan41b" crossorigin="anonymous"></script>
+   <!-- Bootstrap tooltips -->
+   <script
+     type="text/javascript"
+     src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.4/umd/popper.min.js"
+   ></script>
+   <!-- MDB core JavaScript -->
+   <script
+     type="text/javascript"
+     src="https://cdnjs.cloudflare.com/ajax/libs/mdbootstrap/4.7.4/js/mdb.min.js"
+   ></script>
+    <!-- Bootstrap core JavaScript -->
+    <script
+      type="text/javascript"
+      src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.3.1/js/bootstrap.min.js"
+    ></script>
+    <!-- DataTables -->
+    <!--local-->
     <script
       type="text/javascript"
       src="{{ url_for('static', filename='js/params_table.js') }}"
@@ -497,32 +522,6 @@
     <script
       type="text/javascript"
       src="{{ url_for('static', filename='js/first_stage_table.js') }}"
-    ></script>
-    <!-- Bootstrap tooltips -->
-    <script
-      type="text/javascript"
-      src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.4/umd/popper.min.js"
-    ></script>
-    <!-- Bootstrap core JavaScript -->
-    <script
-      type="text/javascript"
-      src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.3.1/js/bootstrap.min.js"
-    ></script>
-    <!-- MDB core JavaScript -->
-    <script
-      type="text/javascript"
-      src="https://cdnjs.cloudflare.com/ajax/libs/mdbootstrap/4.7.4/js/mdb.min.js"
-    ></script>
-    <!-- DataTables -->
-    <script
-      type="text/javascript"
-      src="{{ url_for('static', filename='js/lib/jquery.dataTables.min.js') }}"
-    ></script>
-
-    <!-- this one uses eval....? -->
-    <script
-      type="text/javascript"
-      src="{{ url_for('static', filename='DataTables/datatables.min.js') }}"
     ></script>
     <script
       type="application/javascript"
