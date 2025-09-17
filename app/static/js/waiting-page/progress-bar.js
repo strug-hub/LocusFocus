@@ -40,7 +40,7 @@ async function handleJobStatus(jobStatusURL, sessionId) {
       document.getElementById("progress-bar").style.width = percent + "%";
       document.getElementById("progress-bar").ariaValueNow = percent;
 
-      document.getElementById("job-status-text").innerHTML = `<i>Your job is currently running. Stage ${stage_index} of ${stage_count}.</i>`;
+      document.getElementById("job-status-text").innerHTML = `<i>Your job is currently running. Stage ${stage_index} of ${stage_count}: <b>"${data.stage_description}..."</b></i>`;
       // wait 10 seconds
       await new Promise((resolve) => setTimeout(resolve, 10000));
     }
