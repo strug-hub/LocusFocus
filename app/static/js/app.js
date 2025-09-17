@@ -44,14 +44,24 @@ function gtexVersionChange(newVersion) {
   let currentLocus = d3.select("#locus").property("value");
   loadGenes(coordinate, currentLocus || "1:205,500,000-206,000,000");
   gtexTissuesMsgDiv.text(`Select GTEx (${gtex_version.toUpperCase()}) Tissues`);
+  d3.json(gtexurl).then((response) => {
+    var gtex_tissues = response.map((k) => k);
+
+    // Build GTEx tissues multiselect dropdown
+    var gtexdiv = d3.select("#GTEx-tissues");
+    gtexdiv.text("");
+    for (var i = 0; i < gtex_tissues.length; i++) {
+      gtexdiv
+        .append("option")
+        .attr("value", gtex_tissues[i])
+        .text(gtex_tissues[i].replaceAll("_", " "));
+    }
+  });
 }
 
 // Coordinate system selection change
 function coordinateChange(newCoordinate) {
   $("#LD-populations").multiselect("destroy");
-  $("#GTEx-tissues").multiselect("destroy");
-  $("#region-genes").multiselect("destroy");
-  $("#GTEx-version").multiselect("destroy");
   d3.select("#locus").property(
     "value",
     `${startingChr}:${startingPos}-${endingPos}`
