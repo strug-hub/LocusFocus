@@ -2,6 +2,7 @@ import pandas as pd
 
 from app.colocalization.payload import SessionPayload
 from app.pipeline.pipeline_stage import PipelineStage
+from app.utils.helpers import adjust_snp_column
 from app.utils.liftover import run_liftover
 
 
@@ -25,7 +26,7 @@ class LiftoverSecondaryDatasets(PipelineStage):
             liftover_target = "hg19"
         else:
             liftover_target = "hg38"
-        
+
         needs_liftover = payload.get_secondary_coordinate() != liftover_target
 
         if needs_liftover:
@@ -40,6 +41,12 @@ class LiftoverSecondaryDatasets(PipelineStage):
 
                 lifted_over, unlifted_over = run_liftover(
                     dataset, liftover_target, chrom_col="CHROM", pos_col="BP"
+                )
+
+                lifted_over = adjust_snp_column(
+                    lifted_over,
+                    liftover_target,
+                    ignore_alleles=True,
                 )
 
                 payload.secondary_datasets[table_title] = lifted_over.fillna(-1).to_dict(  # type: ignore
