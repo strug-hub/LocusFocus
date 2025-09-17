@@ -6,6 +6,7 @@ from flask import current_app as app
 
 from app.colocalization.payload import SessionPayload
 from app.pipeline.pipeline_stage import PipelineStage
+from app.utils.helpers import adjust_snp_column
 from app.utils.liftover import run_liftover
 
 
@@ -40,6 +41,8 @@ class LiftoverGWASFile(PipelineStage):
                     payload.gwas_data, liftover_target, chrom_col="CHROM", pos_col="POS"
                 )
                 app.logger.debug(f"Original: {len(payload.gwas_data)} -> Lifted over: {len(lifted_over)}, unlifted over: {len(unlifted_over)}")
+
+                lifted_over = adjust_snp_column(lifted_over, liftover_target)
 
                 payload.gwas_data = lifted_over
 
