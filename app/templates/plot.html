@@ -101,7 +101,7 @@
       <div class="row" id="plot-row" hidden>
         <div class="col-md-12">
           <h3>Colocalization Plot</h3>
-          <select id="selGene" onchange="optionChanged(this.value)"></select>
+          <select id="selGene"></select>
           <div id="plot_message" class="isa_info"></div>
 
           <div class="row">
@@ -110,7 +110,6 @@
                 type="checkbox"
                 id="pval-filter"
                 name="pval-filter"
-                onclick="plot_fullgwas(this)"
                 checked
               /><label
                 for="pval-filter"

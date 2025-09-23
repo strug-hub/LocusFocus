@@ -7,6 +7,16 @@ var metadata_file = $("head").data("metadata_file");
 var staticEndpoint = $("head").data("static_endpoint");
 var transpose = false;
 
+// initialize popover, tooltip, callbacks
+$(document).ready(function () {
+  $('[data-toggle="tooltip"]').tooltip({
+    delay: { show: 500, hide: 100 },
+  });
+  $('[data-toggle="popover"]').popover();
+  $("#selGene").on("change", (e) => optionChanged(e.currentTarget.value));
+  $("#pval-filter").on("change", (e) => plot_fullgwas(e.currentTarget));
+});
+
 if (staticEndpoint.endsWith("/")) {
   staticEndpoint = staticEndpoint.slice(0, -1);
 }
@@ -70,16 +80,6 @@ function init() {
         );
       });
     }
-
-    // initialize popover and tooltip
-    $(function () {
-      $('[data-toggle="popover"]').popover();
-    });
-    $(document).ready(function () {
-      $('[data-toggle="tooltip"]').tooltip({
-        delay: { show: 500, hide: 100 },
-      });
-    });
   });
 }
 
@@ -336,16 +336,6 @@ coloc_plot_redraw_btn.on("click", function () {
         (font_size = +coloc_plot_fontsize),
         (legend_offset = +legendOffset)
       );
-    });
-  });
-
-  // initialize popover and tooltip
-  $(function () {
-    $('[data-toggle="popover"]').popover();
-  });
-  $(document).ready(function () {
-    $('[data-toggle="tooltip"]').tooltip({
-      delay: { show: 500, hide: 100 },
     });
   });
 });
