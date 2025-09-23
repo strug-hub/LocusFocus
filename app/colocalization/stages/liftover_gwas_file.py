@@ -2,7 +2,7 @@ from typing import List
 
 import numpy as np
 import pandas as pd
-from flask import current_app as app
+from flask import current_app
 
 from app.colocalization.payload import SessionPayload
 from app.pipeline.pipeline_stage import PipelineStage
@@ -35,12 +35,12 @@ class LiftoverGWASFile(PipelineStage):
         if payload.gwas_data is not None:
 
             if needs_liftover:
-                app.logger.debug("Lifting over GWAS data")
+                current_app.logger.debug("Lifting over GWAS data")
 
                 lifted_over, unlifted_over = run_liftover(
                     payload.gwas_data, liftover_target, chrom_col="CHROM", pos_col="POS"
                 )
-                app.logger.debug(f"Original: {len(payload.gwas_data)} -> Lifted over: {len(lifted_over)}, unlifted over: {len(unlifted_over)}")
+                current_app.logger.debug(f"Original: {len(payload.gwas_data)} -> Lifted over: {len(lifted_over)}, unlifted over: {len(unlifted_over)}")
 
                 lifted_over = adjust_snp_column(lifted_over, liftover_target)
 
@@ -53,7 +53,7 @@ class LiftoverGWASFile(PipelineStage):
                 )
 
             else:
-                app.logger.debug("No liftover needed")
+                current_app.logger.debug("No liftover needed")
 
         return payload
 
