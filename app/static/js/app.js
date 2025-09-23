@@ -69,7 +69,7 @@ function coordinateChange(newCoordinate) {
   );
   if (!["hg38", "hg19"].includes(newCoordinate)) {
     alert(
-      "Invalid coordinate system. Please select hg38 or hg19 coordinates."
+      `${newCoordinate} is invalid. Please select hg38 or hg19 coordinates.`
     );
     return;
   }
@@ -320,10 +320,14 @@ function askColocInputs() {
 function inferVariant(snpbox) {
   if (snpbox.checked) {
     $("#variantInputs").hide();
-    ["#chrom-col", "#pos-col", "#ref-col", "#alt-col"].forEach((id) => $(id).prop("disabled", true));
+    ["#chrom-col", "#pos-col", "#ref-col", "#alt-col"].forEach((id) =>
+      $(id).prop("disabled", true)
+    );
   } else {
     $("#variantInputs").show();
-    ["#chrom-col", "#pos-col", "#ref-col", "#alt-col"].forEach((id) => $(id).prop("disabled", false));
+    ["#chrom-col", "#pos-col", "#ref-col", "#alt-col"].forEach((id) =>
+      $(id).prop("disabled", false)
+    );
   }
   // re-initialize popover and tooltip
   $(function () {
@@ -450,7 +454,10 @@ function handleLDPopulations() {
 function updateChrXWarning() {
   const regionText = $("#locus").val().toLowerCase();
   const selectedAssembly = $("#coordinate").val();
-  const uploadedFileNames = $.map($("#file-upload").prop("files"), f => f.name);
+  const uploadedFileNames = $.map(
+    $("#file-upload").prop("files"),
+    (f) => f.name
+  );
 
   console.log(
     `[updateChrXWarning]
@@ -459,9 +466,11 @@ function updateChrXWarning() {
     uploadedFileNames: ${uploadedFileNames}`
   );
 
-  const hideWarning = !((["x", "23", "chrx"].some(start => regionText.startsWith(start)))  // x chromosome
-                        && (selectedAssembly.toLowerCase() === "hg38")  // hg38
-                        && (uploadedFileNames.every(name => !(name.toLowerCase().endsWith(".ld")))));  // no LD provided
+  const hideWarning = !(
+    ["x", "23", "chrx"].some((start) => regionText.startsWith(start)) && // x chromosome
+    selectedAssembly.toLowerCase() === "hg38" && // hg38
+    uploadedFileNames.every((name) => !name.toLowerCase().endsWith(".ld"))
+  ); // no LD provided
 
   $("#chrX-warning").prop("hidden", hideWarning);
 }
@@ -502,7 +511,6 @@ function init() {
   console.log("Loading genes:");
   loadGenes(coordinate, "1:205,500,000-206,000,000");
 
-  
   d3.json(gtexurl).then((response) => {
     var gtex_tissues = response.map((k) => k);
 
@@ -573,18 +581,32 @@ function init() {
     });
   });
 
-  // initialize popover and tooltip
-  $(function () {
-    $('[data-toggle="popover"]').popover();
-  });
+  // initialize popover, tooltip, and callbacks
   $(document).ready(function () {
+    $('[data-toggle="popover"]').popover();
     $('[data-toggle="tooltip"]').tooltip({
       delay: { show: 500, hide: 100 },
     });
+
+    $("#coordinate").on("change", (e) =>
+      coordinateChange(e.currentTarget.value)
+    );
+
+    $("#markerCheckbox").on("change", (e) => inferVariant(e.currentTarget));
+
+    $("#coloc2check").on("change", (e) => addColoc2Inputs(e.currentTarget));
+
+    $("#locus").on("change", (e) => checkLocusInput(e.currentTarget));
+
+    $("#GTEx-version").on("change", (e) =>
+      gtexVersionChange(e.currentTarget.value)
+    );
   });
 
   // add warning listeners
-  ["#locus", "#coordinate", "#file-upload"].forEach(id => $(id).on("change", updateChrXWarning));
+  ["#locus", "#coordinate", "#file-upload"].forEach((id) =>
+    $(id).on("change", updateChrXWarning)
+  );
 }
 
 init();

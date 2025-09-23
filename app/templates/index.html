@@ -91,11 +91,7 @@
               </h5>
               <div class="row">
                 <div class="col-md-4">
-                  <select
-                    id="coordinate"
-                    name="coordinate"
-                    onchange="coordinateChange(this.value)"
-                  >
+                  <select id="coordinate" name="coordinate">
                     <option
                       id="hg19"
                       value="hg19"
@@ -146,7 +142,6 @@
                     type="checkbox"
                     id="markerCheckbox"
                     name="markerCheckbox"
-                    onclick="inferVariant(this)"
                   />
                   <label
                     for="markerCheckbox"
@@ -181,7 +176,6 @@
                     type="checkbox"
                     id="coloc2check"
                     name="coloc2check"
-                    onclick="addColoc2Inputs(this)"
                   /><label
                     for="coloc2check"
                     data-toggle="tooltip"
@@ -211,7 +205,6 @@
                     name="locus"
                     type="text"
                     value="1:205,500,000-206,000,000"
-                    onchange="checkLocusInput(this.value)"
                     data-html="true"
                     data-toggle="tooltip"
                     title="Enter the region you would like to visualize on the colocalization plot.
@@ -389,11 +382,7 @@
                   >
                     Select GTEx Version
                   </div>
-                  <select
-                    id="GTEx-version"
-                    name="GTEx-version"
-                    onchange="gtexVersionChange(this.value)"
-                  >
+                  <select id="GTEx-version" name="GTEx-version">
                     <option
                       id="gtex-v7"
                       value="V7"
@@ -404,8 +393,6 @@
                       id="gtex-v8"
                       value="V8"
                       label="GTEx V8 (hg38)"
-                      hidden
-                      disabled
                     ></option>
                   </select>
                 </div>
