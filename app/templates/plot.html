@@ -34,14 +34,6 @@
       rel="stylesheet"
     />
     <!-- DataTables -->
-    <!-- <link
-      rel="stylesheet"
-      href="{{ url_for('static', filename='css/jquery.dataTables.min.css') }}"
-    />
-    <link
-      rel="stylesheet"
-      href="{{ url_for('static', filename='DataTables/datatables.min.css') }}"
-    /> -->
 
     <link href="https://cdn.datatables.net/v/dt/jq-3.7.0/dt-2.3.4/datatables.min.css" rel="stylesheet"
     integrity="sha384-R5Azes02wvL9ervyq6xo5WLyg1ufX0qwun0F/0qos0E0wNjnnRTADTQpjpnNLakj" crossorigin="anonymous">
@@ -463,12 +455,6 @@
     <!-- JS -->
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/5.9.1/d3.js"></script>
-
-    <!-- Filesaver -->
-    <script
-    type="module"
-    src="{{ url_for('static', filename='js/file-saver/src/FileSaver.js') }}"
-    ></script>
     <!-- JQuery -->
     <script
     type="text/javascript"
@@ -493,8 +479,11 @@
       type="text/javascript"
       src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.3.1/js/bootstrap.min.js"
     ></script>
-    <!-- DataTables -->
     <!--local-->
+    <script
+    type="module"
+    src="{{ url_for('static', filename='js/file-saver/src/FileSaver.js') }}"
+    ></script>
     <script
       type="text/javascript"
       src="{{ url_for('static', filename='js/params_table.js') }}"
