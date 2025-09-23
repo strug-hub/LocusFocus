@@ -1,12 +1,14 @@
 <!DOCTYPE html>
-<html lang="en" >
-<head   data-session_file="{{ sessionfile }}"
-        data-genesfile="{{ genesfile }}"
-        data-SSPvalues_file="{{ SSPvalues_file }}"
-        data-coloc2_file="{{ coloc2_file }}"
-        data-sessionid="{{ sessionid }}"
-        data-metadata_file="{{ metadata_file }}"
-        data-static_endpoint="{{ url_for('static', filename='') }}">
+<html lang="en">
+  <head
+    data-session_file="{{ sessionfile }}"
+    data-genesfile="{{ genesfile }}"
+    data-SSPvalues_file="{{ SSPvalues_file }}"
+    data-coloc2_file="{{ coloc2_file }}"
+    data-sessionid="{{ sessionid }}"
+    data-metadata_file="{{ metadata_file }}"
+    data-static_endpoint="{{ url_for('static', filename='') }}"
+  >
     {% include "lib/google-analytics.html" %}
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -35,8 +37,12 @@
     />
     <!-- DataTables -->
 
-    <link href="https://cdn.datatables.net/v/dt/jq-3.7.0/dt-2.3.4/datatables.min.css" rel="stylesheet"
-    integrity="sha384-R5Azes02wvL9ervyq6xo5WLyg1ufX0qwun0F/0qos0E0wNjnnRTADTQpjpnNLakj" crossorigin="anonymous">
+    <link
+      href="https://cdn.datatables.net/v/dt/jq-3.7.0/dt-2.3.4/datatables.min.css"
+      rel="stylesheet"
+      integrity="sha384-R5Azes02wvL9ervyq6xo5WLyg1ufX0qwun0F/0qos0E0wNjnnRTADTQpjpnNLakj"
+      crossorigin="anonymous"
+    />
 
     <!--local stylesheets-->
     <link
@@ -106,14 +112,20 @@
                 name="pval-filter"
                 onclick="plot_fullgwas(this)"
                 checked
-              /><label for="pval-filter" data-toggle="tooltip" data-html="true"
-              title="
+              /><label
+                for="pval-filter"
+                data-toggle="tooltip"
+                data-html="true"
+                title="
               <p>
                 If unchecked, all GWAS p-values above 0.1 will be shown (slower
                 to load and plot).
               </p>
-              "> Uncheck to draw all GWAS points below -log<sub>10</sub>P &lt;
-              1 (slow)
+              "
+              >
+                Uncheck to draw all GWAS points below -log<sub>10</sub>P &lt; 1
+                (slow)
+              </label>
             </div>
           </div>
           <div id="plot"></div>
@@ -457,23 +469,27 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/5.9.1/d3.js"></script>
     <!-- JQuery -->
     <script
-    type="text/javascript"
-    src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"
+      type="text/javascript"
+      src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"
     ></script>
-    <!-- Plotly -->
-    <script src="https://cdn.plot.ly/plotly-3.1.0.min.js" charset="utf-8"></script>
+    <!-- Plotly, strict bundle still does not solve all inline css callback errors -->
+    <script src="https://cdn.jsdelivr.net/npm/plotly.js-strict-dist@3.1.0/plotly-strict.min.js"></script>
     <!-- datatables -->
-    <script src="https://cdn.datatables.net/v/dt/jq-3.7.0/dt-2.3.4/datatables.min.js" integrity="sha384-mtJ3+H/dkUyvhmcXYSyIZyaeG0TnEkh91c1JwFkrkBLHBv8oQ3lFjUp8xfDan41b" crossorigin="anonymous"></script>
-   <!-- Bootstrap tooltips -->
-   <script
-     type="text/javascript"
-     src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.4/umd/popper.min.js"
-   ></script>
-   <!-- MDB core JavaScript -->
-   <script
-     type="text/javascript"
-     src="https://cdnjs.cloudflare.com/ajax/libs/mdbootstrap/4.7.4/js/mdb.min.js"
-   ></script>
+    <script
+      src="https://cdn.datatables.net/v/dt/jq-3.7.0/dt-2.3.4/datatables.min.js"
+      integrity="sha384-mtJ3+H/dkUyvhmcXYSyIZyaeG0TnEkh91c1JwFkrkBLHBv8oQ3lFjUp8xfDan41b"
+      crossorigin="anonymous"
+    ></script>
+    <!-- Bootstrap tooltips -->
+    <script
+      type="text/javascript"
+      src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.4/umd/popper.min.js"
+    ></script>
+    <!-- MDB core JavaScript -->
+    <script
+      type="text/javascript"
+      src="https://cdnjs.cloudflare.com/ajax/libs/mdbootstrap/4.7.4/js/mdb.min.js"
+    ></script>
     <!-- Bootstrap core JavaScript -->
     <script
       type="text/javascript"
@@ -481,8 +497,8 @@
     ></script>
     <!--local-->
     <script
-    type="module"
-    src="{{ url_for('static', filename='js/file-saver/src/FileSaver.js') }}"
+      type="module"
+      src="{{ url_for('static', filename='js/file-saver/src/FileSaver.js') }}"
     ></script>
     <script
       type="text/javascript"

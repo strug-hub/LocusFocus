@@ -28,17 +28,17 @@ class BaseConfig:
             "https://*.googletagmanager.com",
             "cdnjs.cloudflare.com",
             "cdn.datatables.net",
+            "cdn.jsdelivr.net",
             "cdn.plot.ly",
             "stackpath.bootstrapcdn.com",
         ],
         "style-src": [
             "'unsafe-inline'",
             "'self'",
-            "'sha256-OTeu7NEHDo6qutIWo0F2TmYrDhsKWCzrUgGoxxHGJ8o='",
-            # plotly
-            "'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU='",
-            "'sha256-vCpS8VyHtSqXbN/JkDhke+jauUq+p7lBAVCL+C75wZo='",
+            "'sha256-OTeu7NEHDo6qutIWo0F2TmYrDhsKWCzrUgGoxxHGJ8o='",  # mdb
+            "'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU='",  # plotly
             "use.fontawesome.com",
+            "cdn.jsdelivr.net",
             "cdnjs.cloudflare.com",
             "cdn.plot.ly",
             "stackpath.bootstrapcdn.com",
