@@ -152,3 +152,5 @@ app/static/upload/*
 _data
 data/cache/*
 !data/cache/.gitkeep
+!create-redis-conf.sh
+redis/redis.conf
