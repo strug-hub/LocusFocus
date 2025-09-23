@@ -44,16 +44,6 @@
       rel="stylesheet"
       href="{{ url_for('static', filename='css/bootstrap-multiselect.css') }}"
     />
-    <!-- JQuery -->
-    <script
-      type="text/javascript"
-      src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"
-    ></script>
-    <!-- JQuery-UI -->
-    <script
-      type="text/javascript"
-      src="{{ url_for('static', filename='js/lib/jquery-ui.js') }}"
-    ></script>
     <!-- Bootstrap core CSS -->
     <link
       rel="stylesheet"
@@ -305,10 +295,21 @@
     <!-- container closing div -->
 
     <!-- JS -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/5.9.1/d3.js"></script>
 
+    <!-- JQuery -->
+    <script
+      type="text/javascript"
+      src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"
+    ></script>
+    <!-- JQuery-UI -->
+    <script
+      type="text/javascript"
+      src="{{ url_for('static', filename='js/lib/jquery-ui.js') }}"
+    ></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/5.9.1/d3.js"></script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     <script src="{{ url_for('static', filename='js/inputChecker.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/set_based_test.js') }}"></script>
     <!-- Bootstrap tooltips -->
     <script
       type="text/javascript"
@@ -330,9 +331,5 @@
     ></script>
     <!-- Multiselect -->
     <script src="{{ url_for('static', filename='js/lib/bootstrap-multiselect.js') }}"></script>
-    <script>
-      $("#multi-region").on("change", checkMultipleRegionsInput);
-      $("#file-upload").on("change", function () {});
-    </script>
   </body>
 </html>

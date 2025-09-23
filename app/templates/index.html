@@ -24,10 +24,6 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/jquery-ui.css') }}" />
   <!-- multiselect -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap-multiselect.css') }}" />
-  <!-- JQuery -->
-  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-  <!-- JQuery-UI -->
-  <script type="text/javascript" src="{{ url_for('static', filename='js/lib/jquery-ui.js') }}"></script>
   <!-- Bootstrap core CSS -->
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
     integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
@@ -142,23 +138,23 @@
             <div class="row">
               <div class="col-md-3">
                 <label for="region" id="locusText" data-html="true" data-toggle="tooltip"
-                  title="<p>Enter the region you would like to visualize on the colocalization plot.</p>
-            <p>Your input format will be checked for correctness and genes in the region will be populated when selecting GTEx genes below.</p>">Coordinates </label>
+                  title="Enter the region you would like to visualize on the colocalization plot.
+            Your input format will be checked for correctness and genes in the region will be populated when selecting GTEx genes below.">Coordinates </label>
                 <input class="form-control" id="locus" name="locus" type="text" value="1:205,500,000-206,000,000"
                   onchange=checkLocusInput(this.value) data-html="true" data-toggle="tooltip"
-                  title="<p>Enter the region you would like to visualize on the colocalization plot.</p>
-            <p>Your input format will be checked for correctness and genes in the region will be populated when selecting GTEx genes below.</p>">
+                  title="Enter the region you would like to visualize on the colocalization plot.
+            Your input format will be checked for correctness and genes in the region will be populated when selecting GTEx genes below.">
                 <div class="input-error" id="locusErrorDiv"></div>
               </div>
               <div class="col-md-3">
                 <label for="lead-snp" id="lead_snp" data-html="true" data-toggle="tooltip"
-                  title="<p>If you would like to use a marker different from the top marker in your file, enter the marker name here.</p>
-            <p>Please note that if the marker is not in the 1000 Genomes biallelic SNP set (matched by chromosome and position only), then the next best marker will be chosen automatically.</p>">Lead
+                  title="If you would like to use a marker different from the top marker in your file, enter the marker name here.
+            Please note that if the marker is not in the 1000 Genomes biallelic SNP set (matched by chromosome and position only), then the next best marker will be chosen automatically.">Lead
                   Marker Name:</label>
                 <input class="form-control" id="leadsnp" name="leadsnp" type="text" placeholder="default: top marker"
                   data-html="true" data-toggle="tooltip"
-                  title="<p>If you would like to use a marker different from the top marker in your file, enter the marker name here.</p>
-            <p>Please note that if the marker is not in the 1000 Genomes biallelic SNP set, then the next best marker will be chosen automatically.</p>">
+                  title="If you would like to use a marker different from the top marker in your file, enter the marker name here.
+            Please note that if the marker is not in the 1000 Genomes biallelic SNP set, then the next best marker will be chosen automatically.">
               </div>
             </div>
           </div>
@@ -366,9 +362,12 @@
   </div> <!-- container closing div -->
 
   <!-- JS -->
+  <!-- JQuery -->
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+  <!-- JQuery-UI -->
+  <script type="text/javascript" src="{{ url_for('static', filename='js/lib/jquery-ui.js') }}"></script>
+  <!-- d3 -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/5.9.1/d3.js"></script>
-  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/inputChecker.js') }}"></script>
   <!-- Bootstrap tooltips -->
   <script type="text/javascript"
     src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.4/umd/popper.min.js"></script>
@@ -377,11 +376,13 @@
   <script type="text/javascript"
     src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.3.1/js/bootstrap.min.js"></script>
   <!-- MDB core JavaScript -->
-   <!-- this is the problem-->
   <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mdbootstrap/4.7.4/js/mdb.min.js"
   integrity="sha256-RyKFOSKnuKFSYAyJlfeHdb8ljBAbLJOSh9Bz8pzhhkY=" crossorigin="anonymous"></script>
   <!-- Multiselect -->
   <script src="{{ url_for('static', filename='js/lib/bootstrap-multiselect.js') }}"></script>
+  <!-- Local -->
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/inputChecker.js') }}"></script>
 </body>
 
 </html>
