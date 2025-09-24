@@ -379,15 +379,15 @@ class SessionPayload:
     def get_gtex_version(self) -> str:
         """
         Get the version of GTEx needed for fetching from MongoDB.
-        One of "V7" or "V8".
+        "V8" is the only version supported for now.
         """
         version = self.request_form.get("GTEx-version")
         if version is None:
-            version = "V7"
+            version = "V8"
         version = version.upper()
-        if version not in ["V7", "V8"]:
+        if version not in ["V8"]:
             raise InvalidUsage(
-                f"Invalid GTEx version: {version}. Must be one of 'V7' or 'V8'",
+                f"Invalid GTEx version: {version}. Only V8 is supported",
                 status_code=410,
             )
         return version

@@ -7,6 +7,7 @@ from app.utils.gtex import (
     collapsed_genes_df_hg19,
     collapsed_genes_df_hg38,
 )
+from app.utils.errors import InvalidUsage
 
 import numpy as np
 
@@ -41,7 +42,7 @@ class ReportGTExDataStage(PipelineStage):
         if len(gtex_genes) > 0:
             gene = gtex_genes[0]
         elif gtex_version == "V7":
-            gene = "ENSG00000174502.14"
+            raise InvalidUsage("GTEx V7 is no longer available. Please use GTEx V8.")
         elif gtex_version == "V8":
             gene = "ENSG00000174502.18"
 
@@ -83,7 +84,7 @@ class ReportGTExDataStage(PipelineStage):
 
         gtex_version = payload.get_gtex_version()
         if gtex_version == "V7":
-            collapsed_genes_df = collapsed_genes_df_hg19
+            raise InvalidUsage("GTEx V7 is no longer available. Please use GTEx V8.")
         else:
             collapsed_genes_df = collapsed_genes_df_hg38
 

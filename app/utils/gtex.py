@@ -21,8 +21,7 @@ def get_gtex(version, tissue, gene_id):
         db = client.GTEx_V8
         collapsed_genes_df = collapsed_genes_df_hg38
     elif version.upper() == "V7":
-        db = client.GTEx_V7
-        collapsed_genes_df = collapsed_genes_df_hg19
+        raise ValueError("Cannot standardize SNPs to hg19; GTEx V7 is no longer available.")
 
     tissue = tissue.replace(" ", "_")
     # gene_id = gene_id.upper()
@@ -60,7 +59,7 @@ def get_gtex(version, tissue, gene_id):
     variants_df = variants_df.drop(["_id"], axis=1)
     x = pd.merge(results_df, variants_df, on="variant_id")
     if version.upper() == "V7":
-        x.rename(columns={"rs_id_dbSNP147_GRCh37p13": "rs_id"}, inplace=True)
+        raise ValueError("GTEx V7 is no longer available.")
     elif version.upper() == "V8":
         x.rename(columns={"rs_id_dbSNP151_GRCh38p7": "rs_id"}, inplace=True)
     return x
@@ -92,7 +91,7 @@ def get_gtex_data(version, tissue, gene, snp_list, raiseErrors=False) -> pd.Data
     #    print(f'Gathering eQTL data for {hugo_gene} ({ensg_gene}) in {tissue}')
     response_df = pd.DataFrame({})
     if version.upper() == "V7":
-        response_df = get_gtex("V7", tissue, gene)
+        raise InvalidUsage("GTEx V7 is no longer available.")
     elif version.upper() == "V8":
         response_df = get_gtex("V8", tissue, gene)
     if "error" not in response_df.columns:
@@ -177,9 +176,9 @@ def get_gtex_snp_matches(stdsnplist, regiontxt, build):
     chrom = str(chrom).replace("23", "X")
 
     # Load GTEx variant lookup table for region indicated
-    db = client.GTEx_V7
-    if build.lower() in ["hg38", "grch38"]:
-        db = client.GTEx_V8
+    db = client.GTEx_V8
+    if build.lower() in ["hg19", "grch37"]:
+        raise InvalidUsage("Cannot use GTEx V7 variant table; GTEx V7 is no longer available.")
     collection = db["variant_table"]
     variants_query = collection.find(
         {
