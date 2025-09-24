@@ -62,6 +62,9 @@ class ReadGWASFileStage(PipelineStage):
 
     def name(self) -> str:
         return "read-gwas-file"
+    
+    def description(self) -> str:
+        return "Read GWAS data from file"
 
     def __init__(self, enforce_one_chrom=True):
         self.enforce_one_chrom = enforce_one_chrom
@@ -73,6 +76,8 @@ class ReadGWASFileStage(PipelineStage):
         gwas_data = self._validate_gwas_file(payload, gwas_data)
         gwas_data = self._subset_gwas_file(payload, gwas_data)
 
+        gwas_data["CHROM"] = gwas_data["CHROM"].astype(str)
+
         payload.gwas_data = gwas_data
         payload.gwas_indices_kept = pd.Series(True, index=gwas_data.index)
 
@@ -80,6 +85,8 @@ class ReadGWASFileStage(PipelineStage):
         payload.std_snp_list = self._get_std_snp_list(payload, gwas_data)
 
         self._snp_format_check(gwas_data)
+
+        payload.gwas_data_original = gwas_data.copy() # ouch
 
         return payload
 

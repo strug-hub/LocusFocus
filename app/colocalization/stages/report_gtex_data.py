@@ -23,6 +23,9 @@ class ReportGTExDataStage(PipelineStage):
     def name(self):
         return "report-gtex-data"
 
+    def description(self) -> str:
+        return "Record GTEx data for selected genes, preparing for plotting."
+
     def invoke(self, payload: SessionPayload) -> SessionPayload:
 
         if payload.gwas_data is None:

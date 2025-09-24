@@ -207,6 +207,11 @@
               likely due to little or no expression in that tissue</strong
             >
           </div>
+          <div id="liftover-warning" class="alert alert-dismissible alert-warning" role="alert" hidden>
+            <button type="button" class="close" data-dismiss="alert">
+              &times;
+            </button>
+          </div>
         </div>
       </div>
       <hr id="plot-divider" hidden />
@@ -655,6 +660,12 @@
           if (genesData !== null) {
             populate_genes(genesData, sessionData);
             plot_gwas(sessionData, genesData);
+          }
+          if (sessionData["liftover_warning"]?.length > 0) {
+            d3.select("#liftover-warning")
+              .property("hidden", false)
+              .append("strong")
+              .text(sessionData["liftover_warning"]);
           }
         }
         if (SSResponseJson !== null) {
