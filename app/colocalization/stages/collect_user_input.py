@@ -20,6 +20,9 @@ class CollectUserInputStage(PipelineStage):
         The name of the stage.
         """
         return "collect-user-input"
+    
+    def description(self) -> str:
+        return "Collect user form inputs"
 
     def invoke(self, payload: SessionPayload) -> SessionPayload:
 
