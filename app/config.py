@@ -77,7 +77,7 @@ class BaseConfig:
 
     CELERY = {
         "timezone": "America/Toronto",
-        "broker_url": "redis://localhost:6379/0",
+        "broker_url": f"redis://:{os.environ['REDIS_PASSWORD']}@localhost:6379/0",
         "result_backend": f"file://{os.path.join(SESSION_FOLDER, 'celery_results')}",
         "broker_connection_retry_on_startup": True,
     }
