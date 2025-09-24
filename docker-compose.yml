@@ -52,4 +52,4 @@ services:
     # port: 6379
     network_mode: "host"
     volumes:
-    - ./redis/redis.conf:/etc/redis/redis.conf
+    - ./redis:/etc/redis
