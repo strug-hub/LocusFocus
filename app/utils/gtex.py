@@ -21,7 +21,7 @@ def get_gtex(version, tissue, gene_id):
         db = client.GTEx_V8
         collapsed_genes_df = collapsed_genes_df_hg38
     elif version.upper() == "V7":
-        raise ValueError("Cannot standardize SNPs to hg19; GTEx V7 is no longer available.")
+        raise InvalidUsage("Cannot standardize SNPs to hg19; GTEx V7 is no longer available.")
 
     tissue = tissue.replace(" ", "_")
     # gene_id = gene_id.upper()
@@ -59,7 +59,7 @@ def get_gtex(version, tissue, gene_id):
     variants_df = variants_df.drop(["_id"], axis=1)
     x = pd.merge(results_df, variants_df, on="variant_id")
     if version.upper() == "V7":
-        raise ValueError("GTEx V7 is no longer available.")
+        raise InvalidUsage("GTEx V7 is no longer available.")
     elif version.upper() == "V8":
         x.rename(columns={"rs_id_dbSNP151_GRCh38p7": "rs_id"}, inplace=True)
     return x

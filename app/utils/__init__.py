@@ -124,7 +124,7 @@ def standardize_snps(variantlist, regiontxt, build):
     db = mongo.cx.GTEx_V8  # type: ignore
     rsid_colname = "rs_id_dbSNP151_GRCh38p7"
     if build.lower() in ["hg19", "grch37"]:
-        raise ValueError("Cannot standardize SNPs to hg19; GTEx V7 is no longer available.")
+        raise InvalidUsage("Cannot standardize SNPs to hg19; GTEx V7 is no longer available.")
     collection = db["variant_table"]
     variants_query = collection.find(
         {

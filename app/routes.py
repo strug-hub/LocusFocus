@@ -462,7 +462,7 @@ def standardizeSNPs(variantlist, regiontxt, build):
     db = client.GTEx_V8
     rsid_colname = "rs_id_dbSNP151_GRCh38p7"
     if build.lower() in ["hg19", "grch37"]:
-        raise ValueError("Cannot standardize SNPs to hg19; GTEx V7 is no longer available.")
+        raise InvalidUsage("Cannot standardize SNPs to hg19; GTEx V7 is no longer available.")
     collection = db["variant_table"]
     variants_query = collection.find(
         {
@@ -1456,7 +1456,7 @@ def getGenesInRange(build, chrom, startbp, endbp):
 def list_tissues(version):
     version = version.upper()
     if version == "V7":
-        raise ValueError("GTEx V7 is no longer available")
+        raise InvalidUsage("GTEx V7 is no longer available")
     elif version == "V8":
         db = client.GTEx_V8
         tissues = list(db.list_collection_names())
