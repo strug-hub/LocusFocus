@@ -39,6 +39,9 @@ class ColocSimpleSumStage(PipelineStage):
 
     def name(self) -> str:
         return "simple-sum"
+    
+    def description(self) -> str:
+        return "Perform Simple Sum colocalization (and COLOC2 if selected)"
 
     def invoke(self, payload: SessionPayload) -> SessionPayload:
 
