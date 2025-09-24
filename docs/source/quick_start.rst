@@ -323,11 +323,12 @@ From here, you can upload your LD matrix file:
 Secondary datasets
 ******************************************************
 
-All 48 :ref:`GTEx (v7)<Datasets>` (hg19) and 49 :ref:`GTEx (v8)<Datasets>` tissues are provided for selection as secondary datasets
+All 49 :ref:`GTEx (v8)<Datasets>` tissues are provided for selection as secondary datasets
 to test colocalization with. The genes found in the coordinates
-entered (:ref:`GENCODE v19 (hg19) or GENCODE v26 (hg38)<Datasets>`) can be chosen for colocalization testing
+entered (:ref:`GENCODE v26 (hg38)<Datasets>`) can be chosen for colocalization testing
 (thus, the number of secondary datasets and
 colocalization tests performed is the number of tissues selected times the number of genes selected in the region).
+GTEx V10 will be available in the future.
 
 In addition to GTEx tissues, several user-specified datasets may be uploaded as a merged HTML file.
 For further instructions on how to :ref:`create a merged HTML file<Formatting custom secondary datasets>`, see the section below.
