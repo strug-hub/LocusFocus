@@ -98,18 +98,18 @@ def push_variant_dict(gene_df):
 
 conn = "mongodb://localhost:27017"
 client = MongoClient(conn)
-db = client.GTEx_V8
+db = client.GTEx_V10
 
-tissues = pd.read_csv(os.path.join('data', 'GTEx_v8_eQTL','tissues4.txt'), header=None)
+tissues = pd.read_csv(os.path.join('data', 'GTEx_v10_eQTL','tissues4.txt'), header=None)
 tissues = list(tissues.iloc[:,0])
-files_list = [ #'GTEx_Analysis_v8_eQTL_all_associations_' +
+files_list = [ #'GTEx_Analysis_v10_eQTL_all_associations_' +
               tissue.replace(' ','_') + '.allpairs_fixed.txt.gz' for tissue in tissues ]
 # files_list = [ 'Pancreas.allpairs_fixed.txt.gz', 'Lung.allpairs_fixed.txt.gz' ]
 
 
 for file in files_list:
-    tissue_name = file.split('.')[0].replace(' ','_').replace('GTEx_Analysis_v8_eQTL_all_associations_','')
-    file = os.path.join('data','GTEx_v8_eQTL', file)
+    tissue_name = file.split('.')[0].replace(' ','_').replace('GTEx_Analysis_v10_eQTL_all_associations_','')
+    file = os.path.join('data','GTEx_v10_eQTL', file)
     if tissue_name not in db.list_collection_names():
         collection = db[tissue_name]
         if file.endswith('gz') and os.path.isfile(file):
@@ -145,7 +145,7 @@ for file in files_list:
 # Next, create the variant lookup table
 print('Reading variant lookup file GTEx_Analysis_2017-06-05_v8_WholeGenomeSeq_838Indiv_Analysis_Freeze.lookup_table.txt.gz')
 collection = db['variant_table']
-tbl_chunk = pd.read_csv(os.path.join('data','GTEx_v8_eQTL','GTEx_Analysis_2017-06-05_v8_WholeGenomeSeq_838Indiv_Analysis_Freeze.lookup_table.txt.gz'), 
+tbl_chunk = pd.read_csv(os.path.join('data','GTEx_v10_eQTL','GTEx_Analysis_2017-06-05_v8_WholeGenomeSeq_838Indiv_Analysis_Freeze.lookup_table.txt.gz'), 
                         sep="\t", chunksize=1e5, encoding='utf-8')
 print('Pushing variant information into variant_table collection by chunks')
 for tbl in tbl_chunk:
