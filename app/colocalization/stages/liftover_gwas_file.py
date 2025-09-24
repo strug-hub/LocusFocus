@@ -17,7 +17,7 @@ class LiftoverGWASFile(PipelineStage):
 
     def name(self) -> str:
         return "liftover-gwas-file"
-    
+
     def description(self) -> str:
         return "LiftOver GWAS file (if needed, may be skipped)"
 
@@ -28,7 +28,7 @@ class LiftoverGWASFile(PipelineStage):
             liftover_target = "hg19"
         else:
             liftover_target = "hg38"
-        
+
         needs_liftover = payload.get_coordinate() != liftover_target
 
         # keep type checker happy
@@ -42,11 +42,30 @@ class LiftoverGWASFile(PipelineStage):
                 )
                 current_app.logger.debug(f"Original: {len(payload.gwas_data)} -> Lifted over: {len(lifted_over)}, unlifted over: {len(unlifted_over)}")
 
+                # Handle lead SNP
+                lead_snp_is_user_defined = payload.get_lead_snp_name() != ""
+                lead_snp_is_rsid = payload.gwas_data.iloc[payload.get_lead_snp_index()]["SNP"].startswith("rs")
+                lead_snp_lifted_over = payload.get_lead_snp_index() not in unlifted_over
+
+                if lead_snp_is_user_defined:
+                    if not lead_snp_lifted_over:
+                        # clear the lead SNP name, warn the user
+                        old_lead_snp = payload.get_lead_snp_name()
+                        new_lead_snp = lifted_over[lifted_over["P"].argmin()]["SNP"]  # lowest p-value
+                        payload.liftover_lead_snp_warning = f"The specified lead SNP '{old_lead_snp}' was not lifted over. The lifted SNP with the lowest p-value is used instead: '{new_lead_snp}'."
+                        payload.lead_snp_name = ""
+
                 lifted_over = adjust_snp_column(lifted_over, liftover_target)
 
-                payload.gwas_data = lifted_over
+                # lifted_over and gwas_data are not the same size so we need to be careful
+                changed_indices = payload.gwas_data.index[~payload.gwas_data.index.isin(unlifted_over)]
+                payload.gwas_data.loc[changed_indices] = lifted_over.values  # type: ignore
 
-                payload.unlifted_over_indices = pd.Series(list(unlifted_over))
+                if lead_snp_is_user_defined and lead_snp_lifted_over and not lead_snp_is_rsid:
+                    # update the lead SNP name if it changed due to liftover
+                    assert payload.gwas_data_original is not None  # type checker
+                    lead_snp_index = payload.gwas_data.index[payload.gwas_data_original["SNP"] == payload.get_lead_snp_name()].tolist()[0]
+                    payload.lead_snp_name = str(payload.gwas_data.iloc[lead_snp_index]["SNP"])
 
                 payload.gwas_indices_kept = self.update_indices_kept(
                     payload, unlifted_over
@@ -62,6 +81,9 @@ class LiftoverGWASFile(PipelineStage):
         payload: SessionPayload,
         unlifted_over: List[int],
     ) -> pd.Series:
+        """
+        Helper function to update `gwas_indices_kept` to exclude non-lifted-over rows
+        """
         assert payload.gwas_data_original is not None
 
         lifted_over_kept_ = pd.Series(

@@ -76,6 +76,8 @@ class ReadGWASFileStage(PipelineStage):
         gwas_data = self._validate_gwas_file(payload, gwas_data)
         gwas_data = self._subset_gwas_file(payload, gwas_data)
 
+        gwas_data["CHROM"] = gwas_data["CHROM"].astype(str)
+
         payload.gwas_data = gwas_data
         payload.gwas_indices_kept = pd.Series(True, index=gwas_data.index)
 

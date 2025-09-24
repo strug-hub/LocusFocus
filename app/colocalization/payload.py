@@ -139,6 +139,7 @@ class SessionPayload:
     # Other
     success: bool = False
     r2: List[float] = field(default_factory=list)
+    liftover_lead_snp_warning: str = ""
 
     # Simple Sum
     ss_locustext: Optional[str] = None
@@ -180,7 +181,7 @@ class SessionPayload:
 
             self.coordinate = self.request_form.get("coordinate")
         return self.coordinate  # type: ignore
-    
+
     def get_secondary_coordinate(self) -> str:
         """
         Get the form input for coordinate for optional secondary dataset (aka. HTML file).
@@ -191,7 +192,7 @@ class SessionPayload:
             raise InvalidUsage(
                 f"Invalid secondary dataset coordinate: '{self.request_form.get('html-file-coordinate')}'"
             )
-        
+
         if self.request_form.get("html-file-coordinate") == "gwas":
             return self.get_coordinate()
         else:
@@ -421,7 +422,7 @@ class SessionPayload:
         Return True if the user has uploaded their own LD matrix, False otherwise.
         """
         return any(str(filepath).endswith("ld") for filepath in self.uploaded_files)
-    
+
     def report_liftover(self) -> dict:
         """
         Report the indices of rows that were not lifted over.
@@ -518,5 +519,8 @@ class SessionPayload:
         else:
             data["first_stages"] = self.ss_result_df["first_stages"].tolist()
             data["first_stage_Pvalues"] = self.ss_result_df["first_stage_p"].tolist()
+
+        if self.liftover_lead_snp_warning != "":
+            data["liftover_warning"] = self.liftover_lead_snp_warning
 
         return data
