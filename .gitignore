@@ -1,5 +1,6 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
+
 *.py[cod]
 *$py.class
 
@@ -152,5 +153,6 @@ app/static/upload/*
 _data
 data/cache/*
 !data/cache/.gitkeep
+!setup-locusfocus-user.sh
 !create-redis-conf.sh
 redis/redis.conf
