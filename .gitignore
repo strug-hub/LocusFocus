@@ -154,3 +154,5 @@ _data
 data/cache/*
 !data/cache/.gitkeep
 !setup-locusfocus-user.sh
+!create-redis-conf.sh
+redis/redis.conf
