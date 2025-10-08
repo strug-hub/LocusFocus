@@ -57,14 +57,19 @@ def get_variants_by_region(start: int, end: int, chrom: str, gtex_version: str) 
         )
         variants_list = list(variants_query)
         variants_df = pd.DataFrame(variants_list)
+        if len(variants_df) == 0:
+            return variants_df
         variants_df = variants_df.drop(["_id"], axis=1).rename(columns={"rs_id_dbSNP151_GRCh38p7": "rs_id"})
         return variants_df
     elif gtex_version.upper() == "V10":
         # We use the API, but convert the dataframe so that the format is the same as V8 db
         chrom = "chr" + chrom
         variant_response = get_variants(dataset_id="gtex_v10", start=start, end=end, chromosome=chrom)
-        variants_df = pd.DataFrame([v.to_dict() for v in variant_response.data]) \
-            .rename(columns={
+        variants_df = pd.DataFrame([v.to_dict() for v in variant_response.data])
+        if len(variants_df) == 0:
+            return variants_df
+
+        variants_df = variants_df.rename(columns={
                 "snpId": "rs_id",
                 "b37VariantId": "variant_id_b37",
                 "pos": "variant_pos",
