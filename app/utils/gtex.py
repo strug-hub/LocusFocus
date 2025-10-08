@@ -117,22 +117,8 @@ def get_gtex(version, tissue, gene_id):
     results_df = pd.DataFrame(response)
     chrom = int(list(results_df["variant_id"])[0].split("_")[0].replace("X", "23"))
     positions = [int(x.split("_")[1]) for x in list(results_df["variant_id"])]
-    variants_query = db.variant_table.find(
-        {
-            "$and": [
-                {"chr": chrom},
-                {"variant_pos": {"$gte": min(positions), "$lte": max(positions)}},
-            ]
-        }
-    )
-    variants_list = list(variants_query)
-    variants_df = pd.DataFrame(variants_list)
-    variants_df = variants_df.drop(["_id"], axis=1)
+    variants_df = get_variants_by_region(min(positions), max(positions), str(chrom), version.upper())
     x = pd.merge(results_df, variants_df, on="variant_id")
-    if version.upper() == "V7":
-        raise InvalidUsage("GTEx V7 is no longer available.")
-    elif version.upper() == "V8":
-        x.rename(columns={"rs_id_dbSNP151_GRCh38p7": "rs_id"}, inplace=True)
     return x
 
 
@@ -250,18 +236,7 @@ def get_gtex_snp_matches(stdsnplist, regiontxt, build):
     db = client.GTEx_V8
     if build.lower() in ["hg19", "grch37"]:
         raise InvalidUsage("Cannot use GTEx V7 variant table; GTEx V7 is no longer available.")
-    collection = db["variant_table"]
-    variants_query = collection.find(
-        {
-            "$and": [
-                {"chr": int(chrom.replace("X", "23"))},
-                {"variant_pos": {"$gte": int(startbp), "$lte": int(endbp)}},
-            ]
-        }
-    )
-    variants_list = list(variants_query)
-    variants_df = pd.DataFrame(variants_list)
-    variants_df = variants_df.drop(["_id"], axis=1)
+    variants_df = get_variants_by_region(int(startbp), int(endbp), str(chrom), "V8")
     gtex_std_snplist = list(variants_df["variant_id"])
     isInGTEx = [x for x in stdsnplist if x in gtex_std_snplist]
     return len(isInGTEx)
