@@ -122,10 +122,9 @@ for file in files_list:
             key='gene_id',
             agg=agg,
             chunk_size=1e6,
-            #pool=mp.Pool(processes=4), # problem with opening too many write requests to mongo
-            sep="\t", 
+            sep="\t",
             usecols=['gene_id', 'variant_id', 'pval_nominal',
-                     'slope', 'slope_se', 'ma_samples', 'ma_count', 'maf']
+                     'slope', 'slope_se', 'ma_samples', 'ma_count', 'af']
         )
         print(tissue_name + ' collection created')
         print(datetime.now().strftime('%c'))
@@ -143,17 +142,17 @@ for file in files_list:
     #break
 
 # Next, create the variant lookup table
-print('Reading variant lookup file GTEx_Analysis_2017-06-05_v8_WholeGenomeSeq_838Indiv_Analysis_Freeze.lookup_table.txt.gz')
-collection = db['variant_table']
-tbl_chunk = pd.read_csv(os.path.join('data','GTEx_v10_eQTL','GTEx_Analysis_2017-06-05_v8_WholeGenomeSeq_838Indiv_Analysis_Freeze.lookup_table.txt.gz'), 
-                        sep="\t", chunksize=1e5, encoding='utf-8')
-print('Pushing variant information into variant_table collection by chunks')
-for tbl in tbl_chunk:
-    tbl['chr'] = [int(str(x).replace('chr','').replace('X','23')) for x in list(tbl['chr'])]
-    tbl['variant_id'] = [x.replace('chr','') for x in list(tbl['variant_id'])]
-    tbl_dict = tbl.to_dict(orient='records')
-    collection.insert_many(tbl_dict)
-print('Variant collection created')
+# print('Reading variant lookup file GTEx_Analysis_2017-06-05_v8_WholeGenomeSeq_838Indiv_Analysis_Freeze.lookup_table.txt.gz')
+# collection = db['variant_table']
+# tbl_chunk = pd.read_csv(os.path.join('data','GTEx_v10_eQTL','GTEx_Analysis_2017-06-05_v8_WholeGenomeSeq_838Indiv_Analysis_Freeze.lookup_table.txt.gz'), 
+#                         sep="\t", chunksize=1e5, encoding='utf-8')
+# print('Pushing variant information into variant_table collection by chunks')
+# for tbl in tbl_chunk:
+#     tbl['chr'] = [int(str(x).replace('chr','').replace('X','23')) for x in list(tbl['chr'])]
+#     tbl['variant_id'] = [x.replace('chr','') for x in list(tbl['variant_id'])]
+#     tbl_dict = tbl.to_dict(orient='records')
+#     collection.insert_many(tbl_dict)
+# print('Variant collection created')
 print(datetime.now().strftime('%c'))
 
 print('Now indexing by variant_id')
