@@ -5,7 +5,12 @@ import numpy as np
 from flask import current_app as app
 
 from app.colocalization.payload import SessionPayload
-from app.utils import get_file_with_ext, standardize_snps, decompose_variant_list, x_to_23
+from app.utils import (
+    get_file_with_ext,
+    standardize_snps,
+    decompose_variant_list,
+    x_to_23,
+)
 from app.pipeline import PipelineStage
 from app.utils.errors import InvalidUsage, ServerError
 
@@ -21,9 +26,12 @@ class GWASColumn:
     coloc2: bool = False  # Required for coloc2?
     optional: bool = False  # Optional column
 
+
 #                                                              (bi-allelic variants are allowed)
 #                      (prefix) chrom        pos      ref       alt(s)                build
-VCF_FORMAT_PATTERN = "^(?:chr)?([0-9]{1,2})_([0-9]+)_([ATCG]+)_([ATCG]+(?:,[ATCG]+)*)_b3(?:7|8)$"
+VCF_FORMAT_PATTERN = (
+    "^(?:chr)?([0-9]{1,2})_([0-9]+)_([ATCG]+)_([ATCG]+(?:,[ATCG]+)*)_b3(?:7|8)$"
+)
 
 
 class ReadGWASFileStage(PipelineStage):
@@ -62,7 +70,7 @@ class ReadGWASFileStage(PipelineStage):
 
     def name(self) -> str:
         return "read-gwas-file"
-    
+
     def description(self) -> str:
         return "Read GWAS data from file"
 
@@ -86,7 +94,7 @@ class ReadGWASFileStage(PipelineStage):
 
         self._snp_format_check(gwas_data)
 
-        payload.gwas_data_original = gwas_data.copy() # ouch
+        payload.gwas_data_original = gwas_data.copy()  # ouch
 
         return payload
 
@@ -96,7 +104,9 @@ class ReadGWASFileStage(PipelineStage):
 
         Save the file and return the dataframe.
         """
-        gwas_filepath = get_file_with_ext(payload.uploaded_files, self.VALID_GWAS_EXTENSIONS)
+        gwas_filepath = get_file_with_ext(
+            payload.uploaded_files, self.VALID_GWAS_EXTENSIONS
+        )
 
         if gwas_filepath is None:
             raise InvalidUsage(
@@ -146,9 +156,9 @@ class ReadGWASFileStage(PipelineStage):
             column_input_list.append(
                 payload.request_form.get(column.form_id, column.default)
             )
-            column_mapper[
-                payload.request_form.get(column.form_id, column.default)
-            ] = column.default
+            column_mapper[payload.request_form.get(column.form_id, column.default)] = (
+                column.default
+            )
             column_inputs[column.default] = payload.request_form.get(column.form_id, "")
 
         # Column uniqueness check
@@ -181,7 +191,9 @@ class ReadGWASFileStage(PipelineStage):
 
         # Get coloc2 if applicable
         if payload.get_is_coloc2():
-            for column in [c.default for c in self.GWAS_COLUMNS if c.coloc2 and not c.optional]:
+            for column in [
+                c.default for c in self.GWAS_COLUMNS if c.coloc2 and not c.optional
+            ]:
                 if column not in gwas_data.columns:
                     raise InvalidUsage(
                         f"{column} column missing but is required for COLOC2. '{column_inputs[column]}' not in columns '{', '.join(old_gwas_columns)}'"
@@ -203,7 +215,13 @@ class ReadGWASFileStage(PipelineStage):
                     gwas_data = pd.concat([gwas_data, num_cases_df], axis=1)
 
         # Drop columns that are not used
-        gwas_data = gwas_data.drop(columns=[c for c in gwas_data.columns if c not in (c.default for c in self.GWAS_COLUMNS)])
+        gwas_data = gwas_data.drop(
+            columns=[
+                c
+                for c in gwas_data.columns
+                if c not in (c.default for c in self.GWAS_COLUMNS)
+            ]
+        )
 
         return gwas_data
 
@@ -211,11 +229,10 @@ class ReadGWASFileStage(PipelineStage):
         self, payload: SessionPayload, gwas_data: pd.DataFrame
     ) -> pd.DataFrame:
         """
-        Given that the user wishes to infer the variant information using dbSNP,
-        validate and rename the columns in the DataFrame accordingly, if possible.
-
-        This assumes that the only columns provided in the GWAS file are "SNP" and "P", where "SNP" contains
-        snp IDs that can be looked up using dbSNP for variant information.
+        Look up CHROM/POS/REF/ALT from dbSNP based on information in the SNP column,
+        then validate and rename the columns in the DataFrame accordingly, if possible.
+        This assumes that "SNP" contains SNP IDs that can be looked up using dbSNP for variant information.
+        If the dataframe has columns already named CHROM, POS, REF, or ALT, they will be overwritten.
 
         Prerequisite: gwas_data columns are set as default values (eg. "SNP", "P", etc.)
         """
@@ -228,17 +245,25 @@ class ReadGWASFileStage(PipelineStage):
         regionstr = payload.get_locus()
 
         variant_list = standardize_snps(list(gwas_data["SNP"]), regionstr, coordinate)
+
         if all(x == "." for x in variant_list):
             raise InvalidUsage(
                 f"None of the variants provided could be mapped to {regionstr}!",
                 status_code=410,
             )
+
         var_df = decompose_variant_list(variant_list)
-        gwas_data = pd.concat([var_df, gwas_data], axis=1)  # add CHROM, POS, REF, ALT
-        gwas_data = gwas_data.loc[
-            [str(x) != "." for x in list(gwas_data["CHROM"])]
-        ].copy()
-        gwas_data.reset_index(drop=True, inplace=True)
+
+        gwas_data = gwas_data.reset_index(drop=True).join(
+            var_df.reset_index(drop=True), lsuffix="_orig"
+        )
+
+        gwas_data.drop(
+            [c for c in gwas_data.columns if c.endswith("_orig")], axis=1, inplace=True
+        )
+
+        gwas_data = gwas_data.loc[gwas_data["CHROM"] != "."]
+
         return gwas_data
 
     def _validate_gwas_file(
@@ -378,22 +403,27 @@ class ReadGWASFileStage(PipelineStage):
             raise ServerError("GWAS data and indices are not in sync")
 
         return std_snp_list
-    
+
     def _snp_format_check(self, gwas_data: pd.DataFrame) -> None:
         """
         Perform a sanity check on the SNP column of the GWAS data.
-        
+
         Raise an error if the SNP column contains any SNPs with format chr_pos_ref_alt_build
         have reversed alleles, or other inconsistencies within its row in the dataframe.
         """
 
         vcf_snps = gwas_data[gwas_data["SNP"].str.contains(VCF_FORMAT_PATTERN)]
         if len(vcf_snps) > 0:
-            expanded = gwas_data["SNP"].str.extract(VCF_FORMAT_PATTERN) \
-                .rename(columns={0: "CHROM", 1: "POS", 2: "REF", 3: "ALT"}) \
+            expanded = (
+                gwas_data["SNP"]
+                .str.extract(VCF_FORMAT_PATTERN)
+                .rename(columns={0: "CHROM", 1: "POS", 2: "REF", 3: "ALT"})
                 .astype({"CHROM": int, "POS": int, "REF": str, "ALT": str})
-                
-            merged_vcf_snps = expanded.merge(vcf_snps, how="inner", on=["CHROM", "POS", "REF", "ALT"])
+            )
+
+            merged_vcf_snps = expanded.merge(
+                vcf_snps, how="inner", on=["CHROM", "POS", "REF", "ALT"]
+            )
             if len(vcf_snps) != len(merged_vcf_snps):
                 raise InvalidUsage(
                     "GWAS data contains SNPs with chrom_pos_ref_alt_build format that are not consistent (eg. reversed alleles, incorrect position or chromosome). "
