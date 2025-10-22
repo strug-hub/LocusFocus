@@ -36,7 +36,7 @@ function plot_heatmap(
   for (i = 0; i < tissues.length; i++) {
     for (j = 0; j < genes.length; j++) {
       newSSPvalues[i][j] = parseFloat(newSSPvalues[i][j]);
-      if (newSSPvalues[i][j] === -2) {
+      if ([-2, -3].includes(newSSPvalues[i][j])) {
         newSSPvalues[i][j] = -1;
       } else if (newSSPvalues[i][j] === -3) {
         newSSPvalues[i][j] = -1;
@@ -117,7 +117,9 @@ function plot_heatmap(
       type: "heatmap",
       name: "-log10(Simple Sum P-value)",
       hovertemplate:
-        "Gene: %{x}" + "<br>Tissue: %{y}<br>" + `-log10(SS P-value): %{z}`,
+        "Gene: %{x}" +
+        "<br>Tissue: %{y}<br>" +
+        `-log10(SS P-value): %{z: null}`,
       colorbar: {
         title: "-log10(Simple<br>Sum P-value)",
         // dtick0: 0,
@@ -130,6 +132,7 @@ function plot_heatmap(
       colorscale: norm_color_cutoffs,
     },
   ];
+
   let layout = {
     annotations: [],
     margin: {
@@ -142,6 +145,11 @@ function plot_heatmap(
     width: image_width,
     height: image_height,
     font: { size: font_size },
+    xaxis: {
+      //uncomment to set a max range of visible genes and set `dragmode=pan` to pan
+      //range: [0, Math.min(genes.length, 10)],
+      dtick: 1,
+    },
   };
 
   // Tried to add the SSPvalue numbers, but does not place correctly (they all go into the middle of the plot)

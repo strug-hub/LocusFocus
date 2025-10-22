@@ -67,7 +67,7 @@
         <div class="row">
           <div class="col-md-12 borderit">
             <h5 data-toggle="tooltip" data-html="true" title="">
-              Select coordinate system
+              Select GWAS coordinate system
             </h5>
             <div class="row">
               <div class="col-md-4">
@@ -78,7 +78,11 @@
               </div>
               <div class="col-md-8">
                 <div class="alert alert-dismissible alert-info">
-                  <p>Select the human coordinate system your files are stored in.</p>
+                  <p>
+                    Select the human coordinate system your GWAS file is stored in.
+                    <br />
+                    <b>Note:</b> LiftOver will be used to convert your GWAS data if necessary to match that of your selected GTEx dataset.
+                  </p>
                   <p>
                     <ul>
                       <li>hg19 is GRCh37</li>
@@ -131,11 +135,11 @@
             </div>
             <hr>
             <div class="row">
-              <div class="col-md-4">
+              <div class="col-md-12">
                 <input type="checkbox" id="coloc2check" name="coloc2check" onclick="addColoc2Inputs(this)"><label
                   for="coloc2check" style="margin: 0px; padding: 10px;  height:42px" data-toggle="tooltip"
                   title='If you would also like to run and compare colocalization analysis with Coloc2 method, extra input fields are required.'>
-                  Add required inputs for COLOC2
+                  Add COLOC2 method (additional fields required)
                 </label>
               </div>
             </div>
@@ -262,10 +266,25 @@
             </div>
             <div class="row">
               <div class="col-md-6">
+                <div id="GTEx-version-label" data-toggle="tooltip"
+                  title="Select the GTEx version you would like to use.">
+                  Select GTEx Version
+                </div>
+                <select id="GTEx-version" name="GTEx-version" onchange="gtexVersionChange(this.value)">
+                  <option id="gtex-v7" value="V7" label="GTEx V7 (hg19)" selected="selected"></option>
+                  <option id="gtex-v8" value="V8" label="GTEx V8 (hg38)"></option>
+                </select>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-6">
                 <div id="tissue-select" data-toggle="tooltip"
                   title="Select the tissues you would like to test colocalization with.">Select GTEx (V7) Tissues</div>
                 <select id="GTEx-tissues" name="GTEx-tissues" multiple="multiple">
                 </select>
+                <div id="loading" class="spinner-border" role="status" style="display: none;">
+                  <span class="sr-only">Loading...</span>
+                </div>
               </div>
               <div class="col-md-6">
                 <div id="genes-select" data-toggle="tooltip"
@@ -283,6 +302,15 @@
               <div class="col-md-4">
                 <input class="shadow-sm p-3 mb-3 bg-light rounded" type="file" id="html-file" name="html-file" accept=".html" data-toggle="tooltip"
                   title=".html (required): HTML file generated with LocusFocus"/>
+                <label for="html-file-coordinate" id="html-file-coordinate-label" data-toggle="tooltip"
+                  title="Select the coordinate system of your HTML file. LiftOver will be used to convert the data if necessary.">
+                    Select Coordinate System
+                  </label>
+                <select id="html-file-coordinate" name="html-file-coordinate">
+                  <option id="html-file-coordinate-gwas" value="gwas" label="Same as GWAS" selected="selected"></option>
+                  <option id="html-file-coordinate-hg19" value="hg19" label="hg19"></option>
+                  <option id="html-file-coordinate-hg38" value="hg38" label="hg38"></option>
+                </select>
               </div>
               <div class="col-md-8">
                 <div class="alert alert-dismissible alert-info">

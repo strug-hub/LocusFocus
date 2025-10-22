@@ -34,6 +34,7 @@ class SessionFiles:
         self.SSPvalues_filepath = get_session_filepath(f"SSPvalues-{session_id}.json")
         self.coloc2_filepath = get_session_filepath(f"coloc2result-{session_id}.json")
         self.metadata_filepath = get_session_filepath(f"metadata-{session_id}.json")
+        self.liftover_filepath = get_session_filepath(f"liftover-{session_id}.json")
 
         # Simple Sum files
         self.p_value_filepath = get_session_filepath(f"Pvalues-{session_id}.txt")
@@ -116,12 +117,18 @@ class SessionPayload:
 
     # File data
     # GWAS data is user-uploaded, and we update gwas_indices_kept in each stage to "keep" or "discard" SNPs
-    gwas_data: Optional[pd.DataFrame] = None  # Original GWAS data
+    gwas_data_original: Optional[pd.DataFrame] = (
+        None  # Original, unlifted-over GWAS data
+    )
+    # the indices of rows that failed liftover, refers to rows in gwas_data_original
+    unlifted_over_indices: pd.Series = field(default_factory=pd.Series)
+    gwas_data: Optional[pd.DataFrame] = None  # working GWAS data (possibly lifted over)
     gwas_indices_kept: pd.Series = field(
         default_factory=pd.Series
-    )  # Boolean Array of GWAS SNPs kept
+    )  # Boolean Array of GWAS SNPs kept (excludes non-lifted over rows as well, if applicatble)
     ld_matrix: Optional[np.matrix] = None
     secondary_datasets: Optional[Dict[str, dict]] = None
+    secondary_datasets_unlifted_indices: Optional[Dict[str, List[int]]] = None
     file: SessionFiles = field(init=False)
 
     # LD Matrix data
@@ -132,6 +139,7 @@ class SessionPayload:
     # Other
     success: bool = False
     r2: List[float] = field(default_factory=list)
+    liftover_lead_snp_warning: str = ""
 
     # Simple Sum
     ss_locustext: Optional[str] = None
@@ -173,6 +181,22 @@ class SessionPayload:
 
             self.coordinate = self.request_form.get("coordinate")
         return self.coordinate  # type: ignore
+
+    def get_secondary_coordinate(self) -> str:
+        """
+        Get the form input for coordinate for optional secondary dataset (aka. HTML file).
+
+        Return either 'hg19' or 'hg38'. If value is 'gwas', then get_coordinate() is used.
+        """
+        if self.request_form.get("html-file-coordinate") not in [*VALID_COORDINATES, "gwas"]:
+            raise InvalidUsage(
+                f"Invalid secondary dataset coordinate: '{self.request_form.get('html-file-coordinate')}'"
+            )
+
+        if self.request_form.get("html-file-coordinate") == "gwas":
+            return self.get_coordinate()
+        else:
+            return self.request_form.get("html-file-coordinate")
 
     def get_locus(self) -> str:
         """
@@ -283,7 +307,7 @@ class SessionPayload:
             lead_snp = str(gwas.iloc[gwas["P"].argmin()]["SNP"]).split(";")[0]  # type: ignore
         if lead_snp not in snps:
             raise InvalidUsage("Lead SNP not found", status_code=410)
-        return gwas["P"].argmin()  # type: ignore
+        return gwas.index.get_loc(gwas[gwas["SNP"] == lead_snp].index[0])
 
     def get_ss_locus(self) -> str:
         """
@@ -357,10 +381,16 @@ class SessionPayload:
         Get the version of GTEx needed for fetching from MongoDB.
         One of "V7" or "V8".
         """
-        if self.get_coordinate() == "hg38":
-            return "V8"
-        else:
-            return "V7"
+        version = self.request_form.get("GTEx-version")
+        if version is None:
+            version = "V7"
+        version = version.upper()
+        if version not in ["V7", "V8"]:
+            raise InvalidUsage(
+                f"Invalid GTEx version: {version}. Must be one of 'V7' or 'V8'",
+                status_code=410,
+            )
+        return version
 
     def get_p_value_threshold(self) -> Union[float, str]:
         """
@@ -393,6 +423,21 @@ class SessionPayload:
         """
         return any(str(filepath).endswith("ld") for filepath in self.uploaded_files)
 
+    def report_liftover(self) -> dict:
+        """
+        Report the indices of rows that were not lifted over.
+        """
+        data = {}
+
+        if len(self.unlifted_over_indices) > 0:
+            data["gwas_unlifted"] = self.unlifted_over_indices
+
+        if self.secondary_datasets_unlifted_indices is not None:
+            data["secondary_datasets_unlifted"] = {}
+            for table_title, indices in self.secondary_datasets_unlifted_indices.items():
+                data["secondary_datasets_unlifted"][table_title] = indices
+        return data
+
     def dump_session_data(self):
         """
         Create JSON dict of session data needed for form_data file.
@@ -402,7 +447,9 @@ class SessionPayload:
         data = {}
         data["success"] = self.success
         data["sessionid"] = str(self.session_id)
-        data["snps"] = list(self.gwas_data_kept["SNP"]) if self.gwas_data is not None else []
+        data["snps"] = (
+            list(self.gwas_data_kept["SNP"]) if self.gwas_data is not None else []
+        )
         data["inferVariant"] = self.get_infer_variant()
         data["pvalues"] = (
             list(self.gwas_data_kept["P"]) if self.gwas_data is not None else []
@@ -472,5 +519,8 @@ class SessionPayload:
         else:
             data["first_stages"] = self.ss_result_df["first_stages"].tolist()
             data["first_stage_Pvalues"] = self.ss_result_df["first_stage_p"].tolist()
+
+        if self.liftover_lead_snp_warning != "":
+            data["liftover_warning"] = self.liftover_lead_snp_warning
 
         return data

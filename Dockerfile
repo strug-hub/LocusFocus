@@ -1,7 +1,7 @@
-FROM python:3.10-buster as base
+FROM python:3.10-slim AS base
 
-ARG USERNAME=flask
-ARG USER_UID=1000
+ARG USERNAME=locusfocus
+ARG USER_UID=4644
 ARG USER_GID=$USER_UID
 
 RUN mkdir code \
@@ -9,46 +9,34 @@ RUN mkdir code \
   && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME \
   && chown -R ${USER_UID}:${USER_GID} /code
 
-# can upgrade R to something sensible later, once we have the package lists and versions set
-# https://github.com/rocker-org/rocker/blob/2f92c6c8b8da7b3e61aabc44cacc0439bf267d31/r-base/3.6.3/Dockerfile
-
-COPY --from=r-base:3.6.3 /usr/lib/R /usr/lib/R
-COPY --from=r-base:3.6.3 /usr/local/lib/R /usr/local/lib/R
-COPY --from=r-base:3.6.3 /usr/lib/libR.so /usr/lib/libR.so
-COPY --from=r-base:3.6.3 /usr/bin/R /usr/bin/R
-COPY --from=r-base:3.6.3 /usr/bin/r /usr/bin/r
-COPY --from=r-base:3.6.3 /usr/bin/Rscript /usr/bin/Rscript
-COPY --from=r-base:3.6.3 /lib/x86_64-linux-gnu/libreadline.so.8 /lib/x86_64-linux-gnu/libreadline.so.8
-COPY --from=r-base:3.6.3 /usr/lib/x86_64-linux-gnu/libm.so /usr/lib/x86_64-linux-gnu/libm.so
-COPY --from=r-base:3.6.3 /lib/x86_64-linux-gnu/libm.so.6 /lib/x86_64-linux-gnu/libm.so.6
-COPY --from=r-base:3.6.3 /etc/R /etc/R
-COPY --from=r-base:3.6.3 /usr/share/R /usr/share/R
-
-RUN chown -R root:${USERNAME} /usr/local/lib/R
-
-RUN ln -s /usr/lib/R/site-library/littler/examples/install.r /usr/local/bin/install.r \
-  && ln -s /usr/lib/R/site-library/littler/examples/install2.r /usr/local/bin/install2.r
-
-ENV EDITOR vim
-ENV R_BASE_VERSION 3.6.3
-ENV R_LIBS_USER /home/${USERNAME}/Rlibs
-
 RUN apt-get update && \
   apt-get install -y \
-  libblas-dev \
   build-essential \
+  curl \
   gfortran \
   libblas-dev \
   liblapack-dev \
   libpcre2-dev \
+  r-base \
+  r-base-dev \
   xauth \
-  vim
+  vim \
+  wget
 
 # install plink
 RUN wget -O /tmp/plink.zip https://s3.amazonaws.com/plink1-assets/plink_linux_x86_64_20241022.zip \
   && unzip -d /tmp /tmp/plink.zip \
   && mv /tmp/plink /usr/local/bin/plink \
   && rm /tmp/*
+
+# install liftover
+RUN curl -f -L -O https://hgdownload.cse.ucsc.edu/admin/exe/linux.x86_64/liftOver \
+  -f -L -O https://hgdownload.cse.ucsc.edu/goldenpath/hg19/liftOver/hg19ToHg38.over.chain.gz \
+  -f -L -O https://hgdownload.cse.ucsc.edu/goldenpath/hg38/liftOver/hg38ToHg19.over.chain.gz && \
+  chmod +x ./liftOver && \
+  mv liftOver /usr/local/bin/liftOver && \
+  mkdir /usr/local/share/liftOver && \
+  mv hg38ToHg19.over.chain.gz hg19ToHg38.over.chain.gz /usr/local/share/liftOver/
 
 # Install Poetry
 # https://github.com/python-poetry/poetry/issues/6397#issuecomment-1236327500
@@ -67,12 +55,20 @@ RUN python3 -m venv $VIRTUAL_ENV \
 
 WORKDIR /code
 
+# handle R libraries
+
+ENV R_LIBS_USER=/home/${USERNAME}/Rlibs
+
+# only root can write here, so we'll save these into the default package dir and use to store application packages in the user's dir
+RUN Rscript -e "install.packages(c('littler', 'docopt'))" \
+  && ln -s /usr/local/lib/R/site-library/littler/examples/install2.r /usr/local/bin/install2.r \
+  && ln -s /usr/local/lib/R/site-library/littler/examples/installGithub.r /usr/local/bin/installGithub.r \
+  && ln -s /usr/local/lib/R/site-library/littler/bin/r /usr/local/bin/r
+
 USER $USERNAME
 
 RUN mkdir /home/${USERNAME}/Rlibs \
   && echo "R_LIBS=/home/${USERNAME}/Rlibs" > /home/${USERNAME}/.Renviron
-
-RUN R -e 'install.packages("docopt")'
 
 # Install R packages (order matters, evidently)
 RUN install2.r --error \
@@ -93,6 +89,7 @@ RUN R -e "BiocManager::install('biomaRt')"
 
 # Link plink to work dir
 RUN ln -s /usr/local/bin/plink /code/plink
+RUN ln -s /usr/local/bin/liftOver /code/liftOver
 
 FROM base AS dev
 
@@ -100,6 +97,7 @@ COPY --chown=$USERNAME:$USERNAME ./pyproject.toml /code/pyproject.toml
 COPY --chown=$USERNAME:$USERNAME ./poetry.lock /code/poetry.lock
 COPY --chown=$USERNAME:$USERNAME ./README.md /code/README.md
 COPY --chown=$USERNAME:$USERNAME ./app /code/app
+COPY --chown=$USERNAME:$USERNAME ./tests /code/app
 
 RUN poetry install --with dev
 
