@@ -45,6 +45,8 @@ class ReportGTExDataStage(PipelineStage):
             raise InvalidUsage("GTEx V7 is no longer available. Please use GTEx V8.")
         elif gtex_version == "V8":
             gene = "ENSG00000174502.18"
+        elif gtex_version == "V10":
+            gene = "ENSG00000174502.18"
 
         snp_list = [asnp.split(";")[0] for asnp in payload.gwas_data["SNP"]]
 
@@ -84,7 +86,7 @@ class ReportGTExDataStage(PipelineStage):
 
         gtex_version = payload.get_gtex_version()
         if gtex_version == "V7":
-            raise InvalidUsage("GTEx V7 is no longer available. Please use GTEx V8.")
+            raise InvalidUsage("GTEx V7 is no longer available. Please use GTEx V8 or V10.")
         else:
             collapsed_genes_df = collapsed_genes_df_hg38
 
