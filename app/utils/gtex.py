@@ -124,8 +124,9 @@ def get_gtex(version, tissue, gene_id):
 
 # Function to merge the GTEx data with a particular snp_list
 def get_gtex_data(version, tissue, gene, snp_list, raiseErrors=False) -> pd.DataFrame:
+    assert version.upper() in ["V7", "V8", "V10"]
     build = "hg19"
-    if version.upper() == "V8":
+    if version.upper() in ["V8", "V10"]:
         build = "hg38"
     gtex_data = []
     rsids = True
@@ -148,9 +149,9 @@ def get_gtex_data(version, tissue, gene, snp_list, raiseErrors=False) -> pd.Data
     #    print(f'Gathering eQTL data for {hugo_gene} ({ensg_gene}) in {tissue}')
     response_df = pd.DataFrame({})
     if version.upper() == "V7":
-        raise InvalidUsage("GTEx V7 is no longer available.")
-    elif version.upper() == "V8":
-        response_df = get_gtex("V8", tissue, gene)
+        raise InvalidUsage("GTEx V7 is no longer available. Please use GTEx V8 or GTEx V10.")
+    else:
+        response_df = get_gtex(version.upper(), tissue, gene)
     if "error" not in response_df.columns:
         eqtl = response_df
         if rsids:
