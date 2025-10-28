@@ -1,11 +1,10 @@
-
 import pandas as pd
 from flask import current_app as app
 from pymongo import MongoClient
 
 
 from app import mongo
-from app.utils import parse_region_text
+from app.utils.helpers import parse_region_text
 from app.utils.gencode import collapsed_genes_df_hg19, collapsed_genes_df_hg38
 from app.utils.errors import InvalidUsage
 
@@ -14,6 +13,7 @@ client = None  # type: ignore
 
 with app.app_context():
     client: MongoClient = mongo.cx  # type: ignore
+
 
 # This is the main function to extract the data for a tissue and gene_id:
 def get_gtex(version, tissue, gene_id):
@@ -168,15 +168,9 @@ def get_gtex_data_pvalues(eqtl_data, snp_list):
     return list(gtex_data["pval"])
 
 
-def get_gtex_snp_matches(stdsnplist, regiontxt, build):
-    """
-    Return the number of SNPs that can be found in the GTEx database for the given region.
-    """
-    # Ensure valid region:
-    chrom, startbp, endbp = parse_region_text(regiontxt, build)
-    chrom = str(chrom).replace("23", "X")
+def get_gtex_snps(chrom: int, startbp: int, endbp: int, build: str) -> pd.DataFrame:
+    """Fetch SNPs from gtex database for a given chrom, range, and build"""
 
-    # Load GTEx variant lookup table for region indicated
     db = client.GTEx_V7
     if build.lower() in ["hg38", "grch38"]:
         db = client.GTEx_V8
@@ -184,14 +178,25 @@ def get_gtex_snp_matches(stdsnplist, regiontxt, build):
     variants_query = collection.find(
         {
             "$and": [
-                {"chr": int(chrom.replace("X", "23"))},
+                {"chr": chrom},
                 {"variant_pos": {"$gte": int(startbp), "$lte": int(endbp)}},
             ]
         }
     )
     variants_list = list(variants_query)
-    variants_df = pd.DataFrame(variants_list)
-    variants_df = variants_df.drop(["_id"], axis=1)
+    return pd.DataFrame(variants_list).drop(["_id"], axis=1)
+
+
+def get_gtex_snp_matches(stdsnplist, regiontxt, build):
+    """
+    Return the number of SNPs that can be found in the GTEx database for the given region.
+    """
+    # Ensure valid region:
+    chrom, startbp, endbp = parse_region_text(regiontxt, build)
+
+    # Load GTEx variant lookup table for region indicated
+    variants_df = get_gtex_snps(chrom, startbp, endbp, build)
+
     gtex_std_snplist = list(variants_df["variant_id"])
     isInGTEx = [x for x in stdsnplist if x in gtex_std_snplist]
     return len(isInGTEx)

@@ -6,7 +6,7 @@ import os
 from typing import List
 
 import pandas as pd
-from app.utils import parse_region_text
+from app.utils.helpers import parse_region_text
 
 # /app/utils/gencode.py -> /data/
 DATA_FOLDER = os.path.abspath(
@@ -26,7 +26,9 @@ collapsed_genes_df_hg38 = pd.read_csv(
 )
 
 
-def get_genes_by_location(build: str, chrom: int, startbp: int, endbp: int, gencode=False) -> List[str]:
+def get_genes_by_location(
+    build: str, chrom: int, startbp: int, endbp: int, gencode=False
+) -> List[str]:
     """
     Given a build and a region, return a list of genes that overlap that region.
     """

@@ -1,6 +1,13 @@
+import os
+import re
 from typing import List
 
+from flask import current_app as app
 import pandas as pd
+
+from app.utils.errors import InvalidUsage
+
+GENOMIC_WINDOW_LIMIT = 2e6
 
 
 def validate_chromosome(
@@ -35,15 +42,15 @@ def validate_chromosome(
 
 
 def adjust_snp_column(
-        snps_df: pd.DataFrame,
-        target_build: str,
-        snp_col: str = "SNP",
-        chrom_col: str = "CHROM",
-        pos_col: str = "POS",
-        ref_col: str = "REF",
-        alt_col: str = "ALT",
-        ignore_alleles: bool = False,
-    ) -> pd.DataFrame:
+    snps_df: pd.DataFrame,
+    target_build: str,
+    snp_col: str = "SNP",
+    chrom_col: str = "CHROM",
+    pos_col: str = "POS",
+    ref_col: str = "REF",
+    alt_col: str = "ALT",
+    ignore_alleles: bool = False,
+) -> pd.DataFrame:
     """
     Adjust the SNP column to be consistent with the other columns in the dataframe.
     rsIDs are ignored. Necessary to perform after LiftOver.
@@ -62,8 +69,8 @@ def adjust_snp_column(
     :type ref_col: str, optional
     :param alt_col: The name of the alternate allele column, defaults to "ALT"
     :type alt_col: str, optional
-    :param ignore_alleles: Whether alleles should be ignored. 
-        If true, alleles will be pulled from the SNP column instead of the ref/alt columns. 
+    :param ignore_alleles: Whether alleles should be ignored.
+        If true, alleles will be pulled from the SNP column instead of the ref/alt columns.
         Defaults to False
     :type ignore_alleles: bool, optional
     :return: The dataframe with the SNP column adjusted.
@@ -77,15 +84,97 @@ def adjust_snp_column(
     # Mask out rows with rsIDs in the SNP column
     rsid_mask = snps_df[snp_col].str.contains("rs")
     if rsid_mask.all():
-        # nothing to do, rsIDs are semi-stable 
+        # nothing to do, rsIDs are semi-stable
         return snps_df
 
     if not ignore_alleles:
-        snps_df.loc[~rsid_mask, snp_col] = snps_df.loc[~rsid_mask, chrom_col].astype(str) + "_" + snps_df.loc[~rsid_mask, pos_col].astype(str) + "_" + snps_df.loc[~rsid_mask, ref_col].astype(str) + "_" + snps_df.loc[~rsid_mask, alt_col].astype(str) + "_" + build_suffix
+        snps_df.loc[~rsid_mask, snp_col] = (
+            snps_df.loc[~rsid_mask, chrom_col].astype(str)
+            + "_"
+            + snps_df.loc[~rsid_mask, pos_col].astype(str)
+            + "_"
+            + snps_df.loc[~rsid_mask, ref_col].astype(str)
+            + "_"
+            + snps_df.loc[~rsid_mask, alt_col].astype(str)
+            + "_"
+            + build_suffix
+        )
     else:
         # get alleles from snp column
         alleles = snps_df[snp_col].str.split("_", expand=True)
         alleles.columns = ["chrom", "pos", "ref", "alt", "build"]
-        snps_df.loc[~rsid_mask, snp_col] = snps_df.loc[~rsid_mask, chrom_col].astype(str) + "_" + snps_df.loc[~rsid_mask, pos_col].astype(str) + "_" + alleles.loc[~rsid_mask, "ref"].astype(str) + "_" + alleles.loc[~rsid_mask, "alt"].astype(str) + "_" + build_suffix
+        snps_df.loc[~rsid_mask, snp_col] = (
+            snps_df.loc[~rsid_mask, chrom_col].astype(str)
+            + "_"
+            + snps_df.loc[~rsid_mask, pos_col].astype(str)
+            + "_"
+            + alleles.loc[~rsid_mask, "ref"].astype(str)
+            + "_"
+            + alleles.loc[~rsid_mask, "alt"].astype(str)
+            + "_"
+            + build_suffix
+        )
 
     return snps_df
+
+
+def parse_region_text(regiontext, build):
+    if build not in ["hg19", "hg38"]:
+        raise InvalidUsage(f"Unrecognized build: {build}", status_code=410)
+    regiontext = regiontext.strip().replace(" ", "").replace(",", "").replace("chr", "")
+    if not re.search(
+        r"^\d+:\d+-\d+$", regiontext.replace("X", "23").replace("x", "23")
+    ):
+        raise InvalidUsage(
+            f"Invalid coordinate format. '{regiontext}' e.g. 1:205,000,000-206,000,000",
+            status_code=410,
+        )
+    chrom = regiontext.split(":")[0].lower().replace("chr", "").upper()
+    pos = regiontext.split(":")[1]
+    startbp = pos.split("-")[0].replace(",", "")
+    endbp = pos.split("-")[1].replace(",", "")
+    chromLengths = pd.read_csv(
+        os.path.join(app.config["LF_DATA_FOLDER"], build + "_chrom_lengths.txt"),
+        sep="\t",
+        encoding="utf-8",
+    )
+    chromLengths.set_index("sequence", inplace=True)
+    if chrom in ["X", "x"] or chrom == "23":
+        chrom = 23
+        maxChromLength = chromLengths.loc["chrX", "length"]
+        try:
+            startbp = int(startbp)
+            endbp = int(endbp)
+        except:
+            raise InvalidUsage(
+                f"Invalid coordinates input: '{regiontext}'", status_code=410
+            )
+    else:
+        try:
+            chrom = int(chrom)
+            if chrom == 23:
+                maxChromLength = chromLengths.loc["chrX", "length"]
+            else:
+                maxChromLength = chromLengths.loc["chr" + str(chrom), "length"]
+            startbp = int(startbp)
+            endbp = int(endbp)
+        except:
+            raise InvalidUsage(
+                f"Invalid coordinates input '{regiontext}'", status_code=410
+            )
+    if chrom < 1 or chrom > 23:
+        raise InvalidUsage("Chromosome input must be between 1 and 23", status_code=410)
+    elif startbp > endbp:
+        raise InvalidUsage(
+            "Starting chromosome basepair position is greater than ending basepair position",
+            status_code=410,
+        )
+    elif startbp > maxChromLength or endbp > maxChromLength:
+        raise InvalidUsage("Start or end coordinates are out of range", status_code=410)
+    elif (endbp - startbp) > GENOMIC_WINDOW_LIMIT:
+        raise InvalidUsage(
+            f"Entered region size is larger than {GENOMIC_WINDOW_LIMIT/1e6} Mbp",
+            status_code=410,
+        )
+    else:
+        return chrom, startbp, endbp
