@@ -72,7 +72,7 @@ def get_variants_by_region(start: int, end: int, chrom: str, gtex_version: str) 
                 "b37VariantId": "variant_id_b37",
                 "pos": "variant_pos",
                 "maf01": "num_alt_per_site",
-                "variant_id": "variant_id",
+                "variantId": "variant_id",
                 "chromosome": "chr",
             }) \
             .drop(columns=["snpIdUpper", "datasetId", "shorthand"]) \
