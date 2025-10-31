@@ -78,24 +78,18 @@ def get_gtex_data(version, tissue, gene, snp_list, raiseErrors=False) -> pd.Data
             "Variant naming format not supported; ensure all are rs ID's are formatted as chrom_pos_ref_alt_b37 eg. 1_205720483_G_A_b37"
         )
     hugo_gene, ensg_gene = gene_names(gene, build)
-    #    print(f'Gathering eQTL data for {hugo_gene} ({ensg_gene}) in {tissue}')
     response_df = get_gtex(version.upper(), tissue, gene)
     if "error" not in response_df.columns:
         eqtl = response_df
         if rsids:
             snp_df = pd.DataFrame(snp_list, columns=["rs_id"])
-            # idx = pd.Index(list(snp_df['rs_id']))
             idx2 = pd.Index(list(eqtl["rs_id"]))
-            # snp_df = snp_df[~idx.duplicated()]
             eqtl = eqtl[~idx2.duplicated()]
-            # print('snp_df.shape' + str(snp_df.shape))
             gtex_data = (
                 snp_df.reset_index()
                 .merge(eqtl, on="rs_id", how="left", sort=False)
                 .sort_values("index")
             )
-            # print('gtex_data.shape' + str(gtex_data.shape))
-            # print(gtex_data)
         else:
             snp_df = pd.DataFrame(snp_list, columns=["variant_id"])
             gtex_data = (
