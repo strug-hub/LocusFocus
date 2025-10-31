@@ -145,7 +145,7 @@ collapsed_genes_df_hg38 = pd.read_csv(
 collapsed_genes_df = collapsed_genes_df_hg19  # For now
 LD_MAT_DIAG_CONSTANT = 1e-6
 
-available_gtex_versions = ["V8"]
+available_gtex_versions = ["V8", "V10"]
 valid_populations = ["EUR", "AFR", "EAS", "SAS", "AMR", "ASN", "NFE"]
 
 
@@ -1292,9 +1292,8 @@ def list_tissues(version):
         tissues = list(db.list_collection_names())
         tissues.remove("variant_table")
     elif version == "V10":
-        version = f"gtex_{version.lower()}"
-        _tissues = get_tissue_site_details(version)
-        tissues = [d.tissue_site_detail_id for d in _tissues.data]
+        db = client.GTEx_V10
+        tissues = list(db.list_collection_names())
 
     return jsonify(sorted(tissues))
 
@@ -1448,7 +1447,7 @@ def update_colocalizing_gene(session_id, newgene):
     snp_list = data["snps"]
     gtex_version = data["gtex_version"]
     if gtex_version.upper() not in available_gtex_versions:
-        gtex_version = "V8"
+        gtex_version = "V10"
     # gtex_data = {}
     for tissue in tqdm(gtex_tissues):
         data[tissue] = pd.DataFrame({})

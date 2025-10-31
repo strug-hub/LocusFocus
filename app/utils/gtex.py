@@ -5,12 +5,10 @@ from pymongo import MongoClient
 
 
 from app import mongo
+from app.utils.variants import get_variants_by_region
 from app.utils import parse_region_text
-from app.utils.apis.gtex import get_variants
 from app.utils.gencode import collapsed_genes_df_hg19, collapsed_genes_df_hg38
 from app.utils.errors import InvalidUsage
-from app.utils.helpers import validate_chromosome
-
 
 client = None  # type: ignore
 
@@ -18,81 +16,15 @@ with app.app_context():
     client: MongoClient = mongo.cx  # type: ignore
 
 
-def get_variants_by_region(start: int, end: int, chrom: str, gtex_version: str) -> pd.DataFrame:
-    """
-    Given a region, return a dataframe of variants within that region, inclusive.
-
-    :param start: The start position of the region
-    :type start: int
-    :param end: The end position of the region
-    :type end: int
-    :param chrom: The chromosome of the region. May be prefixed with "chr" and may use X and Y for 23.
-    :type chrom: str
-    :param gtex_version: The GTEx version to use. Either "V8" or "V10"
-    :type gtex_version: str
-    :return: A dataframe of variants within the region
-    """
-    if start > end:
-        raise ValueError("Start must be less than or equal to end")
-    if start < 0:
-        raise ValueError("Start must be greater than or equal to 0")
-
-    chrom = str(chrom).lower().replace("chr", "").replace("x", "23")
-    if not validate_chromosome(chrom, prefix="", x_y_numeric=True):
-        raise ValueError("Invalid chromosome format")
-
-    if gtex_version.upper() not in ["V8", "V10"]:
-        raise ValueError("gtex_version must be either 'V8' or 'V10'")
-    
-    if gtex_version.upper() == "V8":
-        db = client.GTEx_V8
-        collection = db["variant_table"]
-        variants_query = collection.find(
-            {
-                "$and": [
-                    {"chr": int(chrom)},
-                    {"variant_pos": {"$gte": start, "$lte": end}},
-                ]
-            }
-        )
-        variants_list = list(variants_query)
-        variants_df = pd.DataFrame(variants_list)
-        if len(variants_df) == 0:
-            return variants_df
-        variants_df = variants_df.drop(["_id"], axis=1).rename(columns={"rs_id_dbSNP151_GRCh38p7": "rs_id"})
-        return variants_df
-    elif gtex_version.upper() == "V10":
-        # We use the API, but convert the dataframe so that the format is the same as V8 db
-        chrom = "chr" + chrom
-        variant_response = get_variants(dataset_id="gtex_v10", start=start, end=end, chromosome=chrom)
-        variants_df = pd.DataFrame([v.to_dict() for v in variant_response.data])
-        if len(variants_df) == 0:
-            return variants_df
-
-        variants_df = variants_df.rename(columns={
-                "snpId": "rs_id",
-                "b37VariantId": "variant_id_b37",
-                "pos": "variant_pos",
-                "maf01": "num_alt_per_site",
-                "variant_id": "variant_id",
-                "chromosome": "chr",
-            }) \
-            .drop(columns=["snpIdUpper", "datasetId", "shorthand"]) \
-            .astype({"num_alt_per_site": int})
-        
-        variants_df["chr"] = [int(x.value.replace("chr", "")) for x in variants_df["chr"]]
-        variants_df["variant_id"] = variants_df["variant_id"].str.replace("chr", "")
-
-        return variants_df
-
-
 # This is the main function to extract the data for a tissue and gene_id:
 def get_gtex(version, tissue, gene_id):
     if version.upper() == "V8":
         db = client.GTEx_V8
-        collapsed_genes_df = collapsed_genes_df_hg38
+    elif version.upper() == "V10":
+        db = client.GTEx_V10
     elif version.upper() == "V7":
         raise InvalidUsage("Cannot standardize SNPs to hg19; GTEx V7 is no longer available.")
+    collapsed_genes_df = collapsed_genes_df_hg38
 
     tissue = tissue.replace(" ", "_")
     # gene_id = gene_id.upper()
@@ -108,7 +40,8 @@ def get_gtex(version, tissue, gene_id):
         ensg_name = list(collapsed_genes_df["ENSG_name"])[i]
     else:
         raise InvalidUsage(f"Gene name {gene_id} not found", status_code=410)
-    results = list(collection.find({"gene_id": ensg_name}))
+    ensg_name = ensg_name.rsplit(".", 1)[0]  # remove version
+    results = list(collection.find({"gene_id": { "$regex": f"^{ensg_name}.*" }}))
     response = []
     try:
         response = results[0]["eqtl_variants"]
@@ -124,9 +57,10 @@ def get_gtex(version, tissue, gene_id):
 
 # Function to merge the GTEx data with a particular snp_list
 def get_gtex_data(version, tissue, gene, snp_list, raiseErrors=False) -> pd.DataFrame:
-    build = "hg19"
-    if version.upper() == "V8":
-        build = "hg38"
+    if version.upper() == "V7":
+        raise InvalidUsage("GTEx V7 is no longer available. Please use GTEx V8 or GTEx V10.")
+    assert version.upper() in ["V8", "V10"]
+    build = "hg38"
     gtex_data = []
     rsids = True
     rsid_snps = [x for x in snp_list if x.startswith("rs")]
@@ -145,28 +79,18 @@ def get_gtex_data(version, tissue, gene, snp_list, raiseErrors=False) -> pd.Data
             "Variant naming format not supported; ensure all are rs ID's are formatted as chrom_pos_ref_alt_b37 eg. 1_205720483_G_A_b37"
         )
     hugo_gene, ensg_gene = gene_names(gene, build)
-    #    print(f'Gathering eQTL data for {hugo_gene} ({ensg_gene}) in {tissue}')
-    response_df = pd.DataFrame({})
-    if version.upper() == "V7":
-        raise InvalidUsage("GTEx V7 is no longer available.")
-    elif version.upper() == "V8":
-        response_df = get_gtex("V8", tissue, gene)
+    response_df = get_gtex(version.upper(), tissue, gene)
     if "error" not in response_df.columns:
         eqtl = response_df
         if rsids:
             snp_df = pd.DataFrame(snp_list, columns=["rs_id"])
-            # idx = pd.Index(list(snp_df['rs_id']))
             idx2 = pd.Index(list(eqtl["rs_id"]))
-            # snp_df = snp_df[~idx.duplicated()]
             eqtl = eqtl[~idx2.duplicated()]
-            # print('snp_df.shape' + str(snp_df.shape))
             gtex_data = (
                 snp_df.reset_index()
                 .merge(eqtl, on="rs_id", how="left", sort=False)
                 .sort_values("index")
             )
-            # print('gtex_data.shape' + str(gtex_data.shape))
-            # print(gtex_data)
         else:
             snp_df = pd.DataFrame(snp_list, columns=["variant_id"])
             gtex_data = (
@@ -224,19 +148,19 @@ def get_gtex_data_pvalues(eqtl_data, snp_list):
     return list(gtex_data["pval"])
 
 
-def get_gtex_snp_matches(stdsnplist, regiontxt, build):
+def get_gtex_snp_matches(stdsnplist, regiontxt, build, gtex_version="V10"):
     """
     Return the number of SNPs that can be found in the GTEx database for the given region.
     """
+    assert gtex_version.upper() in ["V8", "V10"]
     # Ensure valid region:
     chrom, startbp, endbp = parse_region_text(regiontxt, build)
     chrom = str(chrom).replace("23", "X")
 
-    # Load GTEx variant lookup table for region indicated
-    db = client.GTEx_V8
+    # Lookup variants in GTEx db
     if build.lower() in ["hg19", "grch37"]:
         raise InvalidUsage("Cannot use GTEx V7 variant table; GTEx V7 is no longer available.")
-    variants_df = get_variants_by_region(int(startbp), int(endbp), str(chrom), "V8")
+    variants_df = get_variants_by_region(int(startbp), int(endbp), str(chrom), gtex_version)
     gtex_std_snplist = list(variants_df["variant_id"])
     isInGTEx = [x for x in stdsnplist if x in gtex_std_snplist]
     return len(isInGTEx)

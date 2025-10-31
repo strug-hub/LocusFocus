@@ -24,7 +24,7 @@ class LiftoverSecondaryDatasets(PipelineStage):
         needs_liftover = False
 
         if payload.get_gtex_version() == "V7":
-            raise InvalidUsage("GTEx V7 is no longer available. Please use GTEx V8.")
+            raise InvalidUsage("GTEx V7 is no longer available. Please use GTEx V8 or GTEx V10.")
         else:
             liftover_target = "hg38"
 
