@@ -40,7 +40,8 @@ def get_gtex(version, tissue, gene_id):
         ensg_name = list(collapsed_genes_df["ENSG_name"])[i]
     else:
         raise InvalidUsage(f"Gene name {gene_id} not found", status_code=410)
-    results = list(collection.find({"gene_id": ensg_name}))
+    ensg_name = ensg_name.rsplit(".", 1)[0]  # remove version
+    results = list(collection.find({"gene_id": { "$regex": f"^{ensg_name}.*" }}))
     response = []
     try:
         response = results[0]["eqtl_variants"]
