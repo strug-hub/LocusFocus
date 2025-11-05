@@ -38,8 +38,6 @@ function plot_heatmap(
       newSSPvalues[i][j] = parseFloat(newSSPvalues[i][j]);
       if ([-2, -3].includes(newSSPvalues[i][j])) {
         newSSPvalues[i][j] = -1;
-      } else if (newSSPvalues[i][j] === -3) {
-        newSSPvalues[i][j] = -1;
       } else {
         if (newSSPvalues[i][j] > 0) {
           num_datasets += 1;
