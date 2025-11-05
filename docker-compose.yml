@@ -10,11 +10,14 @@ services:
       - ./pyproject.toml:/code/pyproject.toml
       - ./poetry.lock:/code/poetry.lock
     network_mode: "host"
+    restart: unless-stopped
     environment:
       - APP_ENV=production
       - FLASK_SECRET_KEY
       - MONGO_CONNECTION_STRING
       - DISABLE_CELERY=false
+      - DISABLE_CACHE=false
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
     entrypoint: ["python", "-m", "gunicorn", "--timeout", "6000", "--chdir", "app", "wsgi:app", "--bind=127.0.0.1:8000", "--name", "locusfocus", "--workers=3"]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000"]
@@ -32,14 +35,21 @@ services:
       - ./pyproject.toml:/code/pyproject.toml
       - ./poetry.lock:/code/poetry.lock
     network_mode: "host"
+    restart: unless-stopped
     environment:
       - APP_ENV=production
       - FLASK_SECRET_KEY
       - MONGO_CONNECTION_STRING
       - DISABLE_CELERY=false
-      - CELERY_BROKER_URL=redis://localhost:6379/0
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@localhost:6379/0
+      - DISABLE_CACHE=false
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
     entrypoint: ["celery", "-A", "app.make_celery.celery_app", "worker", "--loglevel=INFO"]
   redis:
-    image: redis:7.4.2-alpine
+    image: redis:8.2.2-alpine
+    restart: unless-stopped
+    command: ["redis-server", "/etc/redis/redis.conf"]
     # port: 6379
     network_mode: "host"
+    volumes:
+    - ./redis:/etc/redis

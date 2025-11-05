@@ -25,8 +25,10 @@ class ColocalizationPipeline(Pipeline):
         self.pipe(
             CreateSessionStage(),
             CollectUserInputStage(),
-            ReadGWASFileStage(enforce_one_chrom=True),
+            ReadGWASFileStage(enforce_one_chrom=False),
+            LiftoverGWASFile(),
             ReadSecondaryDatasetsStage(),
+            LiftoverSecondaryDatasets(),
             ReportGTExDataStage(),
             SimpleSumSubsetGWASStage(),
             GetLDMatrixStage(),

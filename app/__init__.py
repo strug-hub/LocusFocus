@@ -11,6 +11,7 @@ from flask_talisman import Talisman
 
 from app.commands import register_cli
 from app.config import BaseConfig, DevConfig, ProdConfig
+from app.cache import cache
 
 ConfigClass = ProdConfig if BaseConfig.APP_ENV == "production" else DevConfig
 
@@ -65,7 +66,13 @@ def create_app(config_class=ConfigClass):
     talisman.init_app(app, content_security_policy=app.config["CSP_POLICY"])
     mongo.init_app(app)
     celery_init_app(app)
+    cache.init_app(app)
     register_cli(app)
+
+    if app.config["CACHE_TYPE"] == "NullCache":
+        app.logger.debug("Cache is disabled")
+    else:
+        app.logger.debug(f"Cache is enabled: {app.config['CACHE_TYPE']}")
 
     with app.app_context():
         from app import routes

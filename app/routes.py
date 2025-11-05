@@ -8,7 +8,6 @@ from tqdm import tqdm
 import uuid
 import subprocess
 from datetime import datetime
-from bs4 import BeautifulSoup as bs
 import re
 import pysam
 import glob
@@ -31,13 +30,17 @@ from pymongo.errors import ConnectionFailure
 
 from app.tasks import get_is_celery_running, run_pipeline_async
 from app.utils import download_file
+from app.utils.gencode import get_genes_by_location
+from app.utils.gtex import get_gtex, get_gtex_data
+from app.utils.apis.gtex import get_tissue_site_details
 from app.utils.errors import InvalidUsage, ServerError
 from app.utils.numpy_encoder import NumpyEncoder
 
 from app import ext, mongo
+from app.cache import cache
 
 client = mongo.cx
-db = client.GTEx_V7
+db = client.GTEx_V8
 
 # import getSimpleSumStats
 
@@ -142,7 +145,7 @@ collapsed_genes_df_hg38 = pd.read_csv(
 collapsed_genes_df = collapsed_genes_df_hg19  # For now
 LD_MAT_DIAG_CONSTANT = 1e-6
 
-available_gtex_versions = ["V7", "V8"]
+available_gtex_versions = ["V8", "V10"]
 valid_populations = ["EUR", "AFR", "EAS", "SAS", "AMR", "ASN", "NFE"]
 
 
@@ -433,291 +436,7 @@ def fetchSNV(chrom, bp, ref, build):
                 break
     return variantid
 
-
-def standardizeSNPs(variantlist, regiontxt, build):
-    """
-    Input: Variant names in any of these formats: rsid, chrom_pos_ref_alt, chrom:pos_ref_alt, chrom:pos_ref_alt_b37/b38
-    Output: chrom_pos_ref_alt_b37/b38 variant ID format, but looks at GTEx variant lookup table first.
-    In the case of multi-allelic variants (e.g. rs2211330(T/A,C)), formats such as 1_205001063_T_A,C_b37 are accepted
-    If variant ID format is chr:pos, and the chr:pos has a unique biallelic SNV, then it will be assigned that variant
-    """
-
-    if all(x == "." for x in variantlist):
-        raise InvalidUsage("No variants provided")
-
-    if np.nan in variantlist:
-        raise InvalidUsage(
-            "Missing variant IDs detected in row(s): "
-            + str([i + 1 for i, x in enumerate(variantlist) if str(x) == "nan"])
-        )
-
-    # Ensure valid region:
-    chrom, startbp, endbp = parseRegionText(regiontxt, build)
-    chrom = str(chrom).replace("23", "X")
-
-    # Load GTEx variant lookup table for region indicated
-    db = client.GTEx_V7
-    rsid_colname = "rs_id_dbSNP147_GRCh37p13"
-    if build.lower() in ["hg38", "grch38"]:
-        db = client.GTEx_V8
-        rsid_colname = "rs_id_dbSNP151_GRCh38p7"
-    collection = db["variant_table"]
-    variants_query = collection.find(
-        {
-            "$and": [
-                {"chr": int(chrom.replace("X", "23"))},
-                {"variant_pos": {"$gte": int(startbp), "$lte": int(endbp)}},
-            ]
-        }
-    )
-    variants_list = list(variants_query)
-    variants_df = pd.DataFrame(variants_list)
-    variants_df = variants_df.drop(["_id"], axis=1)
-
-    # Load dbSNP151 SNP names from region indicated
-    dbsnp_filepath = ""
-    suffix = "b37"
-    if build.lower() in ["hg38", "grch38"]:
-        suffix = "b38"
-        dbsnp_filepath = os.path.join(
-            app.config["LF_DATA_FOLDER"], "dbSNP151", "GRCh38p7", "All_20180418.vcf.gz"
-        )
-    else:
-        suffix = "b37"
-        dbsnp_filepath = os.path.join(
-            app.config["LF_DATA_FOLDER"], "dbSNP151", "GRCh37p13", "All_20180423.vcf.gz"
-        )
-
-    # Load dbSNP file
-    # delayeddf = delayed(pd.read_csv)(dbsnp_filepath,skiprows=getNumHeaderLines(dbsnp_filepath),sep='\t')
-    # dbsnp = dd.from_delayed(delayeddf)
-    tbx = pysam.TabixFile(dbsnp_filepath)
-    #    print('Compiling list of known variants in the region from dbSNP151')
-    chromcol = []
-    poscol = []
-    idcol = []
-    refcol = []
-    altcol = []
-    variantid = []  # in chr_pos_ref_alt_build format
-    rsids = dict(
-        {}
-    )  # a multi-allelic variant rsid (key) can be represented in several variantid formats (values)
-    for row in tbx.fetch(str(chrom), startbp, endbp):
-        rowlist = str(row).split("\t")
-        chromi = rowlist[0].replace("chr", "")
-        posi = rowlist[1]
-        idi = rowlist[2]
-        refi = rowlist[3]
-        alti = rowlist[4]
-        varstr = "_".join([chromi, posi, refi, alti, suffix])
-        chromcol.append(chromi)
-        poscol.append(posi)
-        idcol.append(idi)
-        refcol.append(refi)
-        altcol.append(alti)
-        variantid.append(varstr)
-        rsids[idi] = [varstr]
-        altalleles = alti.split(
-            ","
-        )  # could have more than one alt allele (multi-allelic)
-        if len(altalleles) > 1:
-            varstr = "_".join([chromi, posi, refi, altalleles[0], suffix])
-            rsids[idi].append(varstr)
-            for i in np.arange(len(altalleles) - 1):
-                varstr = "_".join([chromi, posi, refi, altalleles[i + 1], suffix])
-                rsids[idi].append(varstr)
-
-    #    print('Cleaning and mapping list of variants')
-    variantlist = [
-        asnp.split(";")[0].replace(":", "_").replace(".", "") for asnp in variantlist
-    ]  # cleaning up the SNP names a bit
-    stdvariantlist = []
-    for variant in variantlist:
-        if variant == "":
-            stdvariantlist.append(".")
-            continue
-        variantstr = variant.replace("chr", "")
-        if re.search("^23_", variantstr):
-            variantstr = variantstr.replace("23_", "X_", 1)
-        if variantstr.startswith("rs"):
-            try:
-                # Here's the difference from the first function version (we look at GTEx first)
-                if variant in list(variants_df[rsid_colname]):
-                    stdvar = (
-                        variants_df["variant_id"]
-                        .loc[variants_df[rsid_colname] == variant]
-                        .to_list()[0]
-                    )
-                    stdvariantlist.append(stdvar)
-                else:
-                    stdvariantlist.append(rsids[variantstr][0])
-            except:
-                stdvariantlist.append(".")
-        elif re.search(
-            r"^\d+_\d+_[A,T,G,C]+_[A,T,C,G]+,*", variantstr.replace("X", "23")
-        ):
-            strlist = variantstr.split("_")
-            strlist = list(filter(None, strlist))  # remove empty strings
-            try:
-                achr, astart, aend = parseRegionText(
-                    strlist[0] + ":" + strlist[1] + "-" + str(int(strlist[1]) + 1),
-                    build,
-                )
-                achr = str(achr).replace("23", "X")
-                if achr == str(chrom) and astart >= startbp and astart <= endbp:
-                    variantstr = (
-                        variantstr.replace("_" + str(suffix), "") + "_" + str(suffix)
-                    )
-                    if len(variantstr.split("_")) == 5:
-                        stdvariantlist.append(variantstr)
-                    else:
-                        raise InvalidUsage(
-                            f"Variant format not recognizable: {variant}. Is it from another coordinate build system?",
-                            status_code=410,
-                        )
-                else:
-                    stdvariantlist.append(".")
-            except:
-                raise InvalidUsage(f"Problem with variant {variant}", status_code=410)
-        elif re.search(r"^\d+_\d+_*[A,T,G,C]*", variantstr.replace("X", "23")):
-            strlist = variantstr.split("_")
-            strlist = list(filter(None, strlist))  # remove empty strings
-            try:
-                achr, astart, aend = parseRegionText(
-                    strlist[0] + ":" + strlist[1] + "-" + str(int(strlist[1]) + 1),
-                    build,
-                )
-                achr = str(achr).replace("23", "X")
-                if achr == str(chrom) and astart >= startbp and astart <= endbp:
-                    if len(strlist) == 3:
-                        aref = strlist[2]
-                    else:
-                        aref = ""
-                    stdvariantlist.append(fetchSNV(achr, astart, aref, build))
-                else:
-                    stdvariantlist.append(".")
-            except:
-                raise InvalidUsage(f"Problem with variant {variant}", status_code=410)
-        else:
-            raise InvalidUsage(
-                f"Variant format not recognized: {variant}", status_code=410
-            )
-    return stdvariantlist
-
-
-def cleanSNPs(variantlist, regiontext, build):
-    """
-    Parameters
-    ----------
-    variantlist : list
-        list of variant IDs in rs id or chr_pos, chr_pos_ref_alt, chr_pos_ref_alt_build, etc formats
-    regiontext : str
-        the region of interest in chr:start-end format
-    build : str
-        build.lower() in ['hg19','hg38', 'grch37', 'grch38'] must be true
-
-    Returns
-    -------
-    A cleaner set of SNP names
-        rs id's are cleaned to contain only one,
-        non-rs id formats are standardized to chr_pos_ref_alt_build format)
-        any SNPs not in regiontext are returned as '.'
-    """
-
-    variantlist = [
-        asnp.split(";")[0].replace(":", "_").replace(".", "") for asnp in variantlist
-    ]  # cleaning up the SNP names a bit
-    std_varlist = standardizeSNPs(variantlist, regiontext, build)
-    final_varlist = [
-        e if (e.startswith("rs") and std_varlist[i] != ".") else std_varlist[i]
-        for i, e in enumerate(variantlist)
-    ]
-
-    return final_varlist
-
-
-def torsid(variantlist, regiontext, build):
-    """
-    Parameters
-    ----------
-    variantlist : list
-        List of variants in either rs id or other chr_pos, chr_pos_ref, chr_pos_ref_alt, chr_pos_ref_alt_build format.
-
-    Returns
-    -------
-    rsidlist : list
-        Corresponding rs id in the region if found.
-        Otherwise returns '.'
-    """
-
-    if all(x == "." for x in variantlist):
-        raise InvalidUsage("No variants provided")
-
-    variantlist = cleanSNPs(variantlist, regiontext, build)
-
-    chrom, startbp, endbp = parseRegionText(regiontext, build)
-    chrom = str(chrom).replace("23", "X")
-
-    # Load dbSNP151 SNP names from region indicated
-    dbsnp_filepath = ""
-    suffix = "b37"
-    if build.lower() in ["hg38", "grch38"]:
-        suffix = "b38"
-        dbsnp_filepath = os.path.join(
-            app.config["LF_DATA_FOLDER"], "dbSNP151", "GRCh38p7", "All_20180418.vcf.gz"
-        )
-    else:
-        suffix = "b37"
-        dbsnp_filepath = os.path.join(
-            app.config["LF_DATA_FOLDER"], "dbSNP151", "GRCh37p13", "All_20180423.vcf.gz"
-        )
-
-    # Load dbSNP file
-    tbx = pysam.TabixFile(dbsnp_filepath)
-    #    print('Compiling list of known variants in the region from dbSNP151')
-    chromcol = []
-    poscol = []
-    idcol = []
-    refcol = []
-    altcol = []
-    rsid = dict({})  # chr_pos_ref_alt_build (keys) for rsid output (values)
-    for row in tbx.fetch(str(chrom), startbp, endbp):
-        rowlist = str(row).split("\t")
-        chromi = rowlist[0].replace("chr", "")
-        posi = rowlist[1]
-        idi = rowlist[2]
-        refi = rowlist[3]
-        alti = rowlist[4]
-        varstr = "_".join([chromi, posi, refi, alti, suffix])
-        chromcol.append(chromi)
-        poscol.append(posi)
-        idcol.append(idi)
-        refcol.append(refi)
-        altcol.append(alti)
-        rsid[varstr] = idi
-        altalleles = alti.split(
-            ","
-        )  # could have more than one alt allele (multi-allelic)
-        if len(altalleles) > 1:
-            varstr = "_".join([chromi, posi, refi, altalleles[0], suffix])
-            rsid[varstr] = idi
-            for i in np.arange(len(altalleles) - 1):
-                varstr = "_".join([chromi, posi, refi, altalleles[i + 1], suffix])
-                rsid[varstr] = idi
-
-    finalvarlist = []
-    for variant in variantlist:
-        if not variant.startswith("rs"):
-            try:
-                finalvarlist.append(rsid[variant])
-            except:
-                finalvarlist.append(".")
-        else:
-            finalvarlist.append(variant)
-
-    return finalvarlist
-
-
+ 
 def decomposeVariant(variant_list):
     """
     Parameters
@@ -784,32 +503,6 @@ def addVariantID(gwas_data, chromcol, poscol, refcol, altcol, build="hg19"):
         varlist.append("_".join([str(chrom), str(pos), ref, alt, buildstr]))
     gwas_data.loc[:, DEFAULT_FORM_VALUE_DICT[FormID.SNP_COL]] = varlist
     return gwas_data
-
-
-def verifyStdSNPs(stdsnplist, regiontxt, build):
-    # Ensure valid region:
-    chrom, startbp, endbp = parseRegionText(regiontxt, build)
-    chrom = str(chrom).replace("23", "X")
-
-    # Load GTEx variant lookup table for region indicated
-    db = client.GTEx_V7
-    if build.lower() in ["hg38", "grch38"]:
-        db = client.GTEx_V8
-    collection = db["variant_table"]
-    variants_query = collection.find(
-        {
-            "$and": [
-                {"chr": int(chrom.replace("X", "23"))},
-                {"variant_pos": {"$gte": int(startbp), "$lte": int(endbp)}},
-            ]
-        }
-    )
-    variants_list = list(variants_query)
-    variants_df = pd.DataFrame(variants_list)
-    variants_df = variants_df.drop(["_id"], axis=1)
-    gtex_std_snplist = list(variants_df["variant_id"])
-    isInGTEx = [x for x in stdsnplist if x in gtex_std_snplist]
-    return len(isInGTEx)
 
 
 def subsetLocus(build, summaryStats, regiontext, chromcol, poscol, pcol):
@@ -1050,32 +743,6 @@ def subset_gwas_data_to_entered_columns(
         column_dict[FormID.SNP_COL] = DEFAULT_FORM_VALUE_DICT[FormID.SNP_COL]
 
     return gwas_data, column_dict, infer_variant
-
-
-def standardize_gwas_variant_ids(
-    column_dict, gwas_data, regionstr: str, coordinate: str
-):
-    # standardize variant id's:
-    variant_list = standardizeSNPs(
-        list(gwas_data[column_dict[FormID.SNP_COL]]), regionstr, coordinate
-    )
-    if all(x == "." for x in variant_list):
-        raise InvalidUsage(
-            f"None of the variants provided could be mapped to {regionstr}!",
-            status_code=410,
-        )
-    # get the chrom, pos, ref, alt info from the standardized variant_list
-    vardf = decomposeVariant(variant_list)
-    gwas_data = pd.concat([vardf, gwas_data], axis=1)
-    column_dict[FormID.CHROM_COL] = DEFAULT_FORM_VALUE_DICT[FormID.CHROM_COL]
-    column_dict[FormID.POS_COL] = DEFAULT_FORM_VALUE_DICT[FormID.POS_COL]
-    column_dict[FormID.REF_COL] = DEFAULT_FORM_VALUE_DICT[FormID.REF_COL]
-    column_dict[FormID.ALT_COL] = DEFAULT_FORM_VALUE_DICT[FormID.ALT_COL]
-    gwas_data = gwas_data.loc[
-        [str(x) != "." for x in list(gwas_data[column_dict[FormID.CHROM_COL]])]
-    ].copy()
-    gwas_data.reset_index(drop=True, inplace=True)
-    return gwas_data, column_dict
 
 
 def clean_summary_datasets(
@@ -1422,169 +1089,6 @@ def plink_ld_pairwise(build, pop, chrom, snp_positions, snp_pvalues, outfilename
     return merged_df, new_lead_snp_position
 
 
-####################################
-# Getting GTEx Data from Local MongoDB Database
-####################################
-
-
-# This is the main function to extract the data for a tissue and gene_id:
-def get_gtex(version, tissue, gene_id):
-    if version.upper() == "V8":
-        db = client.GTEx_V8
-        collapsed_genes_df = collapsed_genes_df_hg38
-    elif version.upper() == "V7":
-        db = client.GTEx_V7
-        collapsed_genes_df = collapsed_genes_df_hg19
-
-    tissue = tissue.replace(" ", "_")
-    # gene_id = gene_id.upper()
-    ensg_name = ""
-    if tissue not in db.list_collection_names():
-        raise InvalidUsage(f"Tissue {tissue} not found", status_code=410)
-    collection = db[tissue]
-    if gene_id.startswith("ENSG"):
-        i = list(collapsed_genes_df["ENSG_name"]).index(gene_id)
-        ensg_name = list(collapsed_genes_df["ENSG_name"])[i]
-    elif gene_id in list(collapsed_genes_df["name"]):
-        i = list(collapsed_genes_df["name"]).index(gene_id)
-        ensg_name = list(collapsed_genes_df["ENSG_name"])[i]
-    else:
-        raise InvalidUsage(f"Gene name {gene_id} not found", status_code=410)
-    results = list(collection.find({"gene_id": ensg_name}))
-    response = []
-    try:
-        response = results[0]["eqtl_variants"]
-    except:
-        return pd.DataFrame([{"error": f"No eQTL data for {gene_id} in {tissue}"}])
-    results_df = pd.DataFrame(response)
-    chrom = int(list(results_df["variant_id"])[0].split("_")[0].replace("X", "23"))
-    positions = [int(x.split("_")[1]) for x in list(results_df["variant_id"])]
-    variants_query = db.variant_table.find(
-        {
-            "$and": [
-                {"chr": chrom},
-                {"variant_pos": {"$gte": min(positions), "$lte": max(positions)}},
-            ]
-        }
-    )
-    variants_list = list(variants_query)
-    variants_df = pd.DataFrame(variants_list)
-    variants_df = variants_df.drop(["_id"], axis=1)
-    x = pd.merge(results_df, variants_df, on="variant_id")
-    if version.upper() == "V7":
-        x.rename(columns={"rs_id_dbSNP147_GRCh37p13": "rs_id"}, inplace=True)
-    elif version.upper() == "V8":
-        x.rename(columns={"rs_id_dbSNP151_GRCh38p7": "rs_id"}, inplace=True)
-    return x
-
-
-# Function to merge the GTEx data with a particular snp_list
-def get_gtex_data(version, tissue, gene, snp_list, raiseErrors=False):
-    build = "hg19"
-    if version.upper() == "V8":
-        build = "hg38"
-    gtex_data = []
-    rsids = True
-
-    has_rsid_snps = any(x.startswith("rs") for x in snp_list)
-    has_b37_snps = any(x.endswith("_b37") for x in snp_list)
-    has_b38_snps = any(x.endswith("_b38") for x in snp_list)
-
-    if has_rsid_snps and (has_b37_snps or has_b38_snps):
-        raise InvalidUsage(
-            "There is a mix of rsid and other variant id formats; please use a consistent format"
-        )
-    elif has_rsid_snps:
-        rsids = True
-    elif has_b37_snps or has_b38_snps:
-        rsids = False
-    else:
-        raise InvalidUsage(
-            "Variant naming format not supported; ensure all are rs ID's are formatted as chrom_pos_ref_alt_b37 eg. 1_205720483_G_A_b37"
-        )
-    hugo_gene, ensg_gene = genenames(gene, build)
-    #    print(f'Gathering eQTL data for {hugo_gene} ({ensg_gene}) in {tissue}')
-    response_df = pd.DataFrame({})
-    if version.upper() == "V7":
-        response_df = get_gtex("V7", tissue, gene)
-    elif version.upper() == "V8":
-        response_df = get_gtex("V8", tissue, gene)
-    if "error" not in response_df.columns:
-        eqtl = response_df
-        if rsids:
-            snp_df = pd.DataFrame(snp_list, columns=["rs_id"])
-            # idx = pd.Index(list(snp_df['rs_id']))
-            idx2 = pd.Index(list(eqtl["rs_id"]))
-            # snp_df = snp_df[~idx.duplicated()]
-            eqtl = eqtl[~idx2.duplicated()]
-            # print('snp_df.shape' + str(snp_df.shape))
-            gtex_data = (
-                snp_df.reset_index()
-                .merge(eqtl, on="rs_id", how="left", sort=False)
-                .sort_values("index")
-            )
-            # print('gtex_data.shape' + str(gtex_data.shape))
-            # print(gtex_data)
-        else:
-            # Make sure that SNP ID format is correct
-            # Remove 'chr' from chrom part
-            snp_list = [x.replace("chr", "") for x in snp_list]
-            snp_df = pd.DataFrame(snp_list, columns=["variant_id"])
-            gtex_data = (
-                snp_df.reset_index()
-                .merge(eqtl, on="variant_id", how="left", sort=False)
-                .sort_values("index")
-            )
-    else:
-        try:
-            error_message = list(response_df["error"])[0]
-            gtex_data = pd.DataFrame({})
-        except:
-            if raiseErrors:
-                raise InvalidUsage(
-                    "No response for tissue "
-                    + tissue.replace("_", " ")
-                    + " and gene "
-                    + hugo_gene
-                    + " ( "
-                    + ensg_gene
-                    + " )",
-                    status_code=410,
-                )
-    return gtex_data
-
-
-# This function simply merges the eqtl_data extracted with the snp_list,
-# then returns a list of the eQTL pvalues for snp_list (if available)
-def get_gtex_data_pvalues(eqtl_data, snp_list):
-    rsids = True
-    if snp_list[0].startswith("rs"):
-        rsids = True
-    elif snp_list[0].endswith("_b37"):
-        rsids = False
-    elif snp_list[0].endswith("_b38"):
-        rsids = False
-    else:
-        raise InvalidUsage(
-            "Variant naming format not supported; ensure all are rs ID's or formatted as chrom_pos_ref_alt_b37 eg. 1_205720483_G_A_b37"
-        )
-    if rsids:
-        gtex_data = pd.merge(
-            eqtl_data,
-            pd.DataFrame(snp_list, columns=["rs_id"]),
-            on="rs_id",
-            how="right",
-        )
-    else:
-        gtex_data = pd.merge(
-            eqtl_data,
-            pd.DataFrame(snp_list, columns=["variant_id"]),
-            on="variant_id",
-            how="right",
-        )
-    return list(gtex_data["pval"])
-
-
 def read_gwasfile(infile, sep="\t"):
     try:
         gwas_data = pd.read_csv(infile, sep=sep, encoding="utf-8")
@@ -1773,40 +1277,25 @@ def getGeneNames(build):
 
 @app.route("/genenames/<build>/<chrom>/<startbp>/<endbp>")
 def getGenesInRange(build, chrom, startbp, endbp):
-    collapsed_genes_df = collapsed_genes_df_hg19
-    if build.lower() == "hg38":
-        collapsed_genes_df = collapsed_genes_df_hg38
-    regiontext = str(chrom) + ":" + startbp + "-" + endbp
-    chrom, startbp, endbp = parseRegionText(regiontext, build)
-    genes_to_draw = collapsed_genes_df.loc[
-        (collapsed_genes_df["chrom"] == ("chr" + str(chrom).replace("23", "X")))
-        & (
-            (
-                (collapsed_genes_df["txStart"] >= startbp)
-                & (collapsed_genes_df["txStart"] <= endbp)
-            )
-            | (
-                (collapsed_genes_df["txEnd"] >= startbp)
-                & (collapsed_genes_df["txEnd"] <= endbp)
-            )
-            | (
-                (collapsed_genes_df["txStart"] <= startbp)
-                & (collapsed_genes_df["txEnd"] >= endbp)
-            )
-        )
-    ]
-    return jsonify(list(genes_to_draw["name"]))
+    genes = get_genes_by_location(build, chrom, startbp, endbp)
+    return jsonify(sorted(genes))
 
 
 @app.route("/gtex/<version>/tissues_list")
+@cache.cached()
 def list_tissues(version):
-    if version.upper() == "V8":
+    version = version.upper()
+    if version == "V7":
+        raise InvalidUsage("GTEx V7 is no longer available")
+    elif version == "V8":
         db = client.GTEx_V8
-    elif version.upper() == "V7":
-        db = client.GTEx_V7
-    tissues = list(db.list_collection_names())
-    tissues.remove("variant_table")
-    return jsonify(tissues)
+        tissues = list(db.list_collection_names())
+        tissues.remove("variant_table")
+    elif version == "V10":
+        db = client.GTEx_V10
+        tissues = list(db.list_collection_names())
+
+    return jsonify(sorted(tissues))
 
 
 @app.route("/gtex/<version>/<tissue>/<gene_id>")
@@ -1958,7 +1447,7 @@ def update_colocalizing_gene(session_id, newgene):
     snp_list = data["snps"]
     gtex_version = data["gtex_version"]
     if gtex_version.upper() not in available_gtex_versions:
-        gtex_version = "V7"
+        gtex_version = "V10"
     # gtex_data = {}
     for tissue in tqdm(gtex_tissues):
         data[tissue] = pd.DataFrame({})
