@@ -8,6 +8,7 @@ from app.colocalization.payload import SessionPayload
 from app.pipeline.pipeline_stage import PipelineStage
 from app.utils.helpers import adjust_snp_column
 from app.utils.liftover import run_liftover
+from app.utils.errors import InvalidUsage
 
 
 class LiftoverGWASFile(PipelineStage):
@@ -25,7 +26,7 @@ class LiftoverGWASFile(PipelineStage):
         needs_liftover = False
 
         if payload.get_gtex_version() == "V7":
-            liftover_target = "hg19"
+            raise InvalidUsage("GTEx V7 is no longer available. Please use GTEx V8 or GTEx V10.")
         else:
             liftover_target = "hg38"
 

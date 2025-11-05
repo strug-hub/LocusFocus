@@ -6,8 +6,8 @@ var submitButton = d3.select("#submit-btn");
 var errorDiv = d3.select("#error-messages");
 var theTable = d3.select("#variants-table");
 var gtexTissuesMsgDiv = d3.select("#tissue-select");
-var coordinate = "hg19"; // default
-var gtex_version = "v7"; // default
+var coordinate = "hg38"; // default
+var gtex_version = "v10"; // default
 var gtexurl = `/gtex/${gtex_version}/tissues_list`;
 var markerColDiv = d3.select("#snp");
 var variantInputsDiv = d3.select("#variantInputs");
@@ -36,11 +36,6 @@ function setLoading(loading) {
 function gtexVersionChange(newVersion) {
   gtex_version = newVersion.toLowerCase();
   gtexurl = `/gtex/${gtex_version}/tissues_list`;
-  if (newVersion.toLowerCase() === "v7") {
-    coordinate = "hg19";
-  } else if (newVersion.toLowerCase() === "v8") {
-    coordinate = "hg38";
-  }
   let currentLocus = d3.select("#locus").property("value");
   loadGenes(coordinate, currentLocus || "1:205,500,000-206,000,000");
   gtexTissuesMsgDiv.text(`Select GTEx (${gtex_version.toUpperCase()}) Tissues`);
