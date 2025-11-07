@@ -92,7 +92,12 @@ class Pipeline:
             if self.bound_task:
                 self.bound_task.update_state(
                     state="RUNNING",
-                    meta={"stage": stage.name(), "stage_description": stage.description(), "stage_index": i + 1, "stage_count": n},
+                    meta={
+                        "stage": stage.name(),
+                        "stage_description": stage.description(),
+                        "stage_index": i + 1,
+                        "stage_count": n,
+                    },
                 )
             try:
                 payload = self.invoke_stage(stage, payload)

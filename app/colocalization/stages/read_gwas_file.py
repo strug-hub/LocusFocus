@@ -26,9 +26,12 @@ class GWASColumn:
     coloc2: bool = False  # Required for coloc2?
     optional: bool = False  # Optional column
 
+
 #                                                              (bi-allelic variants are allowed)
 #                      (prefix) chrom        pos      ref       alt(s)                build
-VCF_FORMAT_PATTERN = "^(?:chr)?([0-9]{1,2})_([0-9]+)_([ATCG]+)_([ATCG]+(?:,[ATCG]+)*)_b3(?:7|8)$"
+VCF_FORMAT_PATTERN = (
+    "^(?:chr)?([0-9]{1,2})_([0-9]+)_([ATCG]+)_([ATCG]+(?:,[ATCG]+)*)_b3(?:7|8)$"
+)
 
 
 class ReadGWASFileStage(PipelineStage):
@@ -67,7 +70,7 @@ class ReadGWASFileStage(PipelineStage):
 
     def name(self) -> str:
         return "read-gwas-file"
-    
+
     def description(self) -> str:
         return "Read GWAS data from file"
 
@@ -90,7 +93,7 @@ class ReadGWASFileStage(PipelineStage):
 
         self._snp_format_check(gwas_data)
 
-        payload.gwas_data_original = gwas_data.copy() # ouch
+        payload.gwas_data_original = gwas_data.copy()  # ouch
 
         return payload
 
@@ -392,22 +395,27 @@ class ReadGWASFileStage(PipelineStage):
             raise ServerError("GWAS data and indices are not in sync")
 
         return std_snp_list
-    
+
     def _snp_format_check(self, gwas_data: pd.DataFrame) -> None:
         """
         Perform a sanity check on the SNP column of the GWAS data.
-        
+
         Raise an error if the SNP column contains any SNPs with format chr_pos_ref_alt_build
         have reversed alleles, or other inconsistencies within its row in the dataframe.
         """
 
         vcf_snps = gwas_data[gwas_data["SNP"].str.contains(VCF_FORMAT_PATTERN)]
         if len(vcf_snps) > 0:
-            expanded = gwas_data["SNP"].str.extract(VCF_FORMAT_PATTERN) \
-                .rename(columns={0: "CHROM", 1: "POS", 2: "REF", 3: "ALT"}) \
+            expanded = (
+                gwas_data["SNP"]
+                .str.extract(VCF_FORMAT_PATTERN)
+                .rename(columns={0: "CHROM", 1: "POS", 2: "REF", 3: "ALT"})
                 .astype({"CHROM": int, "POS": int, "REF": str, "ALT": str})
-                
-            merged_vcf_snps = expanded.merge(vcf_snps, how="inner", on=["CHROM", "POS", "REF", "ALT"])
+            )
+
+            merged_vcf_snps = expanded.merge(
+                vcf_snps, how="inner", on=["CHROM", "POS", "REF", "ALT"]
+            )
             if len(vcf_snps) != len(merged_vcf_snps):
                 raise InvalidUsage(
                     "GWAS data contains SNPs with chrom_pos_ref_alt_build format that are not consistent (eg. reversed alleles, incorrect position or chromosome). "

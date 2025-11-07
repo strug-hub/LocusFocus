@@ -10,7 +10,7 @@ class FinalizeResultsStage(PipelineStage):
 
     def name(self) -> str:
         return "finalize-results"
-    
+
     def description(self) -> str:
         return "Finalize results"
 

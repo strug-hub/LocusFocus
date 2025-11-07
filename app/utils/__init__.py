@@ -128,7 +128,9 @@ def standardize_snps(variantlist, regiontxt, build):
     chrom, startbp, endbp = parse_region_text(regiontxt, build)
     chrom = str(chrom).replace("23", "X")
     if build.lower() in ["hg19", "grch37"]:
-        raise InvalidUsage("Cannot standardize SNPs to hg19; GTEx V7 is no longer available.")
+        raise InvalidUsage(
+            "Cannot standardize SNPs to hg19; GTEx V7 is no longer available."
+        )
 
     # Lookup variants in GTEx V10 db
     variants_df = get_variants_by_region(int(startbp), int(endbp), str(chrom), "V10")
@@ -150,6 +152,7 @@ def standardize_snps(variantlist, regiontxt, build):
     # Load dbSNP file
     # delayeddf = delayed(pd.read_csv)(dbsnp_filepath,skiprows=getNumHeaderLines(dbsnp_filepath),sep='\t')
     # dbsnp = dd.from_delayed(delayeddf)
+    rsid_colname = "rs_id_dbSNP151_GRCh38p7"
     tbx = pysam.TabixFile(dbsnp_filepath)  # type: ignore
     #    print('Compiling list of known variants in the region from dbSNP151')
     chromcol = []
