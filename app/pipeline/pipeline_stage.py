@@ -12,7 +12,7 @@ class PipelineStage:
         Use kebab-case for the name. eg. "my-example-stage"
         """
         raise NotImplementedError()
-    
+
     def description(self) -> str:
         """
         A human-readable description of the stage.

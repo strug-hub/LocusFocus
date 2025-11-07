@@ -8,7 +8,7 @@ import pandas as pd
 
 # inspired by https://github.com/broadinstitute/liftover/blob/main/service/server.py
 def run_liftover(
-    original_df: pd.DataFrame, 
+    original_df: pd.DataFrame,
     source_coords: str,
     chrom_col: str = "CHROM",
     pos_col: str = "POS",
@@ -66,14 +66,11 @@ def run_liftover(
 
     chain_file_path = os.path.join(chain_root, chain_file)
 
-    with tempfile.NamedTemporaryFile(
-        suffix=".bed"
-    ) as input_file, tempfile.NamedTemporaryFile(
-        suffix=".bed"
-    ) as output_file, tempfile.NamedTemporaryFile(
-        suffix=".bed"
-    ) as unmapped_output_file:
-
+    with (
+        tempfile.NamedTemporaryFile(suffix=".bed") as input_file,
+        tempfile.NamedTemporaryFile(suffix=".bed") as output_file,
+        tempfile.NamedTemporaryFile(suffix=".bed") as unmapped_output_file,
+    ):
         transformed_df.to_csv(input_file.name, sep="\t", index=False)
 
         subprocess.run(
@@ -100,8 +97,8 @@ def run_liftover(
         dropped = set(original_copy["index"]).difference(joined["index"])
 
         # Chrom can be affected by liftover, so we'll take it from the new DataFrame
-        joined = joined.drop([chrom_col, pos_col, "index", "POS_lifted"], axis=1).rename(
-            {"#CHROM": chrom_col, "end": pos_col}, axis=1
-        )[original_df.columns]
+        joined = joined.drop(
+            [chrom_col, pos_col, "index", "POS_lifted"], axis=1
+        ).rename({"#CHROM": chrom_col, "end": pos_col}, axis=1)[original_df.columns]
 
     return joined, list(dropped)

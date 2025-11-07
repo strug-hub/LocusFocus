@@ -32,7 +32,6 @@ from app.tasks import get_is_celery_running, run_pipeline_async
 from app.utils import download_file
 from app.utils.gencode import get_genes_by_location
 from app.utils.gtex import get_gtex, get_gtex_data
-from app.utils.apis.gtex import get_tissue_site_details
 from app.utils.errors import InvalidUsage, ServerError
 from app.utils.numpy_encoder import NumpyEncoder
 
@@ -1730,9 +1729,7 @@ def setbasedtest():
 
     combine_lds = False
 
-    snps_used_in_test = (
-        []
-    )  # List of list of positions, one list per test; position is (chrom, bp) tuple
+    snps_used_in_test = []  # List of list of positions, one list per test; position is (chrom, bp) tuple
 
     # TODO: need to determine used SNPs AFTER tests are performed
 

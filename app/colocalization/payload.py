@@ -187,7 +187,10 @@ class SessionPayload:
 
         Return either 'hg19' or 'hg38'. If value is 'gwas', then get_coordinate() is used.
         """
-        if self.request_form.get("html-file-coordinate") not in [*VALID_COORDINATES, "gwas"]:
+        if self.request_form.get("html-file-coordinate") not in [
+            *VALID_COORDINATES,
+            "gwas",
+        ]:
             raise InvalidUsage(
                 f"Invalid secondary dataset coordinate: '{self.request_form.get('html-file-coordinate')}'"
             )
@@ -435,7 +438,10 @@ class SessionPayload:
 
         if self.secondary_datasets_unlifted_indices is not None:
             data["secondary_datasets_unlifted"] = {}
-            for table_title, indices in self.secondary_datasets_unlifted_indices.items():
+            for (
+                table_title,
+                indices,
+            ) in self.secondary_datasets_unlifted_indices.items():
                 data["secondary_datasets_unlifted"][table_title] = indices
         return data
 

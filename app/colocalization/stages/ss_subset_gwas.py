@@ -20,7 +20,7 @@ class SimpleSumSubsetGWASStage(PipelineStage):
 
     def name(self) -> str:
         return "simple-sum-subset-gwas"
-    
+
     def description(self) -> str:
         return "Prepare GWAS data for Simple Sum colocalization"
 
@@ -55,9 +55,7 @@ class SimpleSumSubsetGWASStage(PipelineStage):
             chromList.extend(["chr23", "23"])
         gwas_chrom_col = pd.Series([str(x) for x in list(gwas_data["CHROM"])])
         SS_chrom_bool = [
-            str(x).replace("23", "X")
-            for x in gwas_chrom_col.isin(chromList)
-            if x
+            str(x).replace("23", "X") for x in gwas_chrom_col.isin(chromList) if x
         ]
         SS_indices = (
             SS_chrom_bool
