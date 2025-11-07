@@ -33,6 +33,9 @@ class GetLDMatrixStage(PipelineStage):
     def name(self) -> str:
         return "get-ld-matrix"
 
+    def description(self) -> str:
+        return "Get LD matrix, from user or from PLINK"
+
     def invoke(self, payload: SessionPayload) -> SessionPayload:
         # Enforce prerequisites
         if payload.gwas_data is None:

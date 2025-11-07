@@ -17,6 +17,9 @@ class ReadSecondaryDatasetsStage(PipelineStage):
 
     def name(self):
         return "read-secondary-datasets"
+    
+    def description(self) -> str:
+        return "Read secondary datasets (if any)"
 
     def invoke(self, payload: SessionPayload) -> SessionPayload:
         secondary_datasets = self._read_dataset_file(payload)
@@ -26,7 +29,7 @@ class ReadSecondaryDatasetsStage(PipelineStage):
 
     def _read_dataset_file(self, payload: SessionPayload):
         """
-        Read if it exists. # TODO: write this comment better
+        Check if the secondary dataset file exists, and then parse the HTML for dataset tables.
         """
 
         html_filepath = get_file_with_ext(payload.uploaded_files, ["html"])

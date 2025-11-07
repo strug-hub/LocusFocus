@@ -14,8 +14,8 @@ from werkzeug.utils import secure_filename
 from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.datastructures import FileStorage
 
-from app import mongo
 from app.utils.errors import InvalidUsage
+from app.utils.variants import get_variants_by_region
 
 GENOMIC_WINDOW_LIMIT = 2e6
 
@@ -127,25 +127,11 @@ def standardize_snps(variantlist, regiontxt, build):
     # Ensure valid region:
     chrom, startbp, endbp = parse_region_text(regiontxt, build)
     chrom = str(chrom).replace("23", "X")
+    if build.lower() in ["hg19", "grch37"]:
+        raise InvalidUsage("Cannot standardize SNPs to hg19; GTEx V7 is no longer available.")
 
-    # Load GTEx variant lookup table for region indicated
-    db = mongo.cx.GTEx_V7  # type: ignore
-    rsid_colname = "rs_id_dbSNP147_GRCh37p13"
-    if build.lower() in ["hg38", "grch38"]:
-        db = mongo.cx.GTEx_V8  # type: ignore
-        rsid_colname = "rs_id_dbSNP151_GRCh38p7"
-    collection = db["variant_table"]
-    variants_query = collection.find(
-        {
-            "$and": [
-                {"chr": int(chrom.replace("X", "23"))},
-                {"variant_pos": {"$gte": int(startbp), "$lte": int(endbp)}},
-            ]
-        }
-    )
-    variants_list = list(variants_query)
-    variants_df = pd.DataFrame(variants_list)
-    variants_df = variants_df.drop(["_id"], axis=1)
+    # Lookup variants in GTEx V10 db
+    variants_df = get_variants_by_region(int(startbp), int(endbp), str(chrom), "V10")
 
     # Load dbSNP151 SNP names from region indicated
     dbsnp_filepath = ""

@@ -39,6 +39,9 @@ class ColocSimpleSumStage(PipelineStage):
 
     def name(self) -> str:
         return "simple-sum"
+    
+    def description(self) -> str:
+        return "Perform Simple Sum colocalization (and COLOC2 if selected)"
 
     def invoke(self, payload: SessionPayload) -> SessionPayload:
         # Check prerequisites
@@ -135,8 +138,8 @@ class ColocSimpleSumStage(PipelineStage):
             clean_snps(list(payload.std_snp_list), regionstr, coordinate)
         )
         ss_std_snp_list = std_snp_list.loc[payload.gwas_indices_kept]
-
         gtex_tissues, gtex_genes = payload.get_gtex_selection()
+        
         if len(gtex_tissues) > 0:
             for tissue in gtex_tissues:
                 for agene in gtex_genes:
@@ -348,13 +351,28 @@ class ColocSimpleSumStage(PipelineStage):
         p_matrix_indices = [
             i for i, e in enumerate(SS_positions) if e in ld_mat_positions
         ]
+
         p_value_matrix = p_value_matrix[:, p_matrix_indices]  # type: ignore
 
-        write_matrix(p_value_matrix, payload.file.p_value_filepath)
-        write_matrix(ld_matrix, payload.file.ld_matrix_filepath)
+        non_nan_ld_rows = ~np.isnan(ld_matrix).all(axis=1).getA().flatten()
+
+        ld_mat_filtered = ld_matrix[non_nan_ld_rows, :][:, non_nan_ld_rows]
+
+        p_value_matrix_filtered = p_value_matrix[:, non_nan_ld_rows]
+
+        ld_mat_snps_filtered = [
+            snp for i, snp in enumerate(ld_mat_snps) if non_nan_ld_rows[i]
+        ]
+
+        ld_mat_positions_filtered = [
+            pos for i, pos in enumerate(ld_mat_positions) if non_nan_ld_rows[i]
+        ]
+
+        write_matrix(p_value_matrix_filtered, payload.file.p_value_filepath)
+        write_matrix(ld_mat_filtered, payload.file.ld_matrix_filepath)
         # Extra files written for LD matrix:
-        write_list(ld_mat_snps, payload.file.ld_mat_snps_filepath)
-        write_list(ld_mat_positions, payload.file.ld_mat_positions_filepath)
+        write_list(ld_mat_snps_filtered, payload.file.ld_mat_snps_filepath)
+        write_list(ld_mat_positions_filtered, payload.file.ld_mat_positions_filepath)
 
         # Run Simple Sum
         try:
