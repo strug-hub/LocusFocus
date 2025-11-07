@@ -23,8 +23,10 @@ class ColocalizationPipeline(Pipeline):
         self.pipe(
             stages.CreateSessionStage(),
             stages.CollectUserInputStage(),
-            stages.ReadGWASFileStage(enforce_one_chrom=True),
+            stages.ReadGWASFileStage(enforce_one_chrom=False),
+            stages.LiftoverGWASFile(),
             stages.ReadSecondaryDatasetsStage(),
+            stages.LiftoverSecondaryDatasets(),
             stages.ReportGTExDataStage(),
             stages.SimpleSumSubsetGWASStage(),
             stages.GetLDMatrixStage(),

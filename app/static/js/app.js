@@ -6,8 +6,8 @@ var submitButton = d3.select("#submit-btn");
 var errorDiv = d3.select("#error-messages");
 var theTable = d3.select("#variants-table");
 var gtexTissuesMsgDiv = d3.select("#tissue-select");
-var coordinate = "hg19"; // default
-var gtex_version = "v7"; // default
+var coordinate = "hg38"; // default
+var gtex_version = "v10"; // default
 var gtexurl = `/gtex/${gtex_version}/tissues_list`;
 var markerColDiv = d3.select("#snp");
 var variantInputsDiv = d3.select("#variantInputs");
@@ -28,36 +28,48 @@ d3.select("#locus").attr("value", `${startingChr}:${startingPos}-${endingPos}`);
 
 // FUNCTIONS
 
+function setLoading(loading) {
+  d3.select("#loading").style("display", loading ? "block" : "none");
+}
+
+// GTEx version selection change
+function gtexVersionChange(newVersion) {
+  gtex_version = newVersion.toLowerCase();
+  gtexurl = `/gtex/${gtex_version}/tissues_list`;
+  let currentLocus = d3.select("#locus").property("value");
+  loadGenes(coordinate, currentLocus || "1:205,500,000-206,000,000");
+  gtexTissuesMsgDiv.text(`Select GTEx (${gtex_version.toUpperCase()}) Tissues`);
+  d3.json(gtexurl).then((response) => {
+    var gtex_tissues = response.map((k) => k);
+
+    // Build GTEx tissues multiselect dropdown
+    var gtexdiv = d3.select("#GTEx-tissues");
+    gtexdiv.text("");
+    for (var i = 0; i < gtex_tissues.length; i++) {
+      gtexdiv
+        .append("option")
+        .attr("value", gtex_tissues[i])
+        .text(gtex_tissues[i].replaceAll("_", " "));
+    }
+  });
+}
+
 // Coordinate system selection change
 function coordinateChange(newCoordinate) {
   $("#LD-populations").multiselect("destroy");
-  $("#GTEx-tissues").multiselect("destroy");
-  $("#region-genes").multiselect("destroy");
   d3.select("#locus").property(
     "value",
     `${startingChr}:${startingPos}-${endingPos}`
   );
-  if (newCoordinate === "hg38") {
-    gtex_version = "v8";
-    gtexurl = `/gtex/${gtex_version}/tissues_list`;
-    coordinate = "hg38";
-    gtexTissuesMsgDiv.text("Select GTEx (V8) Tissues");
-    d3.select("#genes-select").text(
-      "Select Genes (enter coordinates above to populate)"
+  if (!["hg38", "hg19"].includes(newCoordinate)) {
+    alert(
+      "Invalid coordinate system. Please select hg38 or hg19 coordinates."
     );
-    d3.select("#region-genes").text("");
-    init();
-  } else if (newCoordinate.toLowerCase() == "hg19") {
-    gtex_version = "v7";
-    gtexurl = `/gtex/${gtex_version}/tissues_list`;
-    coordinate = "hg19";
-    gtexTissuesMsgDiv.text("Select GTEx (V7) Tissues");
-    d3.select("#genes-select").text(
-      "Select Genes (enter coordinates above to populate)"
-    );
-    d3.select("#region-genes").text("");
-    init();
+    return;
   }
+  setLoading(true);
+  d3.select("#region-genes").text("");
+  init();
 }
 
 function askBetaInput(betaColDiv) {
@@ -465,8 +477,9 @@ function init() {
   // });
 
   console.log("Loading genes:");
-  loadGenes("hg19", "1:205,500,000-206,000,000");
+  loadGenes(coordinate, "1:205,500,000-206,000,000");
 
+  
   d3.json(gtexurl).then((response) => {
     var gtex_tissues = response.map((k) => k);
 
@@ -479,6 +492,8 @@ function init() {
         .attr("value", gtex_tissues[i])
         .text(gtex_tissues[i].replaceAll("_", " "));
     }
+
+    setLoading(false);
 
     // Multi-Select Initialization
     $(document).ready(function () {
@@ -509,7 +524,7 @@ function init() {
         },
       });
       $("#GTEx-tissues").multiselect({
-        enableFiltering: true,
+        enableCaseInsensitiveFiltering: true,
         includeSelectAllOption: true,
         maxHeight: 400,
         buttonWidth: "400px",
@@ -518,10 +533,22 @@ function init() {
         },
       });
       $("#region-genes").multiselect({
-        enableFiltering: true,
+        enableCaseInsensitiveFiltering: true,
         includeSelectAllOption: true,
         maxHeight: 400,
         buttonWidth: "400px",
+        checkboxName: function (option) {
+          return "multiselect[]";
+        },
+      });
+      $("#GTEx-version").multiselect({
+        buttonWidth: "400px",
+        checkboxName: function (option) {
+          return "multiselect[]";
+        },
+      });
+      $("#html-file-coordinate").multiselect({
+        buttonWidth: "100%",
         checkboxName: function (option) {
           return "multiselect[]";
         },
