@@ -1,10 +1,7 @@
 from dataclasses import dataclass
 from typing import Any, List
 
-import pytest
-import pandas as pd
 from gtex_openapi.models.pagination_info import PaginationInfo
-from gtex_openapi.exceptions import BadRequestException
 
 from app.utils.apis.gtex import (
     fetch_all,
