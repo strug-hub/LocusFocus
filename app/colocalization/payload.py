@@ -139,6 +139,7 @@ class SessionPayload:
     success: bool = False
     r2: List[float] = field(default_factory=list)
     liftover_lead_snp_warning: str = ""
+    lifted_over_coordinate: Optional[str] = None
 
     # Simple Sum
     ss_locustext: Optional[str] = None
@@ -172,6 +173,7 @@ class SessionPayload:
 
         Return either 'hg19' or 'hg38'.
         """
+
         if self.coordinate is None:
             if self.request_form.get("coordinate") not in VALID_COORDINATES:
                 raise InvalidUsage(
@@ -179,7 +181,11 @@ class SessionPayload:
                 )
 
             self.coordinate = self.request_form.get("coordinate")
-        return self.coordinate  # type: ignore
+
+        if self.lifted_over_coordinate is not None:
+            return self.lifted_over_coordinate
+        else:
+            return self.coordinate  # type: ignore
 
     def get_secondary_coordinate(self) -> str:
         """
