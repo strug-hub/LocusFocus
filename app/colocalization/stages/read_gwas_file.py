@@ -5,6 +5,7 @@ import numpy as np
 from flask import current_app as app
 
 from app.colocalization.payload import SessionPayload
+from app.colocalization.util import get_std_snp_list
 from app.utils import (
     get_file_with_ext,
     standardize_snps,
@@ -12,7 +13,7 @@ from app.utils import (
     x_to_23,
 )
 from app.pipeline import PipelineStage
-from app.utils.errors import InvalidUsage, ServerError
+from app.utils.errors import InvalidUsage
 
 
 @dataclass
@@ -89,7 +90,7 @@ class ReadGWASFileStage(PipelineStage):
         payload.gwas_indices_kept = pd.Series(True, index=gwas_data.index)
 
         # Get standardized list of SNPs
-        payload.std_snp_list = self._get_std_snp_list(payload, gwas_data)
+        payload.std_snp_list = get_std_snp_list(payload, gwas_data)
 
         self._snp_format_check(gwas_data)
 
@@ -367,34 +368,6 @@ class ReadGWASFileStage(PipelineStage):
         # payload.gwas_indices_kept = gwas_indices_kept
 
         return gwas_data
-
-    def _get_std_snp_list(
-        self, payload: SessionPayload, gwas_data: pd.DataFrame
-    ) -> pd.Series:
-        """
-        Return standardized list of SNPs with format CHR_POS_REF_ALT_build.
-
-        gwas_data needs to be subsetted in advance.
-        """
-        std_snp_list = []
-        buildstr = "b37"
-        if payload.get_coordinate() == "hg38":
-            buildstr = "b38"
-
-        std_snp_list = pd.Series(
-            [
-                f"{str(row['CHROM']).replace('23', 'X')}_{str(row['POS'])}_{str(row['REF'])}_{str(row['ALT'])}_{buildstr}"
-                for _, row in gwas_data.iterrows()
-            ]
-        )
-        # Sanity check
-        try:
-            assert len(std_snp_list) == len(gwas_data)
-            assert len(std_snp_list) == len(payload.gwas_indices_kept)
-        except AssertionError:
-            raise ServerError("GWAS data and indices are not in sync")
-
-        return std_snp_list
 
     def _snp_format_check(self, gwas_data: pd.DataFrame) -> None:
         """

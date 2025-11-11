@@ -5,6 +5,7 @@ import pandas as pd
 from flask import current_app
 
 from app.colocalization.payload import SessionPayload
+from app.colocalization.util import get_std_snp_list
 from app.pipeline.pipeline_stage import PipelineStage
 from app.utils.helpers import adjust_snp_column
 from app.utils.liftover import run_liftover
@@ -88,8 +89,10 @@ class LiftoverGWASFile(PipelineStage):
                 payload.gwas_indices_kept = self.update_indices_kept(
                     payload, unlifted_over
                 )
-
                 payload.lifted_over_coordinate = liftover_target
+
+                # update snp list
+                payload.std_snp_list = get_std_snp_list(payload, payload.gwas_data)
 
             else:
                 current_app.logger.debug("No liftover needed")
