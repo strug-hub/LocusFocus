@@ -89,6 +89,8 @@ class LiftoverGWASFile(PipelineStage):
                     payload, unlifted_over
                 )
 
+                payload.lifted_over_coordinate = liftover_target
+
             else:
                 current_app.logger.debug("No liftover needed")
 
