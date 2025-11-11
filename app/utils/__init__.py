@@ -139,11 +139,13 @@ def standardize_snps(variantlist, regiontxt, build):
     dbsnp_filepath = ""
     suffix = "b37"
     if build.lower() in ["hg38", "grch38"]:
+        rsid_colname = "rs_id_dbSNP151_GRCh38p7"
         suffix = "b38"
         dbsnp_filepath = os.path.join(
             app.config["LF_DATA_FOLDER"], "dbSNP151", "GRCh38p7", "All_20180418.vcf.gz"
         )
     else:
+        rsid_colname = "rs_id_dbSNP147_GRCh37p13"
         suffix = "b37"
         dbsnp_filepath = os.path.join(
             app.config["LF_DATA_FOLDER"], "dbSNP151", "GRCh37p13", "All_20180423.vcf.gz"
@@ -152,7 +154,7 @@ def standardize_snps(variantlist, regiontxt, build):
     # Load dbSNP file
     # delayeddf = delayed(pd.read_csv)(dbsnp_filepath,skiprows=getNumHeaderLines(dbsnp_filepath),sep='\t')
     # dbsnp = dd.from_delayed(delayeddf)
-    rsid_colname = "rs_id_dbSNP151_GRCh38p7"
+
     tbx = pysam.TabixFile(dbsnp_filepath)  # type: ignore
     #    print('Compiling list of known variants in the region from dbSNP151')
     chromcol = []
