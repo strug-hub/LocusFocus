@@ -39,12 +39,11 @@ class ColocSimpleSumStage(PipelineStage):
 
     def name(self) -> str:
         return "simple-sum"
-    
+
     def description(self) -> str:
         return "Perform Simple Sum colocalization (and COLOC2 if selected)"
 
     def invoke(self, payload: SessionPayload) -> SessionPayload:
-
         # Check prerequisites
         errors = []
         if payload.gwas_data is None:
@@ -140,7 +139,7 @@ class ColocSimpleSumStage(PipelineStage):
         )
         ss_std_snp_list = std_snp_list.loc[payload.gwas_indices_kept]
         gtex_tissues, gtex_genes = payload.get_gtex_selection()
-        
+
         if len(gtex_tissues) > 0:
             for tissue in gtex_tissues:
                 for agene in gtex_genes:
@@ -398,7 +397,9 @@ class ColocSimpleSumStage(PipelineStage):
 
         for i in np.arange(len(SSPvalues)):
             if SSPvalues[i] > 0:
-                SSPvalues[i] = np.format_float_scientific((-np.log10(SSPvalues[i])), precision=2)  # type: ignore
+                SSPvalues[i] = np.format_float_scientific(
+                    (-np.log10(SSPvalues[i])), precision=2
+                )  # type: ignore
         SSPvaluesMatGTEx = np.empty(0)
         num_SNP_used_for_SSMat = np.empty(0)
         comp_usedMat = np.empty(0)
@@ -436,9 +437,8 @@ class ColocSimpleSumStage(PipelineStage):
             "Genes": gtex_genes,
             "Tissues": gtex_tissues,
             "Secondary_dataset_titles": table_titles,
-            "SSPvalues": SSPvaluesMatGTEx.tolist()  # GTEx pvalues
+            "SSPvalues": SSPvaluesMatGTEx.tolist(),  # GTEx pvalues
             # ,'Num_SNPs_Used_for_SS': [int(x) for x in num_SNP_used_for_SS]
-            ,
             "Num_SNPs_Used_for_SS": num_SNP_used_for_SSMat.tolist(),
             "Computation_method": comp_usedMat.tolist(),
             "SSPvalues_secondary": SSPvaluesSecondary,
@@ -452,7 +452,6 @@ class ColocSimpleSumStage(PipelineStage):
         ####################################################################################################
 
         if payload.coloc2:
-
             assert coloc2eqtl_df is not None
 
             # COLOC2

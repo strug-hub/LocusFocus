@@ -2,7 +2,8 @@
 R scripts for LocusFocus. Functions for running R scripts and returning results.
 """
 
-import os, subprocess
+import os
+import subprocess
 from typing import Union
 import pandas as pd
 
@@ -108,5 +109,4 @@ def set_based_test():
     Does not perform any pre-processing or validation before running the script
     with the provided parameters.
     """
-    SCRIPT_PATH = os.path.join(BASE_DIR, "getSimpleSumStats.R")
     raise NotImplementedError()

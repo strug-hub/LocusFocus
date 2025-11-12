@@ -37,10 +37,9 @@ class GetLDMatrixStage(PipelineStage):
         return "Get LD matrix, from user or from PLINK"
 
     def invoke(self, payload: SessionPayload) -> SessionPayload:
-
         # Enforce prerequisites
         if payload.gwas_data is None:
-            raise ServerError(f"Cannot use GetLDMatrixStage; gwas_data is None")
+            raise ServerError("Cannot use GetLDMatrixStage; gwas_data is None")
 
         # Read from file if it exists. Otherwise, create with PLINK
         ld_matrix, _ = self._read_ld_matrix_file(payload)
@@ -70,7 +69,7 @@ class GetLDMatrixStage(PipelineStage):
 
         if payload.gwas_data is None:
             raise ServerError(
-                f"Cannot validate user-provided LD matrix; gwas_data is not defined"
+                "Cannot validate user-provided LD matrix; gwas_data is not defined"
             )
 
         ld_mat = pd.read_csv(
@@ -78,10 +77,10 @@ class GetLDMatrixStage(PipelineStage):
         )
         # Dimensions check
         if not len(ld_mat.shape) == 2:
-            raise InvalidUsage(f"LD matrix input is not a 2D matrix", status_code=410)
+            raise InvalidUsage("LD matrix input is not a 2D matrix", status_code=410)
 
         if not ld_mat.shape[0] == ld_mat.shape[1]:
-            raise InvalidUsage(f"LD matrix input is not square", status_code=410)
+            raise InvalidUsage("LD matrix input is not square", status_code=410)
 
         # Compare LD matrix dimensions to GWAS data
         if not ld_mat.shape[0] == payload.gwas_data_kept.shape[0]:
@@ -115,7 +114,9 @@ class GetLDMatrixStage(PipelineStage):
         ld_snps_df = pd.DataFrame(
             {
                 "CHROM": payload.gwas_data_kept["CHROM"],
-                "CHROM_POS": payload.gwas_data_kept.apply(lambda row: f"chr{row['CHROM']}:{row['POS']}", axis=1),
+                "CHROM_POS": payload.gwas_data_kept.apply(
+                    lambda row: f"chr{row['CHROM']}:{row['POS']}", axis=1
+                ),
                 "POS": payload.gwas_data_kept["POS"],
                 "ALT": payload.gwas_data_kept["ALT"],
                 "REF": payload.gwas_data_kept["REF"],
@@ -136,7 +137,7 @@ class GetLDMatrixStage(PipelineStage):
         Return the LD matrix, and the BIM file as a DataFrame.
         """
         if payload.gwas_data is None:
-            raise ServerError(f"Cannot create LD matrix; gwas_data is not defined")
+            raise ServerError("Cannot create LD matrix; gwas_data is not defined")
 
         chrom, _, _ = payload.get_locus_tuple()
 
@@ -167,9 +168,7 @@ class GetLDMatrixStage(PipelineStage):
         # Rename to consistent naming structure (see plink .bim file format)
         ld_snps_df = ld_snps_df.rename(
             columns={0: "CHROM", 1: "CHROM_POS", 3: "POS", 4: "ALT", 5: "REF"}
-        ).iloc[
-            :, [0, 1, 3, 4, 5]
-        ]  # drop third column (all zeroes)
+        ).iloc[:, [0, 1, 3, 4, 5]]  # drop third column (all zeroes)
 
         # Generated LD matrix, need to update GWAS indices
         ld_indices = payload.gwas_data["POS"].isin(ld_snps_df["POS"])

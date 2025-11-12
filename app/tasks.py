@@ -1,6 +1,7 @@
 """
 Celery tasks for LocusFocus.
 """
+
 from os import PathLike
 from typing import List
 
@@ -23,10 +24,17 @@ def get_is_celery_running() -> bool:
         app.logger.error("Could not connect to redis server. Celery is not available.")
         return False
     except Exception:
-        app.logger.error("An unexpected error occurred while checking if Celery is running.")
+        app.logger.error(
+            "An unexpected error occurred while checking if Celery is running."
+        )
         return False
 
-def run_pipeline_async(pipeline_type: str, request_form: ImmutableMultiDict, uploaded_filepaths: List[PathLike]) -> AsyncResult:
+
+def run_pipeline_async(
+    pipeline_type: str,
+    request_form: ImmutableMultiDict,
+    uploaded_filepaths: List[PathLike],
+) -> AsyncResult:
     """
     Run a pipeline asynchronously using Celery.
     Return the task ID, which can be used to check the task status.
@@ -40,12 +48,19 @@ def run_pipeline_async(pipeline_type: str, request_form: ImmutableMultiDict, upl
     - FAILURE: task has failed
     - SUCCESS: task has been executed successfully
     """
-    result = _pipeline_task.apply_async((pipeline_type, request_form, uploaded_filepaths))  # type: ignore
+    result = _pipeline_task.apply_async(
+        (pipeline_type, request_form, uploaded_filepaths)
+    )  # type: ignore
     return result
 
 
 @shared_task(ignore_result=False, bind=True)
-def _pipeline_task(self, pipeline_type: str, request_form: ImmutableMultiDict, uploaded_filepaths: List[PathLike]) -> object:
+def _pipeline_task(
+    self,
+    pipeline_type: str,
+    request_form: ImmutableMultiDict,
+    uploaded_filepaths: List[PathLike],
+) -> object:
     """
     Celery task for running a pipeline.
 

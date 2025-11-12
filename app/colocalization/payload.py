@@ -5,7 +5,6 @@ import os
 
 import numpy as np
 import pandas as pd
-from werkzeug.datastructures import ImmutableMultiDict
 
 from app.colocalization.constants import (
     ONE_SIDED_SS_WINDOW_SIZE,
@@ -140,6 +139,7 @@ class SessionPayload:
     success: bool = False
     r2: List[float] = field(default_factory=list)
     liftover_lead_snp_warning: str = ""
+    lifted_over_coordinate: Optional[str] = None
 
     # Simple Sum
     ss_locustext: Optional[str] = None
@@ -173,6 +173,7 @@ class SessionPayload:
 
         Return either 'hg19' or 'hg38'.
         """
+
         if self.coordinate is None:
             if self.request_form.get("coordinate") not in VALID_COORDINATES:
                 raise InvalidUsage(
@@ -180,7 +181,11 @@ class SessionPayload:
                 )
 
             self.coordinate = self.request_form.get("coordinate")
-        return self.coordinate  # type: ignore
+
+        if self.lifted_over_coordinate is not None:
+            return self.lifted_over_coordinate
+        else:
+            return self.coordinate  # type: ignore
 
     def get_secondary_coordinate(self) -> str:
         """
@@ -188,7 +193,10 @@ class SessionPayload:
 
         Return either 'hg19' or 'hg38'. If value is 'gwas', then get_coordinate() is used.
         """
-        if self.request_form.get("html-file-coordinate") not in [*VALID_COORDINATES, "gwas"]:
+        if self.request_form.get("html-file-coordinate") not in [
+            *VALID_COORDINATES,
+            "gwas",
+        ]:
             raise InvalidUsage(
                 f"Invalid secondary dataset coordinate: '{self.request_form.get('html-file-coordinate')}'"
             )
@@ -333,7 +341,9 @@ class SessionPayload:
                 )
             SSchrom, _, _ = self.get_locus_tuple()
             lead_snp_position_index = self.get_lead_snp_index()
-            lead_snp_position = int(self.gwas_data.iloc[lead_snp_position_index, :]["POS"])  # type: ignore
+            lead_snp_position = int(
+                self.gwas_data.iloc[lead_snp_position_index, :]["POS"]
+            )  # type: ignore
             SS_start = max(int(lead_snp_position - ONE_SIDED_SS_WINDOW_SIZE), 0)
             SS_end = int(lead_snp_position + ONE_SIDED_SS_WINDOW_SIZE)
         SSlocustext = str(SSchrom) + ":" + str(SS_start) + "-" + str(SS_end)
@@ -408,7 +418,7 @@ class SessionPayload:
                         raise InvalidUsage(
                             "Set-based p-value threshold given is not between 0 and 1"
                         )
-                except:
+                except Exception:
                     raise InvalidUsage(
                         "Invalid value provided for the set-based p-value threshold. Value must be numeric between 0 and 1."
                     )
@@ -434,7 +444,10 @@ class SessionPayload:
 
         if self.secondary_datasets_unlifted_indices is not None:
             data["secondary_datasets_unlifted"] = {}
-            for table_title, indices in self.secondary_datasets_unlifted_indices.items():
+            for (
+                table_title,
+                indices,
+            ) in self.secondary_datasets_unlifted_indices.items():
                 data["secondary_datasets_unlifted"][table_title] = indices
         return data
 

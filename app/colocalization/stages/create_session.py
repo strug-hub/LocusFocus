@@ -1,4 +1,3 @@
-from collections import namedtuple
 from datetime import datetime
 import json
 
@@ -17,7 +16,6 @@ class CreateSessionStage(PipelineStage):
         return "create-session"
 
     def invoke(self, payload: SessionPayload) -> SessionPayload:
-
         self._create_metadata_file(payload)
         self._check_file_upload(payload)
 
@@ -48,5 +46,5 @@ class CreateSessionStage(PipelineStage):
         Check if the user has uploaded any files.
         """
         if payload.uploaded_files is None or len(payload.uploaded_files) == 0:
-            raise InvalidUsage(f"No files found in request")
+            raise InvalidUsage("No files found in request")
         return None

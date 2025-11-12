@@ -1,7 +1,9 @@
 from collections.abc import Callable
 from typing import Any, Dict, List, Optional
 
-from gtex_openapi.api.static_association_endpoints_api import StaticAssociationEndpointsApi
+from gtex_openapi.api.static_association_endpoints_api import (
+    StaticAssociationEndpointsApi,
+)
 from gtex_openapi.api.datasets_endpoints_api import DatasetsEndpointsApi
 from gtex_openapi.api.dynamic_association_endpoints_api import (
     DynamicAssociationEndpointsApi,
@@ -16,11 +18,17 @@ from gtex_openapi.models.eqtl import Eqtl
 from gtex_openapi.models.tissue_site_detail_id import TissueSiteDetailId
 from gtex_openapi.models.paginated_response_variant import PaginatedResponseVariant
 from gtex_openapi.models.paginated_response_gene import PaginatedResponseGene
-from gtex_openapi.models.app_models_request_parameters_genome_build import AppModelsRequestParametersGenomeBuild
+from gtex_openapi.models.app_models_request_parameters_genome_build import (
+    AppModelsRequestParametersGenomeBuild,
+)
 from gtex_openapi.models.post_dynamic_eqtl_result import PostDynamicEqtlResult
-from gtex_openapi.models.paginated_response_independent_eqtl import PaginatedResponseIndependentEqtl
+from gtex_openapi.models.paginated_response_independent_eqtl import (
+    PaginatedResponseIndependentEqtl,
+)
 from gtex_openapi.models.tissuesitedetailid_inner import TissuesitedetailidInner
-from gtex_openapi.models.paginated_response_single_tissue_eqtl import PaginatedResponseSingleTissueEqtl
+from gtex_openapi.models.paginated_response_single_tissue_eqtl import (
+    PaginatedResponseSingleTissueEqtl,
+)
 
 from app.utils.helpers import validate_chromosome
 
@@ -114,7 +122,9 @@ def get_independent_eqtls(
     :return: Independent EQTL results
     :rtype: IndependentEqtl
     """
-    tissue_sites = [TissuesitedetailidInner(get_tissue_site_detail_id_enum(x)) for x in tissue_sites] # type: ignore
+    tissue_sites = [
+        TissuesitedetailidInner(get_tissue_site_detail_id_enum(x)) for x in tissue_sites
+    ]  # type: ignore
     dataset_id = get_dataset_id_enum(dataset_id)
     with ApiClient(CONFIGURATION) as api_client:
         instance = StaticAssociationEndpointsApi(api_client)
@@ -166,7 +176,9 @@ def get_dynamic_eqtl(
         )
 
 
-def get_bulk_dynamic_eqtl(dataset_id: str, body: List[Dict[str, Any]]) -> PostDynamicEqtlResult:
+def get_bulk_dynamic_eqtl(
+    dataset_id: str, body: List[Dict[str, Any]]
+) -> PostDynamicEqtlResult:
     """Fetch dynamic EQTL Data in bulk
 
     :param dataset_id: The identifier of the gtex dataset (`gtex_v8`, `gtex_v10`)
@@ -259,7 +271,12 @@ def get_variants(
         )
 
 
-def get_significant_single_tissue_eqtls(dataset_id: str, gencode_ids: Optional[List[str]], variant_ids: Optional[List[str]], tissue_site_detail_ids: Optional[List[str]]) -> PaginatedResponseSingleTissueEqtl:
+def get_significant_single_tissue_eqtls(
+    dataset_id: str,
+    gencode_ids: Optional[List[str]],
+    variant_ids: Optional[List[str]],
+    tissue_site_detail_ids: Optional[List[str]],
+) -> PaginatedResponseSingleTissueEqtl:
     """Fetch single-tissue eQTLs from GTEx API
 
     :param dataset_id: The identifier of the gtex dataset (`gtex_v8`, `gtex_v10`, `gtex_snrnaseq_pilot`)
@@ -277,7 +294,10 @@ def get_significant_single_tissue_eqtls(dataset_id: str, gencode_ids: Optional[L
     :rtype: PaginatedResponseSingleTissueEqtl
     """
     if tissue_site_detail_ids is not None:
-        tissue_site_detail_ids = [TissuesitedetailidInner(get_tissue_site_detail_id_enum(x)) for x in tissue_site_detail_ids] # type: ignore
+        tissue_site_detail_ids = [
+            TissuesitedetailidInner(get_tissue_site_detail_id_enum(x))
+            for x in tissue_site_detail_ids
+        ]  # type: ignore
 
     dataset_id = get_dataset_id_enum(dataset_id)
 

@@ -23,7 +23,9 @@ from app.colocalization.stages.ss_subset_gwas import SimpleSumSubsetGWASStage
 from app.colocalization.stages.coloc_simple_sum import ColocSimpleSumStage
 from app.colocalization.stages.finalize_results import FinalizeResultsStage
 from app.colocalization.stages.liftover_gwas_file import LiftoverGWASFile
-from app.colocalization.stages.liftover_secondary_datasets import LiftoverSecondaryDatasets
+from app.colocalization.stages.liftover_secondary_datasets import (
+    LiftoverSecondaryDatasets,
+)
 
 
 __all__ = [
