@@ -95,8 +95,7 @@ on :ref:`Selecting a publicly available 1000 Genomes population<Selecting a publ
 Selecting Secondary Datasets from GTEx
 *********************************************
 
-In the dropdown, we list all 48 tissues analyzed by `GTEx v7 (hg19) <https://gtexportal.org>`_
-or 49 tissues for `GTEx v8 (hg38) <https://gtexportal.org>`_.
+In the dropdown, we list all 49 tissues for `GTEx v8 (hg38) <https://gtexportal.org>`_.
 
 **Please note that while we allow the ability to select all the tissues, this increases the amount of time
 for computing all Simple Sum p-values due to the number of gene-tissue pairs at a particular genomic region.**

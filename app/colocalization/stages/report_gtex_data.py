@@ -4,9 +4,9 @@ from app.colocalization.payload import SessionPayload
 from app.pipeline.pipeline_stage import PipelineStage
 from app.utils.gtex import (
     get_gtex_data,
-    collapsed_genes_df_hg19,
     collapsed_genes_df_hg38,
 )
+from app.utils.errors import InvalidUsage
 
 import numpy as np
 
@@ -20,11 +20,17 @@ class ReportGTExDataStage(PipelineStage):
     - GWAS dataset contains only one chromosome.
     """
 
+    # TODO: figure out whether this stage is necessary or can be pushed back further in the pipeline
+    # This stage follows the old implementation and used to appeared this early on.
+    # It seems to me that this step should be related to the "finalize results" step but I need to confirm this.
+
     def name(self):
         return "report-gtex-data"
 
-    def invoke(self, payload: SessionPayload) -> SessionPayload:
+    def description(self) -> str:
+        return "Record GTEx data for selected genes, preparing for plotting."
 
+    def invoke(self, payload: SessionPayload) -> SessionPayload:
         if payload.gwas_data is None:
             raise Exception(
                 "GWAS data not loaded; needed for GTEx data selection stage"
@@ -35,14 +41,17 @@ class ReportGTExDataStage(PipelineStage):
 
         gtex_tissues, gtex_genes = payload.get_gtex_selection()
 
+        # TODO: why do we pick a gene even if none were selected?
         if len(gtex_genes) > 0:
             gene = gtex_genes[0]
         elif gtex_version == "V7":
-            gene = "ENSG00000174502.14"
+            raise InvalidUsage("GTEx V7 is no longer available. Please use GTEx V8.")
         elif gtex_version == "V8":
+            gene = "ENSG00000174502.18"  # chr1: SLC26A9 in hg38
+        elif gtex_version == "V10":
             gene = "ENSG00000174502.18"
 
-        snp_list = [asnp.split(";")[0] for asnp in payload.gwas_data["SNP"]]
+        snp_list = [asnp.split(";")[0] for asnp in payload.gwas_data_kept["SNP"]]
 
         if len(gtex_tissues) > 0:
             for tissue in tqdm(gtex_tissues):
@@ -80,7 +89,9 @@ class ReportGTExDataStage(PipelineStage):
 
         gtex_version = payload.get_gtex_version()
         if gtex_version == "V7":
-            collapsed_genes_df = collapsed_genes_df_hg19
+            raise InvalidUsage(
+                "GTEx V7 is no longer available. Please use GTEx V8 or V10."
+            )
         else:
             collapsed_genes_df = collapsed_genes_df_hg38
 

@@ -1,5 +1,6 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
+
 *.py[cod]
 *$py.class
 
@@ -104,6 +105,9 @@ venv.bak/
 # mypy
 .mypy_cache/
 
+# ruff
+.ruff_cache
+
 # My file/directory exclusions:
 .DS_Store
 tokens.py
@@ -152,3 +156,6 @@ app/static/upload/*
 _data
 data/cache/*
 !data/cache/.gitkeep
+!setup-locusfocus-user.sh
+!create-redis-conf.sh
+redis/redis.conf

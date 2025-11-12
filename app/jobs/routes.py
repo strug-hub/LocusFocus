@@ -19,7 +19,7 @@ def get_job_status(job_id):
 
     if result.status == "FAILURE":
         error = result.result
-        
+
         # message
         try:
             error_message = error.message["message"]
@@ -67,8 +67,10 @@ def get_job_status(job_id):
         )
 
     # default (in-progress)
-    return jsonify({
-        "status": result.status,
-        "stage_index": result.info.get("stage_index"),
-        "stage_count": result.info.get("stage_count"),
-    })
+    return jsonify(
+        {
+            "status": result.status,
+            "stage_index": result.info.get("stage_index"),
+            "stage_count": result.info.get("stage_count"),
+        }
+    )

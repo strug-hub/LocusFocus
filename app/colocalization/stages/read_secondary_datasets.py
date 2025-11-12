@@ -1,4 +1,3 @@
-from typing import Dict
 from bs4 import BeautifulSoup as bs
 import numpy as np
 
@@ -19,8 +18,10 @@ class ReadSecondaryDatasetsStage(PipelineStage):
     def name(self):
         return "read-secondary-datasets"
 
-    def invoke(self, payload: SessionPayload) -> SessionPayload:
+    def description(self) -> str:
+        return "Read secondary datasets (if any)"
 
+    def invoke(self, payload: SessionPayload) -> SessionPayload:
         secondary_datasets = self._read_dataset_file(payload)
         payload.secondary_datasets = secondary_datasets
 
@@ -28,7 +29,7 @@ class ReadSecondaryDatasetsStage(PipelineStage):
 
     def _read_dataset_file(self, payload: SessionPayload):
         """
-        Read if it exists. # TODO: write this comment better
+        Check if the secondary dataset file exists, and then parse the HTML for dataset tables.
         """
 
         html_filepath = get_file_with_ext(payload.uploaded_files, ["html"])
@@ -63,7 +64,7 @@ class ReadSecondaryDatasetsStage(PipelineStage):
                 secondary_datasets[table_titles[i]] = table.fillna(-1).to_dict(
                     orient="records"
                 )
-            except:
+            except Exception:
                 secondary_datasets[table_titles[i]] = []
 
         return secondary_datasets

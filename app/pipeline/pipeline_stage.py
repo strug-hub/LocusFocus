@@ -1,7 +1,7 @@
 class PipelineStage:
     """
-    An abstract pipeline stage. 
-    
+    An abstract pipeline stage.
+
     Other stages must inherit from this one and implement the `invoke` and `name` methods.
     """
 
@@ -12,6 +12,14 @@ class PipelineStage:
         Use kebab-case for the name. eg. "my-example-stage"
         """
         raise NotImplementedError()
+
+    def description(self) -> str:
+        """
+        A human-readable description of the stage.
+
+        By default, the same as name but as a sentence.
+        """
+        return self.name().replace("-", " ").title()
 
     def invoke(self, payload: object) -> object:
         """

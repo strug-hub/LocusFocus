@@ -92,7 +92,12 @@ class Pipeline:
             if self.bound_task:
                 self.bound_task.update_state(
                     state="RUNNING",
-                    meta={"stage": stage.name(), "stage_index": i, "stage_count": n},
+                    meta={
+                        "stage": stage.name(),
+                        "stage_description": stage.description(),
+                        "stage_index": i + 1,
+                        "stage_count": n,
+                    },
                 )
             try:
                 payload = self.invoke_stage(stage, payload)
@@ -124,4 +129,4 @@ class Pipeline:
             app.logger.error(
                 "[session_id=%s] %s", self.id, error.__repr__(), exc_info=True
             )
-            return ServerError(f"An unexpected error occurred.")
+            return ServerError("An unexpected error occurred.")

@@ -4,6 +4,8 @@ services:
     build:
       context: .
       target: dev
+      args:
+        - USER_UID=${USER_UID}
     volumes:
       - ./app:/code/app
       - ./misc:/code/misc
