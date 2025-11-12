@@ -7,7 +7,6 @@ test_file_hg38 = "/code/data/sample_datasets/MI_GWAS_2019_1_205500-206000kbp_hg3
 
 
 def test_liftover_19_to_38():
-
     hg19_df = pd.read_csv(test_file_hg19, sep="\t")
 
     # rename relevant cols to app standard
@@ -21,7 +20,6 @@ def test_liftover_19_to_38():
 
 
 def test_liftover_38_to_19():
-
     hg38_df = pd.read_csv(test_file_hg38, sep="\t")
     # rename relevant cols to app standard
     hg38_df.rename({"chr": "CHROM", "variant_pos": "POS"}, axis=1, inplace=True)

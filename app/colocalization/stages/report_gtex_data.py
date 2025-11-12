@@ -4,7 +4,6 @@ from app.colocalization.payload import SessionPayload
 from app.pipeline.pipeline_stage import PipelineStage
 from app.utils.gtex import (
     get_gtex_data,
-    collapsed_genes_df_hg19,
     collapsed_genes_df_hg38,
 )
 from app.utils.errors import InvalidUsage
@@ -20,6 +19,7 @@ class ReportGTExDataStage(PipelineStage):
     - GWAS data is loaded in session *before* subsetting (original uploaded data).
     - GWAS dataset contains only one chromosome.
     """
+
     # TODO: figure out whether this stage is necessary or can be pushed back further in the pipeline
     # This stage follows the old implementation and used to appeared this early on.
     # It seems to me that this step should be related to the "finalize results" step but I need to confirm this.
@@ -31,7 +31,6 @@ class ReportGTExDataStage(PipelineStage):
         return "Record GTEx data for selected genes, preparing for plotting."
 
     def invoke(self, payload: SessionPayload) -> SessionPayload:
-
         if payload.gwas_data is None:
             raise Exception(
                 "GWAS data not loaded; needed for GTEx data selection stage"
@@ -90,7 +89,9 @@ class ReportGTExDataStage(PipelineStage):
 
         gtex_version = payload.get_gtex_version()
         if gtex_version == "V7":
-            raise InvalidUsage("GTEx V7 is no longer available. Please use GTEx V8 or V10.")
+            raise InvalidUsage(
+                "GTEx V7 is no longer available. Please use GTEx V8 or V10."
+            )
         else:
             collapsed_genes_df = collapsed_genes_df_hg38
 

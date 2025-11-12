@@ -63,7 +63,7 @@ def resolve_plink_filepath(build, pop, chrom):
         chrom = 23
     try:
         chrom = int(chrom)
-    except:
+    except Exception:
         raise InvalidUsage(f"Invalid chromosome {str(chrom)}", status_code=410)
     if chrom not in np.arange(1, 24):
         raise InvalidUsage(f"Invalid chromosome {str(chrom)}", status_code=410)
@@ -125,7 +125,7 @@ def plink_ld_pairwise(build, pop, chrom, snp_positions, snp_pvalues, outfilename
     )
     if len(positions_in_1kg_df) == 0:
         raise InvalidUsage(
-            f"No alternative lead SNP found in the 1000 Genomes. This error occurs when no provided SNPs could be found in the selected 1000 Genomes dataset. Please try a different population, or provide your own LD matrix.",
+            "No alternative lead SNP found in the 1000 Genomes. This error occurs when no provided SNPs could be found in the selected 1000 Genomes dataset. Please try a different population, or provide your own LD matrix.",
             status_code=410,
         )
     new_lead_snp_row = positions_in_1kg_df[
