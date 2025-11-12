@@ -9,9 +9,6 @@ RUN mkdir code \
   && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME \
   && chown -R ${USER_UID}:${USER_GID} /code
 
-# buster has reached EOL and now we need to fetch from archives....
-RUN sed -i 's/deb\./archive\./' /etc/apt/sources.list
-
 RUN apt-get update && \
   apt-get install -y \
   build-essential \
