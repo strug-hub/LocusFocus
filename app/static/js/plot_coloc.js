@@ -176,6 +176,12 @@ function prepareResults(
       populate_genes(genesData, sessionData);
       plot_gwas(sessionData, genesData);
     }
+    if (sessionData["liftover_warning"]?.length > 0) {
+      d3.select("#liftover-warning")
+        .property("hidden", false)
+        .append("strong")
+        .text(sessionData["liftover_warning"]);
+    }
   }
   if (SSResponseJson !== null) {
     if (SSResponseJson["Tissues"].length === 0) {

@@ -6,8 +6,8 @@ var submitButton = d3.select("#submit-btn");
 var errorDiv = d3.select("#error-messages");
 var theTable = d3.select("#variants-table");
 var gtexTissuesMsgDiv = d3.select("#tissue-select");
-var coordinate = "hg19"; // default
-var gtex_version = "v7"; // default
+var coordinate = "hg38"; // default
+var gtex_version = "v10"; // default
 var gtexurl = `/gtex/${gtex_version}/tissues_list`;
 var markerColDiv = d3.select("#snp");
 var variantInputsDiv = d3.select("#variantInputs");
@@ -35,34 +35,40 @@ function setLoading(loading) {
 // GTEx version selection change
 function gtexVersionChange(newVersion) {
   gtex_version = newVersion.toLowerCase();
+  gtexurl = `/gtex/${gtex_version}/tissues_list`;
+  let currentLocus = d3.select("#locus").property("value");
+  loadGenes(coordinate, currentLocus || "1:205,500,000-206,000,000");
   gtexTissuesMsgDiv.text(`Select GTEx (${gtex_version.toUpperCase()}) Tissues`);
-}
+  d3.json(gtexurl).then((response) => {
+    var gtex_tissues = response.map((k) => k);
 
-function updateGtexVersionsAllowed(newCoordinate) {
-  if (newCoordinate.toLowerCase() === "hg19") {
-    $("#gtex-v7").prop("disabled", false);
-    $("#gtex-v8").prop("disabled", true);
+    // Build GTEx tissues multiselect dropdown
+    var gtexdiv = d3.select("#GTEx-tissues");
+    gtexdiv.text("");
+    for (var i = 0; i < gtex_tissues.length; i++) {
+      gtexdiv
+        .append("option")
+        .attr("value", gtex_tissues[i])
+        .text(gtex_tissues[i].replaceAll("_", " "));
+    }
+    //there's a better way to do this but i need to find it
+    $("#GTEx-tissues").multiselect("destroy");
 
-    $("#gtex-v7").prop("selected", true);
-    $("#gtex-v8").prop("selected", false);
-    gtex_version = "v7";
-  } else {
-    $("#gtex-v7").prop("disabled", true);
-    $("#gtex-v8").prop("disabled", false);
-
-    $("#gtex-v7").prop("selected", false);
-    $("#gtex-v8").prop("selected", true);
-    gtex_version = "v8";
-  }
-  gtexTissuesMsgDiv.text(`Select GTEx (${gtex_version.toUpperCase()}) Tissues`);
+    $("#GTEx-tissues").multiselect({
+      enableCaseInsensitiveFiltering: true,
+      includeSelectAllOption: true,
+      maxHeight: 400,
+      buttonWidth: "400px",
+      checkboxName: function (option) {
+        return "multiselect[]";
+      },
+    });
+  });
 }
 
 // Coordinate system selection change
 function coordinateChange(newCoordinate) {
   $("#LD-populations").multiselect("destroy");
-  $("#GTEx-tissues").multiselect("destroy");
-  $("#region-genes").multiselect("destroy");
-  $("#GTEx-version").multiselect("destroy");
   d3.select("#locus").property(
     "value",
     `${startingChr}:${startingPos}-${endingPos}`
@@ -74,23 +80,6 @@ function coordinateChange(newCoordinate) {
     return;
   }
   setLoading(true);
-  if (newCoordinate === "hg38") {
-    gtex_version = "v8";
-    gtexurl = `/gtex/${gtex_version}/tissues_list`;
-    coordinate = "hg38";
-    d3.select("#genes-select").text(
-      "Select Genes (enter coordinates above to populate)"
-    );
-  } else if (newCoordinate.toLowerCase() == "hg19") {
-    gtex_version = "v7";
-    gtexurl = `/gtex/${gtex_version}/tissues_list`;
-    coordinate = "hg19";
-    d3.select("#genes-select").text(
-      "Select Genes (enter coordinates above to populate)"
-    );
-  }
-  gtexTissuesMsgDiv.text(`Select GTEx (${gtex_version.toUpperCase()}) Tissues`);
-  updateGtexVersionsAllowed(newCoordinate);
   d3.select("#region-genes").text("");
   init();
 }
@@ -574,6 +563,12 @@ function init() {
       });
       $("#GTEx-version").multiselect({
         buttonWidth: "400px",
+        checkboxName: function (option) {
+          return "multiselect[]";
+        },
+      });
+      $("#html-file-coordinate").multiselect({
+        buttonWidth: "100%",
         checkboxName: function (option) {
           return "multiselect[]";
         },

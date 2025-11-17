@@ -32,7 +32,6 @@ from app.tasks import get_is_celery_running, run_pipeline_async
 from app.utils import download_file
 from app.utils.gencode import get_genes_by_location
 from app.utils.gtex import get_gtex, get_gtex_data
-from app.utils.apis.gtex import get_tissue_site_details
 from app.utils.errors import InvalidUsage, ServerError
 from app.utils.numpy_encoder import NumpyEncoder
 
@@ -40,7 +39,7 @@ from app import ext, mongo
 from app.cache import cache
 
 client = mongo.cx
-db = client.GTEx_V7
+db = client.GTEx_V8
 
 # import getSimpleSumStats
 
@@ -145,7 +144,7 @@ collapsed_genes_df_hg38 = pd.read_csv(
 collapsed_genes_df = collapsed_genes_df_hg19  # For now
 LD_MAT_DIAG_CONSTANT = 1e-6
 
-available_gtex_versions = ["V7", "V8"]
+available_gtex_versions = ["V8", "V10"]
 valid_populations = ["EUR", "AFR", "EAS", "SAS", "AMR", "ASN", "NFE"]
 
 
@@ -179,7 +178,7 @@ def parseRegionText(regiontext, build):
         try:
             startbp = int(startbp)
             endbp = int(endbp)
-        except:
+        except Exception:
             raise InvalidUsage(
                 f"Invalid coordinates input: {regiontext}", status_code=410
             )
@@ -192,7 +191,7 @@ def parseRegionText(regiontext, build):
                 maxChromLength = chromLengths.loc["chr" + str(chrom), "length"]
             startbp = int(startbp)
             endbp = int(endbp)
-        except:
+        except Exception:
             raise InvalidUsage(
                 f"Invalid coordinates input {regiontext}", status_code=410
             )
@@ -207,7 +206,7 @@ def parseRegionText(regiontext, build):
         raise InvalidUsage("Start or end coordinates are out of range", status_code=410)
     elif (endbp - startbp) > genomicWindowLimit:
         raise InvalidUsage(
-            f"Entered region size is larger than {genomicWindowLimit/10**6} Mbp",
+            f"Entered region size is larger than {genomicWindowLimit / 10**6} Mbp",
             status_code=410,
         )
     else:
@@ -235,7 +234,7 @@ def parseSNP(snp_text):
 
 
 def allowed_file(filenames):
-    if type(filenames) == type("str"):
+    if type(filenames) is type("str"):
         return (
             "." in filenames
             and filenames.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -308,17 +307,17 @@ def classify_files(filenames):
     return gwas_filepath, ldmat_filepath, html_filepath
 
 
-def isSorted(l):
+def isSorted(ls):
     # l is a list
     # returns True if l is sorted in non-descending order, False otherwise
-    return all(l[i] <= l[i + 1] for i in range(len(l) - 1))
+    return all(ls[i] <= ls[i + 1] for i in range(len(ls) - 1))
 
 
-def Xto23(l):
+def Xto23(ls):
     newl = []
     validchroms = [str(i) for i in list(np.arange(1, 24))]
     validchroms.append(".")
-    for x in l:
+    for x in ls:
         if str(str(x).strip().lower().replace("chr", "").upper()) == "X":
             newl.append(23)
         elif str(str(x).strip().lower().replace("chr", "")) in validchroms:
@@ -381,7 +380,7 @@ def buildSNPlist(df, chromcol, poscol, refcol, altcol, build):
                 + "_"
                 + str(build)
             )
-        except:
+        except Exception:
             raise InvalidUsage(f"Could not convert marker at row {str(i)}")
     return snplist
 
@@ -395,7 +394,7 @@ def fetchSNV(chrom, bp, ref, build):
     # Ensure valid region:
     try:
         regiontxt = str(chrom) + ":" + str(bp) + "-" + str(int(bp) + 1)
-    except:
+    except Exception:
         raise InvalidUsage(f"Invalid input for {str(chrom):str(bp)}")
     chrom, startbp, endbp = parseRegionText(regiontxt, build)
     chrom = str(chrom).replace("chr", "").replace("23", "X")
@@ -420,7 +419,6 @@ def fetchSNV(chrom, bp, ref, build):
         rowlist = str(row).split("\t")
         chromi = rowlist[0].replace("chr", "")
         posi = rowlist[1]
-        idi = rowlist[2]
         refi = rowlist[3]
         alti = rowlist[4]
         varstr = "_".join([chromi, posi, refi, alti, suffix])
@@ -435,290 +433,6 @@ def fetchSNV(chrom, bp, ref, build):
                 variantid = v
                 break
     return variantid
-
-
-def standardizeSNPs(variantlist, regiontxt, build):
-    """
-    Input: Variant names in any of these formats: rsid, chrom_pos_ref_alt, chrom:pos_ref_alt, chrom:pos_ref_alt_b37/b38
-    Output: chrom_pos_ref_alt_b37/b38 variant ID format, but looks at GTEx variant lookup table first.
-    In the case of multi-allelic variants (e.g. rs2211330(T/A,C)), formats such as 1_205001063_T_A,C_b37 are accepted
-    If variant ID format is chr:pos, and the chr:pos has a unique biallelic SNV, then it will be assigned that variant
-    """
-
-    if all(x == "." for x in variantlist):
-        raise InvalidUsage("No variants provided")
-
-    if np.nan in variantlist:
-        raise InvalidUsage(
-            "Missing variant IDs detected in row(s): "
-            + str([i + 1 for i, x in enumerate(variantlist) if str(x) == "nan"])
-        )
-
-    # Ensure valid region:
-    chrom, startbp, endbp = parseRegionText(regiontxt, build)
-    chrom = str(chrom).replace("23", "X")
-
-    # Load GTEx variant lookup table for region indicated
-    db = client.GTEx_V7
-    rsid_colname = "rs_id_dbSNP147_GRCh37p13"
-    if build.lower() in ["hg38", "grch38"]:
-        db = client.GTEx_V8
-        rsid_colname = "rs_id_dbSNP151_GRCh38p7"
-    collection = db["variant_table"]
-    variants_query = collection.find(
-        {
-            "$and": [
-                {"chr": int(chrom.replace("X", "23"))},
-                {"variant_pos": {"$gte": int(startbp), "$lte": int(endbp)}},
-            ]
-        }
-    )
-    variants_list = list(variants_query)
-    variants_df = pd.DataFrame(variants_list)
-    variants_df = variants_df.drop(["_id"], axis=1)
-
-    # Load dbSNP151 SNP names from region indicated
-    dbsnp_filepath = ""
-    suffix = "b37"
-    if build.lower() in ["hg38", "grch38"]:
-        suffix = "b38"
-        dbsnp_filepath = os.path.join(
-            app.config["LF_DATA_FOLDER"], "dbSNP151", "GRCh38p7", "All_20180418.vcf.gz"
-        )
-    else:
-        suffix = "b37"
-        dbsnp_filepath = os.path.join(
-            app.config["LF_DATA_FOLDER"], "dbSNP151", "GRCh37p13", "All_20180423.vcf.gz"
-        )
-
-    # Load dbSNP file
-    # delayeddf = delayed(pd.read_csv)(dbsnp_filepath,skiprows=getNumHeaderLines(dbsnp_filepath),sep='\t')
-    # dbsnp = dd.from_delayed(delayeddf)
-    tbx = pysam.TabixFile(dbsnp_filepath)
-    #    print('Compiling list of known variants in the region from dbSNP151')
-    chromcol = []
-    poscol = []
-    idcol = []
-    refcol = []
-    altcol = []
-    variantid = []  # in chr_pos_ref_alt_build format
-    rsids = dict(
-        {}
-    )  # a multi-allelic variant rsid (key) can be represented in several variantid formats (values)
-    for row in tbx.fetch(str(chrom), startbp, endbp):
-        rowlist = str(row).split("\t")
-        chromi = rowlist[0].replace("chr", "")
-        posi = rowlist[1]
-        idi = rowlist[2]
-        refi = rowlist[3]
-        alti = rowlist[4]
-        varstr = "_".join([chromi, posi, refi, alti, suffix])
-        chromcol.append(chromi)
-        poscol.append(posi)
-        idcol.append(idi)
-        refcol.append(refi)
-        altcol.append(alti)
-        variantid.append(varstr)
-        rsids[idi] = [varstr]
-        altalleles = alti.split(
-            ","
-        )  # could have more than one alt allele (multi-allelic)
-        if len(altalleles) > 1:
-            varstr = "_".join([chromi, posi, refi, altalleles[0], suffix])
-            rsids[idi].append(varstr)
-            for i in np.arange(len(altalleles) - 1):
-                varstr = "_".join([chromi, posi, refi, altalleles[i + 1], suffix])
-                rsids[idi].append(varstr)
-
-    #    print('Cleaning and mapping list of variants')
-    variantlist = [
-        asnp.split(";")[0].replace(":", "_").replace(".", "") for asnp in variantlist
-    ]  # cleaning up the SNP names a bit
-    stdvariantlist = []
-    for variant in variantlist:
-        if variant == "":
-            stdvariantlist.append(".")
-            continue
-        variantstr = variant.replace("chr", "")
-        if re.search("^23_", variantstr):
-            variantstr = variantstr.replace("23_", "X_", 1)
-        if variantstr.startswith("rs"):
-            try:
-                # Here's the difference from the first function version (we look at GTEx first)
-                if variant in list(variants_df[rsid_colname]):
-                    stdvar = (
-                        variants_df["variant_id"]
-                        .loc[variants_df[rsid_colname] == variant]
-                        .to_list()[0]
-                    )
-                    stdvariantlist.append(stdvar)
-                else:
-                    stdvariantlist.append(rsids[variantstr][0])
-            except:
-                stdvariantlist.append(".")
-        elif re.search(
-            r"^\d+_\d+_[A,T,G,C]+_[A,T,C,G]+,*", variantstr.replace("X", "23")
-        ):
-            strlist = variantstr.split("_")
-            strlist = list(filter(None, strlist))  # remove empty strings
-            try:
-                achr, astart, aend = parseRegionText(
-                    strlist[0] + ":" + strlist[1] + "-" + str(int(strlist[1]) + 1),
-                    build,
-                )
-                achr = str(achr).replace("23", "X")
-                if achr == str(chrom) and astart >= startbp and astart <= endbp:
-                    variantstr = (
-                        variantstr.replace("_" + str(suffix), "") + "_" + str(suffix)
-                    )
-                    if len(variantstr.split("_")) == 5:
-                        stdvariantlist.append(variantstr)
-                    else:
-                        raise InvalidUsage(
-                            f"Variant format not recognizable: {variant}. Is it from another coordinate build system?",
-                            status_code=410,
-                        )
-                else:
-                    stdvariantlist.append(".")
-            except:
-                raise InvalidUsage(f"Problem with variant {variant}", status_code=410)
-        elif re.search(r"^\d+_\d+_*[A,T,G,C]*", variantstr.replace("X", "23")):
-            strlist = variantstr.split("_")
-            strlist = list(filter(None, strlist))  # remove empty strings
-            try:
-                achr, astart, aend = parseRegionText(
-                    strlist[0] + ":" + strlist[1] + "-" + str(int(strlist[1]) + 1),
-                    build,
-                )
-                achr = str(achr).replace("23", "X")
-                if achr == str(chrom) and astart >= startbp and astart <= endbp:
-                    if len(strlist) == 3:
-                        aref = strlist[2]
-                    else:
-                        aref = ""
-                    stdvariantlist.append(fetchSNV(achr, astart, aref, build))
-                else:
-                    stdvariantlist.append(".")
-            except:
-                raise InvalidUsage(f"Problem with variant {variant}", status_code=410)
-        else:
-            raise InvalidUsage(
-                f"Variant format not recognized: {variant}", status_code=410
-            )
-    return stdvariantlist
-
-
-def cleanSNPs(variantlist, regiontext, build):
-    """
-    Parameters
-    ----------
-    variantlist : list
-        list of variant IDs in rs id or chr_pos, chr_pos_ref_alt, chr_pos_ref_alt_build, etc formats
-    regiontext : str
-        the region of interest in chr:start-end format
-    build : str
-        build.lower() in ['hg19','hg38', 'grch37', 'grch38'] must be true
-
-    Returns
-    -------
-    A cleaner set of SNP names
-        rs id's are cleaned to contain only one,
-        non-rs id formats are standardized to chr_pos_ref_alt_build format)
-        any SNPs not in regiontext are returned as '.'
-    """
-
-    variantlist = [
-        asnp.split(";")[0].replace(":", "_").replace(".", "") for asnp in variantlist
-    ]  # cleaning up the SNP names a bit
-    std_varlist = standardizeSNPs(variantlist, regiontext, build)
-    final_varlist = [
-        e if (e.startswith("rs") and std_varlist[i] != ".") else std_varlist[i]
-        for i, e in enumerate(variantlist)
-    ]
-
-    return final_varlist
-
-
-def torsid(variantlist, regiontext, build):
-    """
-    Parameters
-    ----------
-    variantlist : list
-        List of variants in either rs id or other chr_pos, chr_pos_ref, chr_pos_ref_alt, chr_pos_ref_alt_build format.
-
-    Returns
-    -------
-    rsidlist : list
-        Corresponding rs id in the region if found.
-        Otherwise returns '.'
-    """
-
-    if all(x == "." for x in variantlist):
-        raise InvalidUsage("No variants provided")
-
-    variantlist = cleanSNPs(variantlist, regiontext, build)
-
-    chrom, startbp, endbp = parseRegionText(regiontext, build)
-    chrom = str(chrom).replace("23", "X")
-
-    # Load dbSNP151 SNP names from region indicated
-    dbsnp_filepath = ""
-    suffix = "b37"
-    if build.lower() in ["hg38", "grch38"]:
-        suffix = "b38"
-        dbsnp_filepath = os.path.join(
-            app.config["LF_DATA_FOLDER"], "dbSNP151", "GRCh38p7", "All_20180418.vcf.gz"
-        )
-    else:
-        suffix = "b37"
-        dbsnp_filepath = os.path.join(
-            app.config["LF_DATA_FOLDER"], "dbSNP151", "GRCh37p13", "All_20180423.vcf.gz"
-        )
-
-    # Load dbSNP file
-    tbx = pysam.TabixFile(dbsnp_filepath)
-    #    print('Compiling list of known variants in the region from dbSNP151')
-    chromcol = []
-    poscol = []
-    idcol = []
-    refcol = []
-    altcol = []
-    rsid = dict({})  # chr_pos_ref_alt_build (keys) for rsid output (values)
-    for row in tbx.fetch(str(chrom), startbp, endbp):
-        rowlist = str(row).split("\t")
-        chromi = rowlist[0].replace("chr", "")
-        posi = rowlist[1]
-        idi = rowlist[2]
-        refi = rowlist[3]
-        alti = rowlist[4]
-        varstr = "_".join([chromi, posi, refi, alti, suffix])
-        chromcol.append(chromi)
-        poscol.append(posi)
-        idcol.append(idi)
-        refcol.append(refi)
-        altcol.append(alti)
-        rsid[varstr] = idi
-        altalleles = alti.split(
-            ","
-        )  # could have more than one alt allele (multi-allelic)
-        if len(altalleles) > 1:
-            varstr = "_".join([chromi, posi, refi, altalleles[0], suffix])
-            rsid[varstr] = idi
-            for i in np.arange(len(altalleles) - 1):
-                varstr = "_".join([chromi, posi, refi, altalleles[i + 1], suffix])
-                rsid[varstr] = idi
-
-    finalvarlist = []
-    for variant in variantlist:
-        if not variant.startswith("rs"):
-            try:
-                finalvarlist.append(rsid[variant])
-            except:
-                finalvarlist.append(".")
-        else:
-            finalvarlist.append(variant)
-
-    return finalvarlist
 
 
 def decomposeVariant(variant_list):
@@ -789,32 +503,6 @@ def addVariantID(gwas_data, chromcol, poscol, refcol, altcol, build="hg19"):
     return gwas_data
 
 
-def verifyStdSNPs(stdsnplist, regiontxt, build):
-    # Ensure valid region:
-    chrom, startbp, endbp = parseRegionText(regiontxt, build)
-    chrom = str(chrom).replace("23", "X")
-
-    # Load GTEx variant lookup table for region indicated
-    db = client.GTEx_V7
-    if build.lower() in ["hg38", "grch38"]:
-        db = client.GTEx_V8
-    collection = db["variant_table"]
-    variants_query = collection.find(
-        {
-            "$and": [
-                {"chr": int(chrom.replace("X", "23"))},
-                {"variant_pos": {"$gte": int(startbp), "$lte": int(endbp)}},
-            ]
-        }
-    )
-    variants_list = list(variants_query)
-    variants_df = pd.DataFrame(variants_list)
-    variants_df = variants_df.drop(["_id"], axis=1)
-    gtex_std_snplist = list(variants_df["variant_id"])
-    isInGTEx = [x for x in stdsnplist if x in gtex_std_snplist]
-    return len(isInGTEx)
-
-
 def subsetLocus(build, summaryStats, regiontext, chromcol, poscol, pcol):
     # regiontext format example: "1:205500000-206000000"
     if regiontext == "":
@@ -876,7 +564,7 @@ def check_pos_duplicates(positions):
         dups = set([x for x in positions if positions.count(x) > 1])
         dup_counts = [(x, positions.count(x)) for x in dups]
         raise InvalidUsage(
-            f'Duplicate chromosome basepair positions detected: {[f"bp: {dup[0]}, num. duplicates: {dup[1]}" for dup in dup_counts]}'
+            f"Duplicate chromosome basepair positions detected: {[f'bp: {dup[0]}, num. duplicates: {dup[1]}' for dup in dup_counts]}"
         )
     return None
 
@@ -1055,32 +743,6 @@ def subset_gwas_data_to_entered_columns(
     return gwas_data, column_dict, infer_variant
 
 
-def standardize_gwas_variant_ids(
-    column_dict, gwas_data, regionstr: str, coordinate: str
-):
-    # standardize variant id's:
-    variant_list = standardizeSNPs(
-        list(gwas_data[column_dict[FormID.SNP_COL]]), regionstr, coordinate
-    )
-    if all(x == "." for x in variant_list):
-        raise InvalidUsage(
-            f"None of the variants provided could be mapped to {regionstr}!",
-            status_code=410,
-        )
-    # get the chrom, pos, ref, alt info from the standardized variant_list
-    vardf = decomposeVariant(variant_list)
-    gwas_data = pd.concat([vardf, gwas_data], axis=1)
-    column_dict[FormID.CHROM_COL] = DEFAULT_FORM_VALUE_DICT[FormID.CHROM_COL]
-    column_dict[FormID.POS_COL] = DEFAULT_FORM_VALUE_DICT[FormID.POS_COL]
-    column_dict[FormID.REF_COL] = DEFAULT_FORM_VALUE_DICT[FormID.REF_COL]
-    column_dict[FormID.ALT_COL] = DEFAULT_FORM_VALUE_DICT[FormID.ALT_COL]
-    gwas_data = gwas_data.loc[
-        [str(x) != "." for x in list(gwas_data[column_dict[FormID.CHROM_COL]])]
-    ].copy()
-    gwas_data.reset_index(drop=True, inplace=True)
-    return gwas_data, column_dict
-
-
 def clean_summary_datasets(
     summary_datasets, snp_column: str, chrom_column: str
 ) -> Tuple[List[pd.DataFrame], List[pd.Index]]:
@@ -1216,7 +878,7 @@ def resolve_plink_filepath(build, pop, chrom):
         chrom = 23
     try:
         chrom = int(chrom)
-    except:
+    except Exception:
         raise InvalidUsage(f"Invalid chromosome {str(chrom)}", status_code=410)
     if chrom not in np.arange(1, 24):
         raise InvalidUsage(f"Invalid chromosome {str(chrom)}", status_code=410)
@@ -1342,7 +1004,7 @@ def plink_ld_pairwise(build, pop, chrom, snp_positions, snp_pvalues, outfilename
     )
     if len(positions_in_1kg_df) == 0:
         raise InvalidUsage(
-            f"No alternative lead SNP found in the 1000 Genomes. This error occurs when no provided SNPs could be found in the selected 1000 Genomes dataset. Please try a different population, or provide your own LD matrix.",
+            "No alternative lead SNP found in the 1000 Genomes. This error occurs when no provided SNPs could be found in the selected 1000 Genomes dataset. Please try a different population, or provide your own LD matrix.",
             status_code=410,
         )
     new_lead_snp_row = positions_in_1kg_df[
@@ -1429,7 +1091,7 @@ def read_gwasfile(infile, sep="\t"):
     try:
         gwas_data = pd.read_csv(infile, sep=sep, encoding="utf-8")
         return gwas_data
-    except:
+    except Exception:
         outfile = infile.replace(".txt", "_mod.txt")
         with open(infile) as f:
             with open(outfile, "w") as fout:
@@ -1440,7 +1102,7 @@ def read_gwasfile(infile, sep="\t"):
         try:
             gwas_data = pd.read_csv(outfile, sep=sep, encoding="utf-8")
             return gwas_data
-        except:
+        except Exception:
             raise InvalidUsage(
                 "Failed to load primary dataset. Please check formatting is adequate.",
                 status_code=410,
@@ -1508,7 +1170,7 @@ def create_close_regions(regions: List[Tuple[int, int, int]], threshold=int(1e6)
     # Split by chromosome
     chrom_buckets: Dict[int, List[Tuple[int, int, int]]] = dict()
     for region in regions:
-        if chrom_buckets.get(region[0], None) == None:
+        if chrom_buckets.get(region[0], None) is None:
             chrom_buckets[region[0]] = [region]
         else:
             chrom_buckets[region[0]].append(region)
@@ -1622,17 +1284,14 @@ def getGenesInRange(build, chrom, startbp, endbp):
 def list_tissues(version):
     version = version.upper()
     if version == "V7":
-        db = client.GTEx_V7
-        tissues = list(db.list_collection_names())
-        tissues.remove("variant_table")
+        raise InvalidUsage("GTEx V7 is no longer available")
     elif version == "V8":
         db = client.GTEx_V8
         tissues = list(db.list_collection_names())
         tissues.remove("variant_table")
     elif version == "V10":
-        version = f"gtex_{version.lower()}"
-        _tissues = get_tissue_site_details(version)
-        tissues = [d.tissue_site_detail_id for d in _tissues.data]
+        db = client.GTEx_V10
+        tissues = list(db.list_collection_names())
 
     return jsonify(sorted(tissues))
 
@@ -1666,7 +1325,11 @@ def prev_session():
         old_session_id = request.form["session-id"].strip()
 
         # Check celery session
-        if not app.config["DISABLE_CELERY"] and get_is_celery_running() and old_session_id != "example-output":
+        if (
+            not app.config["DISABLE_CELERY"]
+            and get_is_celery_running()
+            and old_session_id != "example-output"
+        ):
             celery_result = AsyncResult(old_session_id, app=app.extensions["celery"])
             if celery_result.status == "PENDING":
                 raise InvalidUsage(f"Session {old_session_id} does not exist.")
@@ -1723,9 +1386,12 @@ def prev_session():
 
 @app.route("/session_id/<old_session_id>")
 def prev_session_input(old_session_id):
-
     # Check celery session
-    if not app.config["DISABLE_CELERY"] and get_is_celery_running() and old_session_id != "example-output":
+    if (
+        not app.config["DISABLE_CELERY"]
+        and get_is_celery_running()
+        and old_session_id != "example-output"
+    ):
         celery_result = AsyncResult(old_session_id, app=app.extensions["celery"])
         if celery_result.status == "PENDING":
             raise InvalidUsage(f"Session {old_session_id} does not exist.")
@@ -1786,7 +1452,7 @@ def update_colocalizing_gene(session_id, newgene):
     snp_list = data["snps"]
     gtex_version = data["gtex_version"]
     if gtex_version.upper() not in available_gtex_versions:
-        gtex_version = "V7"
+        gtex_version = "V10"
     # gtex_data = {}
     for tissue in tqdm(gtex_tissues):
         data[tissue] = pd.DataFrame({})
@@ -1832,7 +1498,7 @@ def regionCheck(build, regiontext):
         try:
             startbp = int(startbp)
             endbp = int(endbp)
-        except:
+        except Exception:
             message["response"] = "Invalid coordinate input"
             return jsonify(message)
     else:
@@ -1844,7 +1510,7 @@ def regionCheck(build, regiontext):
                 maxChromLength = chromLengths.loc["chr" + str(chrom), "length"]
             startbp = int(startbp)
             endbp = int(endbp)
-        except:
+        except Exception:
             message["response"] = "Invalid coordinate input"
             return jsonify(message)
     if chrom < 1 or chrom > 23:
@@ -1857,7 +1523,7 @@ def regionCheck(build, regiontext):
         message["response"] = "Start or end coordinates are out of range"
     elif (endbp - startbp) > genomicWindowLimit:
         message["response"] = (
-            f"Entered region size is larger than {genomicWindowLimit/10**6} Mbp"
+            f"Entered region size is larger than {genomicWindowLimit / 10**6} Mbp"
         )
         return jsonify(message)
     else:
@@ -1885,7 +1551,9 @@ def index():
         file = request.files.get(name)
         if file:
             filepath = download_file(file)
-            if filepath is not None and any(str(filepath).endswith(ext) for ext in extensions):
+            if filepath is not None and any(
+                str(filepath).endswith(ext) for ext in extensions
+            ):
                 filepaths.append(filepath)
         elif required:
             raise InvalidUsage(f"Missing required file: {description}", status_code=410)
@@ -1952,7 +1620,7 @@ def setbasedtest():
         # Users can upload up to 1 LD, and must upload 1 summary stats file (.txt, .tsv)
         if len(uploaded_extensions) >= 2:
             raise InvalidUsage(
-                f"Too many files uploaded. Expecting maximum of 2 files",
+                "Too many files uploaded. Expecting maximum of 2 files",
                 status_code=410,
             )
         if extension not in uploaded_extensions:
@@ -1978,7 +1646,7 @@ def setbasedtest():
 
     if summary_stats_filepath == "":
         raise InvalidUsage(
-            f"Missing summary stats file. Please upload one of (.txt, .tsv)",
+            "Missing summary stats file. Please upload one of (.txt, .tsv)",
             status_code=410,
         )
 
@@ -1994,7 +1662,7 @@ def setbasedtest():
     regionstext = request.form[FormID.LOCUS_MULTIPLE]
     regions = get_multiple_regions(regionstext, coordinate)
 
-    user_wants_separate_tests = request.form.get(FormID.SEPARATE_TESTS) != None
+    user_wants_separate_tests = request.form.get(FormID.SEPARATE_TESTS) is not None
 
     metadata = {}
     metadata.update(
@@ -2061,9 +1729,7 @@ def setbasedtest():
 
     combine_lds = False
 
-    snps_used_in_test = (
-        []
-    )  # List of list of positions, one list per test; position is (chrom, bp) tuple
+    snps_used_in_test = []  # List of list of positions, one list per test; position is (chrom, bp) tuple
 
     # TODO: need to determine used SNPs AFTER tests are performed
 
@@ -2088,9 +1754,7 @@ def setbasedtest():
                     & (summary_dataset[bp] >= region[1])
                     & (summary_dataset[bp] <= region[2])
                 )
-                sep_ldmatrix_file = (
-                    f"session_data/ldmat-{my_session_id}-{i+1:03}-{len(regions):03}.txt"
-                )
+                sep_ldmatrix_file = f"session_data/ldmat-{my_session_id}-{i + 1:03}-{len(regions):03}.txt"
                 sep_ldmatrix_filepath = os.path.join(MYDIR, "static", sep_ldmatrix_file)
                 sep_summary_dataset = summary_dataset[mask]
                 sep_ld_mat = ld_mat[mask][:, mask]
@@ -2098,7 +1762,7 @@ def setbasedtest():
                 # subset dataset to SNPs in LD
                 sep_PvaluesMat = np.matrix([sep_summary_dataset[P]])
 
-                sep_Pvalues_file = f"session_data/Pvalues-{my_session_id}-{i+1:03}-{len(regions):03}.txt"
+                sep_Pvalues_file = f"session_data/Pvalues-{my_session_id}-{i + 1:03}-{len(regions):03}.txt"
                 sep_Pvalues_filepath = os.path.join(MYDIR, "static", sep_Pvalues_file)
                 writeMat(sep_PvaluesMat, sep_Pvalues_filepath)
 
@@ -2106,7 +1770,7 @@ def setbasedtest():
                 SSresult_path = os.path.join(
                     MYDIR,
                     "static",
-                    f"session_data/SSPvalues-{my_session_id}-{i+1:03}-{len(regions):03}.txt",
+                    f"session_data/SSPvalues-{my_session_id}-{i + 1:03}-{len(regions):03}.txt",
                 )
                 Rscript_args = [
                     "Rscript",
@@ -2142,7 +1806,7 @@ def setbasedtest():
                 plink_outfilepath = os.path.join(
                     MYDIR,
                     "static",
-                    f"session_data/ld-{my_session_id}-{i+1:03}-{len(regions):03}",
+                    f"session_data/ld-{my_session_id}-{i + 1:03}-{len(regions):03}",
                 )
 
                 sep_dataset = get_snps_in_region(summary_dataset, region, chrom, bp)
@@ -2161,9 +1825,7 @@ def setbasedtest():
                 np.fill_diagonal(
                     ld_mat, np.diag(ld_mat) + LD_MAT_DIAG_CONSTANT
                 )  # need to add diag
-                sep_ldmatrix_file = (
-                    f"session_data/ldmat-{my_session_id}-{i+1:03}-{len(regions):03}.txt"
-                )
+                sep_ldmatrix_file = f"session_data/ldmat-{my_session_id}-{i + 1:03}-{len(regions):03}.txt"
                 sep_ldmatrix_filepath = os.path.join(MYDIR, "static", sep_ldmatrix_file)
                 writeMat(ld_mat, sep_ldmatrix_filepath)
                 # subset dataset to SNPs in LD
@@ -2173,7 +1835,7 @@ def setbasedtest():
                     os.path.join(
                         MYDIR,
                         "static",
-                        f"session_data/ldmat_snps-{my_session_id}-{i+1:03}-{len(regions):03}.txt",
+                        f"session_data/ldmat_snps-{my_session_id}-{i + 1:03}-{len(regions):03}.txt",
                     ),
                 )
                 writeList(
@@ -2181,14 +1843,14 @@ def setbasedtest():
                     os.path.join(
                         MYDIR,
                         "static",
-                        f"session_data/ldmat_positions-{my_session_id}-{i+1:03}-{len(regions):03}.txt",
+                        f"session_data/ldmat_positions-{my_session_id}-{i + 1:03}-{len(regions):03}.txt",
                     ),
                 )
                 sep_PvaluesMat = np.matrix(
                     [sep_dataset[p][sep_dataset[bp].isin(ld_mat_snps_df.iloc[:, 3])]]
                 )
 
-                sep_Pvalues_file = f"session_data/Pvalues-{my_session_id}-{i+1:03}-{len(regions):03}.txt"
+                sep_Pvalues_file = f"session_data/Pvalues-{my_session_id}-{i + 1:03}-{len(regions):03}.txt"
                 sep_Pvalues_filepath = os.path.join(MYDIR, "static", sep_Pvalues_file)
                 writeMat(sep_PvaluesMat, sep_Pvalues_filepath)
 
@@ -2196,7 +1858,7 @@ def setbasedtest():
                 SSresult_path = os.path.join(
                     MYDIR,
                     "static",
-                    f"session_data/SSPvalues-{my_session_id}-{i+1:03}-{len(regions):03}.txt",
+                    f"session_data/SSPvalues-{my_session_id}-{i + 1:03}-{len(regions):03}.txt",
                 )
                 Rscript_args = [
                     "Rscript",
@@ -2303,7 +1965,7 @@ def setbasedtest():
                 plink_outfilepath = os.path.join(
                     MYDIR,
                     "static",
-                    f"session_data/ld-{my_session_id}-{i+1:03}-{len(regions):03}",
+                    f"session_data/ld-{my_session_id}-{i + 1:03}-{len(regions):03}",
                 )
                 ld_mat_snps_df, ld_mat = plink_ldmat(
                     coordinate,
@@ -2321,7 +1983,7 @@ def setbasedtest():
                     os.path.join(
                         MYDIR,
                         "static",
-                        f"session_data/ldmat-{my_session_id}-{i+1:03}-{len(regions):03}.txt",
+                        f"session_data/ldmat-{my_session_id}-{i + 1:03}-{len(regions):03}.txt",
                     ),
                 )
                 ld_mat_snp_df_list.append(ld_mat_snps_df)
@@ -2451,7 +2113,7 @@ app.config["SITEMAP_URL_SCHEME"] = "https"
 
 
 @ext.register_generator
-def index():
+def index_g():
     # Not needed if you set SITEMAP_INCLUDE_RULES_WITHOUT_PARAMS=True
     # yield 'index', {}
     urls = [

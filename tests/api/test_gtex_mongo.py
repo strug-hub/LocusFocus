@@ -8,10 +8,14 @@ def skip_if_no_mongo(flask_app):
     """Skip the test if mongo is not available"""
     with flask_app.app_context():
         try:
-            client = MongoClient(flask_app.config["MONGO_CONNECTION_STRING"], serverSelectionTimeoutMS=1000)
+            client = MongoClient(
+                flask_app.config["MONGO_CONNECTION_STRING"],
+                serverSelectionTimeoutMS=10000,
+            )
             client.server_info()
         except ServerSelectionTimeoutError:
             pytest.skip("MongoDB not available")
+
 
 def test_get_gtex(flask_app: Flask):
     """Sanity check for get_gtex"""
