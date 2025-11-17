@@ -25,18 +25,23 @@ class BaseConfig:
         ],
         "script-src": [
             "'self'",
-            "'unsafe-inline'",  # TODO
-            "'unsafe-eval'",  # TODO
             "https://*.googletagmanager.com",
             "cdnjs.cloudflare.com",
+            "cdn.datatables.net",
+            "cdn.jsdelivr.net",
             "cdn.plot.ly",
+            "stackpath.bootstrapcdn.com",
         ],
         "style-src": [
             "'self'",
-            "'unsafe-inline'",  # TODO
+            "'sha256-OTeu7NEHDo6qutIWo0F2TmYrDhsKWCzrUgGoxxHGJ8o='",  # mdb
+            "'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU='",  # plotly
             "use.fontawesome.com",
+            "cdn.jsdelivr.net",
             "cdnjs.cloudflare.com",
+            "cdn.plot.ly",
             "stackpath.bootstrapcdn.com",
+            "cdn.datatables.net",
         ],
         "font-src": [
             "'self'",
@@ -46,6 +51,8 @@ class BaseConfig:
         ],
         "connect-src": [
             "'self'",
+            "cdnjs.cloudflare.com",
+            "stackpath.bootstrapcdn.com",
             "https://*.google-analytics.com",
             "https://*.analytics.google.com",
             "https://*.googletagmanager.com",
@@ -79,9 +86,11 @@ class BaseConfig:
 
     CELERY = {
         "timezone": "America/Toronto",
-        "broker_url": "redis://localhost:6379/0"
-        if REDIS_PASSWORD is None
-        else f"redis://:{os.environ['REDIS_PASSWORD']}@localhost:6379/0",
+        "broker_url": (
+            "redis://localhost:6379/0"
+            if REDIS_PASSWORD is None
+            else f"redis://:{os.environ['REDIS_PASSWORD']}@localhost:6379/0"
+        ),
         "result_backend": f"file://{os.path.join(SESSION_FOLDER, 'celery_results')}",
         "broker_connection_retry_on_startup": True,
     }

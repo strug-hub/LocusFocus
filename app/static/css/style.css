@@ -46,7 +46,7 @@ h5 {
 .isa_info, .isa_success, .isa_warning, .isa_error {
   margin: 10px 0px;
   padding:12px;
-   
+
   }
   .isa_info {
       color: #00529B;
@@ -114,4 +114,32 @@ bottom: .5em;
 .progress-bar {
   transition: all 0.5s ease;
   transition: width 4s ease;
+}
+
+/* index.html */
+
+#loading .spinner-border{
+  display: none
+}
+
+label .marker-checkbox-id-label, #coloc2check label {
+  margin: 0px;
+  padding: 10px;
+  height:42px
+}
+
+#loading {
+  display: none;
+}
+
+/* plot.html */
+
+div .card .border-primary .mb-9 {
+  max-width: 60rem
+}
+
+#pval-filter label {
+  margin: 0px;
+  padding: 10px;
+  height:42px
 }

@@ -74,7 +74,9 @@ function coordinateChange(newCoordinate) {
     `${startingChr}:${startingPos}-${endingPos}`
   );
   if (!["hg38", "hg19"].includes(newCoordinate)) {
-    alert("Invalid coordinate system. Please select hg38 or hg19 coordinates.");
+    alert(
+      `${newCoordinate} is invalid. Please select hg38 or hg19 coordinates.`
+    );
     return;
   }
   setLoading(true);
@@ -574,14 +576,26 @@ function init() {
     });
   });
 
-  // initialize popover and tooltip
-  $(function () {
-    $('[data-toggle="popover"]').popover();
-  });
+  // initialize popover, tooltip, and callbacks
   $(document).ready(function () {
+    $('[data-toggle="popover"]').popover();
     $('[data-toggle="tooltip"]').tooltip({
       delay: { show: 500, hide: 100 },
     });
+
+    $("#coordinate").on("change", (e) =>
+      coordinateChange(e.currentTarget.value)
+    );
+
+    $("#markerCheckbox").on("change", (e) => inferVariant(e.currentTarget));
+
+    $("#coloc2check").on("change", (e) => addColoc2Inputs(e.currentTarget));
+
+    $("#locus").on("change", (e) => checkLocusInput(e.currentTarget));
+
+    $("#GTEx-version").on("change", (e) =>
+      gtexVersionChange(e.currentTarget.value)
+    );
   });
 
   // add warning listeners

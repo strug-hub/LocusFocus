@@ -1,112 +1,162 @@
 <!DOCTYPE html>
 <html lang="en">
+  <head>
+    {% include "lib/google-analytics.html" %}
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>
+      LocusFocus: A Colocalization Tool to Prioritize Genes and Tissues from
+      GWAS and eQTL Integration
+    </title>
+    <link rel="shortcut icon" href="#" />
+    <!-- Font Awesome -->
+    <link
+      rel="stylesheet"
+      href="https://use.fontawesome.com/releases/v5.7.0/css/all.css"
+    />
+    <!-- JQuery-UI -->
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/jquery-ui.css') }}"
+    />
+    <!-- JQuery -->
+    <script
+      type="text/javascript"
+      src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"
+    ></script>
+    <!-- JQuery-UI -->
+    <script
+      type="text/javascript"
+      src="{{ url_for('static', filename='js/lib/jquery-ui.js') }}"
+    ></script>
+    <!-- Bootstrap core CSS -->
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+      integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T"
+      crossorigin="anonymous"
+    />
+    <!-- Material Design Bootstrap -->
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/mdbootstrap/4.7.4/css/mdb.min.css"
+      rel="stylesheet"
+    />
+  </head>
 
-<head>
-  {% include "lib/google-analytics.html" %}
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="X-UA-Compatible" content="ie=edge">
-  <title>LocusFocus: A Colocalization Tool to Prioritize Genes and Tissues from GWAS and eQTL Integration</title>
-  <link rel="shortcut icon" href="#" />
-  <!-- Font Awesome -->
-  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.0/css/all.css">
-  <!-- JQuery-UI -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/jquery-ui.css') }}" />
-  <!-- JQuery -->
-  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-  <!-- JQuery-UI -->
-  <script type="text/javascript" src="{{ url_for('static', filename='js/lib/jquery-ui.js') }}"></script>
-  <!-- Bootstrap core CSS -->
-  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
-    integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
-  <!-- Material Design Bootstrap -->
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/mdbootstrap/4.7.4/css/mdb.min.css" rel="stylesheet">
-  <!-- DataTables -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/jquery.dataTables.min.css') }}" />
-  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/bootstrap-multiselect.css') }}" />
-  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/style.css') }}">
-  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/d3Style.css') }}">
-</head>
-
-<body>
-  {% include "components/navigation-bar.html" %}
-  <div class="container">
-    <div class="row">
-      <div class="col-md-12 d-flex justify-content-center align-items-center">
-        <div class="card border-primary mb-9" style="max-width: 60rem">
-          <div class="card-header">Session ID</div>
-          <div class="card-body">
-            <h4 class="card-title" id="sessionid">
-              <a href="{{ url_for('prev_session_input', old_session_id=session_id) }}">{{ session_id }}</a>
-            </h4>
-            <p class="card-text">
-              Save the above string for your records to load or share your
-              plot once it is ready.
-            </p>
-            <p class="card-text" id="job-status-explainer-text">
-              This page will automatically check the status of your job.
-            </p>
-            <hr />
-            <p class="card-text" id="job-status-text">
-              <i>Your job is currently running.</i>
-            </p>
-            <div class="progress">
-              <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" width="0%"></div>
+  <body>
+    {% include "components/navigation-bar.html" %}
+    <div class="container">
+      <div class="row">
+        <div class="col-md-12 d-flex justify-content-center align-items-center">
+          <div class="card border-primary mb-9" style="max-width: 60rem">
+            <div class="card-header">Session ID</div>
+            <div class="card-body">
+              <h4 class="card-title" id="sessionid">
+                <a
+                  href="{{ url_for('prev_session_input', old_session_id=session_id) }}"
+                  >{{ session_id }}</a
+                >
+              </h4>
+              <p class="card-text">
+                Save the above string for your records to load or share your
+                plot once it is ready.
+              </p>
+              <p class="card-text" id="job-status-explainer-text">
+                This page will automatically check the status of your job.
+              </p>
+              <hr />
+              <p class="card-text" id="job-status-text">
+                <i>Your job is currently running.</i>
+              </p>
+              <div class="progress">
+                <div
+                  id="progress-bar"
+                  class="progress-bar progress-bar-striped progress-bar-animated"
+                  role="progressbar"
+                  aria-valuenow="0"
+                  aria-valuemin="0"
+                  aria-valuemax="100"
+                  width="0%"
+                ></div>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
-    <br />
-    <div class="d-flex justify-content-center" id="loading-spinner">
-      <div class="spinner-border" role="status">
-        <span class="sr-only">Loading...</span>
-      </div>
-    </div>
-    <div class="d-flex justify-content-center" id="success-section" style="display:none !important;">
-      <a class="btn btn-primary" id="success-button" role="button" href="#">
-        View Results
-      </a>
-    </div>
-    <div class="col-md-12 d-flex justify-content-center align-items-center" id="error-section" style="display:none !important;">
-      <div class="card border-danger mb-9" style="width: 100rem">
-        <div class="card-header">Error</div>
-        <div class="card-body">
-          <h4 class="card-title" id="error-title"></h4>
-          <h6 class="card-subtitle mb-2 text-muted" id="error-subtitle"></h6>
-          <p class="card-text" id="error-message"></p>
-          <br />
-          <p class="card-text" id="error-payload"></p>
-        </div>
-        <div id="error-contact-section" class="card-footer" style="display:none !important;">
-          <a class="card-link" id="error-contact-link" href="#" target="_blank">
-            Email Us with Error Details
-          </a>
+      <br />
+      <div class="d-flex justify-content-center" id="loading-spinner">
+        <div class="spinner-border" role="status">
+          <span class="sr-only">Loading...</span>
         </div>
       </div>
+      <div
+        class="d-flex justify-content-center"
+        id="success-section"
+        style="display: none !important"
+      >
+        <a class="btn btn-primary" id="success-button" role="button" href="#">
+          View Results
+        </a>
+      </div>
+      <div
+        class="col-md-12 d-flex justify-content-center align-items-center"
+        id="error-section"
+        style="display: none !important"
+      >
+        <div class="card border-danger mb-9" style="width: 100rem">
+          <div class="card-header">Error</div>
+          <div class="card-body">
+            <h4 class="card-title" id="error-title"></h4>
+            <h6 class="card-subtitle mb-2 text-muted" id="error-subtitle"></h6>
+            <p class="card-text" id="error-message"></p>
+            <br />
+            <p class="card-text" id="error-payload"></p>
+          </div>
+          <div
+            id="error-contact-section"
+            class="card-footer"
+            style="display: none !important"
+          >
+            <a
+              class="card-link"
+              id="error-contact-link"
+              href="#"
+              target="_blank"
+            >
+              Email Us with Error Details
+            </a>
+          </div>
+        </div>
+      </div>
     </div>
-  </div> <!-- container closing div -->
+    <!-- container closing div -->
 
-  <!-- Bootstrap tooltips -->
-  <script type="text/javascript"
-    src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.4/umd/popper.min.js"></script>
-  <!-- Bootstrap core JavaScript -->
-  <script type="text/javascript"
-    src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.3.1/js/bootstrap.min.js"></script>
-  <!-- MDB core JavaScript -->
-  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mdbootstrap/4.7.4/js/mdb.min.js"></script>
-  <!-- DataTables -->
-  <script type="text/javascript" src="{{ url_for('static', filename='js/lib/jquery.dataTables.min.js') }}"></script>
-  <!-- Multiselect -->
-  <script src="{{ url_for('static', filename='js/lib/bootstrap-multiselect.js') }}"></script>
+    <!-- Bootstrap tooltips -->
+    <script
+      type="text/javascript"
+      src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.4/umd/popper.min.js"
+    ></script>
+    <!-- Bootstrap core JavaScript -->
+    <script
+      type="text/javascript"
+      src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.3.1/js/bootstrap.min.js"
+    ></script>
+    <!-- MDB core JavaScript -->
+    <script
+      type="text/javascript"
+      src="https://cdnjs.cloudflare.com/ajax/libs/mdbootstrap/4.7.4/js/mdb.min.js"
+    ></script>
+    <!-- Multiselect -->
+    <script src="{{ url_for('static', filename='js/lib/bootstrap-multiselect.js') }}"></script>
 
-  <script src="{{ url_for('static', filename='js/waiting-page/progress-bar.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/waiting-page/progress-bar.js') }}"></script>
 
-  <script>
-    const JOB_STATUS_URL = "{{ url_for('jobs.get_job_status', job_id=session_id) }}";
-    const SESSION_ID = "{{ session_id }}";
-    handleJobStatus(JOB_STATUS_URL, SESSION_ID);
-  </script>
-</body>
-
+    <script>
+      const JOB_STATUS_URL =
+        "{{ url_for('jobs.get_job_status', job_id=session_id) }}";
+      const SESSION_ID = "{{ session_id }}";
+      handleJobStatus(JOB_STATUS_URL, SESSION_ID);
+    </script>
+  </body>
 </html>
