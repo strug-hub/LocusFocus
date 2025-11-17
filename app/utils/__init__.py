@@ -203,8 +203,6 @@ def standardize_snps(variantlist, regiontxt, build):
         if variant == "":
             stdvariantlist.append(".")
             continue
-        # this seems dangerous, what if format is chr1_123_A_T?
-        # then you would have chr1_1X_A_T
         variantstr = variant.replace("chr23_", "chrX_").replace("chr", "")
         if variantstr.startswith("rs"):
             try:
