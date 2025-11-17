@@ -145,7 +145,7 @@ def parse_region_text(regiontext, build):
         try:
             startbp = int(startbp)
             endbp = int(endbp)
-        except:
+        except Exception:
             raise InvalidUsage(
                 f"Invalid coordinates input: '{regiontext}'", status_code=410
             )
@@ -158,7 +158,7 @@ def parse_region_text(regiontext, build):
                 maxChromLength = chromLengths.loc["chr" + str(chrom), "length"]
             startbp = int(startbp)
             endbp = int(endbp)
-        except:
+        except Exception:
             raise InvalidUsage(
                 f"Invalid coordinates input '{regiontext}'", status_code=410
             )
