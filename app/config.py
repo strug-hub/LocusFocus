@@ -33,7 +33,6 @@ class BaseConfig:
             "stackpath.bootstrapcdn.com",
         ],
         "style-src": [
-            "'unsafe-inline'",
             "'self'",
             "'sha256-OTeu7NEHDo6qutIWo0F2TmYrDhsKWCzrUgGoxxHGJ8o='",  # mdb
             "'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU='",  # plotly
@@ -87,9 +86,11 @@ class BaseConfig:
 
     CELERY = {
         "timezone": "America/Toronto",
-        "broker_url": "redis://localhost:6379/0"
-        if REDIS_PASSWORD is None
-        else f"redis://:{os.environ['REDIS_PASSWORD']}@localhost:6379/0",
+        "broker_url": (
+            "redis://localhost:6379/0"
+            if REDIS_PASSWORD is None
+            else f"redis://:{os.environ['REDIS_PASSWORD']}@localhost:6379/0"
+        ),
         "result_backend": f"file://{os.path.join(SESSION_FOLDER, 'celery_results')}",
         "broker_connection_retry_on_startup": True,
     }
