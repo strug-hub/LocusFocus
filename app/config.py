@@ -75,9 +75,13 @@ class BaseConfig:
         "data",
     )
 
+    REDIS_PASSWORD = os.environ.get("REDIS_PASSWORD", None)
+
     CELERY = {
         "timezone": "America/Toronto",
-        "broker_url": f"redis://:{os.environ['REDIS_PASSWORD']}@localhost:6379/0",
+        "broker_url": "redis://localhost:6379/0"
+        if REDIS_PASSWORD is None
+        else f"redis://:{os.environ['REDIS_PASSWORD']}@localhost:6379/0",
         "result_backend": f"file://{os.path.join(SESSION_FOLDER, 'celery_results')}",
         "broker_connection_retry_on_startup": True,
     }
@@ -87,7 +91,7 @@ class BaseConfig:
     # Caching
     DISABLE_CACHE = os.environ.get("DISABLE_CACHE", "False").lower() == "true"
     CACHE_TYPE = "NullCache" if DISABLE_CACHE else "FileSystemCache"
-    CACHE_DEFAULT_TIMEOUT = 60*60*24*7  # 1 week
+    CACHE_DEFAULT_TIMEOUT = 60 * 60 * 24 * 7  # 1 week
     CACHE_DIR = os.path.join(LF_DATA_FOLDER, "cache")
     CACHE_KEY_PREFIX = "locusfocus-"
 
@@ -96,6 +100,7 @@ class DevConfig(BaseConfig):
     """
     Configuration options for development environment only.
     """
+
     DISABLE_CACHE = os.environ.get("DISABLE_CACHE", "False").lower() == "true"
     MONGO_URI = os.environ.get("MONGO_CONNECTION_STRING")
     CACHE_TYPE = "NullCache" if DISABLE_CACHE else "FileSystemCache"

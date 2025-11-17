@@ -28,10 +28,9 @@ from werkzeug.utils import secure_filename
 from pymongo.errors import ConnectionFailure
 
 from app.tasks import get_is_celery_running, run_pipeline_async
-from app.utils import download_file, get_dbnsp_snps
+from app.utils import download_file
 from app.utils.gencode import get_genes_by_location
 from app.utils.gtex import get_gtex, get_gtex_data
-from app.utils.apis.gtex import get_tissue_site_details
 from app.utils.errors import InvalidUsage, ServerError
 from app.utils.numpy_encoder import NumpyEncoder
 from app.utils.helpers import parse_region_text
@@ -40,7 +39,7 @@ from app import ext, mongo
 from app.cache import cache
 
 client = mongo.cx
-db = client.GTEx_V7
+db = client.GTEx_V8
 
 # import getSimpleSumStats
 
@@ -145,7 +144,7 @@ collapsed_genes_df_hg38 = pd.read_csv(
 collapsed_genes_df = collapsed_genes_df_hg19  # For now
 LD_MAT_DIAG_CONSTANT = 1e-6
 
-available_gtex_versions = ["V7", "V8"]
+available_gtex_versions = ["V8", "V10"]
 valid_populations = ["EUR", "AFR", "EAS", "SAS", "AMR", "ASN", "NFE"]
 
 
@@ -170,7 +169,7 @@ def parseSNP(snp_text):
 
 
 def allowed_file(filenames):
-    if type(filenames) == type("str"):
+    if type(filenames) is type("str"):
         return (
             "." in filenames
             and filenames.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -243,17 +242,17 @@ def classify_files(filenames):
     return gwas_filepath, ldmat_filepath, html_filepath
 
 
-def isSorted(l):
+def isSorted(ls):
     # l is a list
     # returns True if l is sorted in non-descending order, False otherwise
-    return all(l[i] <= l[i + 1] for i in range(len(l) - 1))
+    return all(ls[i] <= ls[i + 1] for i in range(len(ls) - 1))
 
 
-def Xto23(l):
+def Xto23(ls):
     newl = []
     validchroms = [str(i) for i in list(np.arange(1, 24))]
     validchroms.append(".")
-    for x in l:
+    for x in ls:
         if str(str(x).strip().lower().replace("chr", "").upper()) == "X":
             newl.append(23)
         elif str(str(x).strip().lower().replace("chr", "")) in validchroms:
@@ -316,7 +315,7 @@ def buildSNPlist(df, chromcol, poscol, refcol, altcol, build):
                 + "_"
                 + str(build)
             )
-        except:
+        except Exception:
             raise InvalidUsage(f"Could not convert marker at row {str(i)}")
     return snplist
 
@@ -358,32 +357,6 @@ def addVariantID(gwas_data, chromcol, poscol, refcol, altcol, build="hg19"):
         varlist.append("_".join([str(chrom), str(pos), ref, alt, buildstr]))
     gwas_data.loc[:, DEFAULT_FORM_VALUE_DICT[FormID.SNP_COL]] = varlist
     return gwas_data
-
-
-def verifyStdSNPs(stdsnplist, regiontxt, build):
-    # Ensure valid region:
-    chrom, startbp, endbp = parse_region_text(regiontxt, build)
-    chrom = str(chrom).replace("23", "X")
-
-    # Load GTEx variant lookup table for region indicated
-    db = client.GTEx_V7
-    if build.lower() in ["hg38", "grch38"]:
-        db = client.GTEx_V8
-    collection = db["variant_table"]
-    variants_query = collection.find(
-        {
-            "$and": [
-                {"chr": int(chrom.replace("X", "23"))},
-                {"variant_pos": {"$gte": int(startbp), "$lte": int(endbp)}},
-            ]
-        }
-    )
-    variants_list = list(variants_query)
-    variants_df = pd.DataFrame(variants_list)
-    variants_df = variants_df.drop(["_id"], axis=1)
-    gtex_std_snplist = list(variants_df["variant_id"])
-    isInGTEx = [x for x in stdsnplist if x in gtex_std_snplist]
-    return len(isInGTEx)
 
 
 def subsetLocus(build, summaryStats, regiontext, chromcol, poscol, pcol):
@@ -447,7 +420,7 @@ def check_pos_duplicates(positions):
         dups = set([x for x in positions if positions.count(x) > 1])
         dup_counts = [(x, positions.count(x)) for x in dups]
         raise InvalidUsage(
-            f'Duplicate chromosome basepair positions detected: {[f"bp: {dup[0]}, num. duplicates: {dup[1]}" for dup in dup_counts]}'
+            f"Duplicate chromosome basepair positions detected: {[f'bp: {dup[0]}, num. duplicates: {dup[1]}' for dup in dup_counts]}"
         )
     return None
 
@@ -761,7 +734,7 @@ def resolve_plink_filepath(build, pop, chrom):
         chrom = 23
     try:
         chrom = int(chrom)
-    except:
+    except Exception:
         raise InvalidUsage(f"Invalid chromosome {str(chrom)}", status_code=410)
     if chrom not in np.arange(1, 24):
         raise InvalidUsage(f"Invalid chromosome {str(chrom)}", status_code=410)
@@ -887,7 +860,7 @@ def plink_ld_pairwise(build, pop, chrom, snp_positions, snp_pvalues, outfilename
     )
     if len(positions_in_1kg_df) == 0:
         raise InvalidUsage(
-            f"No alternative lead SNP found in the 1000 Genomes. This error occurs when no provided SNPs could be found in the selected 1000 Genomes dataset. Please try a different population, or provide your own LD matrix.",
+            "No alternative lead SNP found in the 1000 Genomes. This error occurs when no provided SNPs could be found in the selected 1000 Genomes dataset. Please try a different population, or provide your own LD matrix.",
             status_code=410,
         )
     new_lead_snp_row = positions_in_1kg_df[
@@ -974,7 +947,7 @@ def read_gwasfile(infile, sep="\t"):
     try:
         gwas_data = pd.read_csv(infile, sep=sep, encoding="utf-8")
         return gwas_data
-    except:
+    except Exception:
         outfile = infile.replace(".txt", "_mod.txt")
         with open(infile) as f:
             with open(outfile, "w") as fout:
@@ -985,7 +958,7 @@ def read_gwasfile(infile, sep="\t"):
         try:
             gwas_data = pd.read_csv(outfile, sep=sep, encoding="utf-8")
             return gwas_data
-        except:
+        except Exception:
             raise InvalidUsage(
                 "Failed to load primary dataset. Please check formatting is adequate.",
                 status_code=410,
@@ -1053,7 +1026,7 @@ def create_close_regions(regions: List[Tuple[int, int, int]], threshold=int(1e6)
     # Split by chromosome
     chrom_buckets: Dict[int, List[Tuple[int, int, int]]] = dict()
     for region in regions:
-        if chrom_buckets.get(region[0], None) == None:
+        if chrom_buckets.get(region[0], None) is None:
             chrom_buckets[region[0]] = [region]
         else:
             chrom_buckets[region[0]].append(region)
@@ -1167,17 +1140,14 @@ def getGenesInRange(build, chrom, startbp, endbp):
 def list_tissues(version):
     version = version.upper()
     if version == "V7":
-        db = client.GTEx_V7
-        tissues = list(db.list_collection_names())
-        tissues.remove("variant_table")
+        raise InvalidUsage("GTEx V7 is no longer available")
     elif version == "V8":
         db = client.GTEx_V8
         tissues = list(db.list_collection_names())
         tissues.remove("variant_table")
     elif version == "V10":
-        version = f"gtex_{version.lower()}"
-        _tissues = get_tissue_site_details(version)
-        tissues = [d.tissue_site_detail_id for d in _tissues.data]
+        db = client.GTEx_V10
+        tissues = list(db.list_collection_names())
 
     return jsonify(sorted(tissues))
 
@@ -1272,7 +1242,6 @@ def prev_session():
 
 @app.route("/session_id/<old_session_id>")
 def prev_session_input(old_session_id):
-
     # Check celery session
     if (
         not app.config["DISABLE_CELERY"]
@@ -1339,7 +1308,7 @@ def update_colocalizing_gene(session_id, newgene):
     snp_list = data["snps"]
     gtex_version = data["gtex_version"]
     if gtex_version.upper() not in available_gtex_versions:
-        gtex_version = "V7"
+        gtex_version = "V10"
     # gtex_data = {}
     for tissue in tqdm(gtex_tissues):
         data[tissue] = pd.DataFrame({})
@@ -1385,7 +1354,7 @@ def regionCheck(build, regiontext):
         try:
             startbp = int(startbp)
             endbp = int(endbp)
-        except:
+        except Exception:
             message["response"] = "Invalid coordinate input"
             return jsonify(message)
     else:
@@ -1397,7 +1366,7 @@ def regionCheck(build, regiontext):
                 maxChromLength = chromLengths.loc["chr" + str(chrom), "length"]
             startbp = int(startbp)
             endbp = int(endbp)
-        except:
+        except Exception:
             message["response"] = "Invalid coordinate input"
             return jsonify(message)
     if chrom < 1 or chrom > 23:
@@ -1410,7 +1379,7 @@ def regionCheck(build, regiontext):
         message["response"] = "Start or end coordinates are out of range"
     elif (endbp - startbp) > genomicWindowLimit:
         message["response"] = (
-            f"Entered region size is larger than {genomicWindowLimit/10**6} Mbp"
+            f"Entered region size is larger than {genomicWindowLimit / 10**6} Mbp"
         )
         return jsonify(message)
     else:
@@ -1507,7 +1476,7 @@ def setbasedtest():
         # Users can upload up to 1 LD, and must upload 1 summary stats file (.txt, .tsv)
         if len(uploaded_extensions) >= 2:
             raise InvalidUsage(
-                f"Too many files uploaded. Expecting maximum of 2 files",
+                "Too many files uploaded. Expecting maximum of 2 files",
                 status_code=410,
             )
         if extension not in uploaded_extensions:
@@ -1533,7 +1502,7 @@ def setbasedtest():
 
     if summary_stats_filepath == "":
         raise InvalidUsage(
-            f"Missing summary stats file. Please upload one of (.txt, .tsv)",
+            "Missing summary stats file. Please upload one of (.txt, .tsv)",
             status_code=410,
         )
 
@@ -1549,7 +1518,7 @@ def setbasedtest():
     regionstext = request.form[FormID.LOCUS_MULTIPLE]
     regions = get_multiple_regions(regionstext, coordinate)
 
-    user_wants_separate_tests = request.form.get(FormID.SEPARATE_TESTS) != None
+    user_wants_separate_tests = request.form.get(FormID.SEPARATE_TESTS) is not None
 
     metadata = {}
     metadata.update(
@@ -1643,9 +1612,7 @@ def setbasedtest():
                     & (summary_dataset[bp] >= region[1])
                     & (summary_dataset[bp] <= region[2])
                 )
-                sep_ldmatrix_file = (
-                    f"session_data/ldmat-{my_session_id}-{i+1:03}-{len(regions):03}.txt"
-                )
+                sep_ldmatrix_file = f"session_data/ldmat-{my_session_id}-{i + 1:03}-{len(regions):03}.txt"
                 sep_ldmatrix_filepath = os.path.join(MYDIR, "static", sep_ldmatrix_file)
                 sep_summary_dataset = summary_dataset[mask]
                 sep_ld_mat = ld_mat[mask][:, mask]
@@ -1653,7 +1620,7 @@ def setbasedtest():
                 # subset dataset to SNPs in LD
                 sep_PvaluesMat = np.matrix([sep_summary_dataset[P]])
 
-                sep_Pvalues_file = f"session_data/Pvalues-{my_session_id}-{i+1:03}-{len(regions):03}.txt"
+                sep_Pvalues_file = f"session_data/Pvalues-{my_session_id}-{i + 1:03}-{len(regions):03}.txt"
                 sep_Pvalues_filepath = os.path.join(MYDIR, "static", sep_Pvalues_file)
                 writeMat(sep_PvaluesMat, sep_Pvalues_filepath)
 
@@ -1661,7 +1628,7 @@ def setbasedtest():
                 SSresult_path = os.path.join(
                     MYDIR,
                     "static",
-                    f"session_data/SSPvalues-{my_session_id}-{i+1:03}-{len(regions):03}.txt",
+                    f"session_data/SSPvalues-{my_session_id}-{i + 1:03}-{len(regions):03}.txt",
                 )
                 Rscript_args = [
                     "Rscript",
@@ -1697,7 +1664,7 @@ def setbasedtest():
                 plink_outfilepath = os.path.join(
                     MYDIR,
                     "static",
-                    f"session_data/ld-{my_session_id}-{i+1:03}-{len(regions):03}",
+                    f"session_data/ld-{my_session_id}-{i + 1:03}-{len(regions):03}",
                 )
 
                 sep_dataset = get_snps_in_region(summary_dataset, region, chrom, bp)
@@ -1716,9 +1683,7 @@ def setbasedtest():
                 np.fill_diagonal(
                     ld_mat, np.diag(ld_mat) + LD_MAT_DIAG_CONSTANT
                 )  # need to add diag
-                sep_ldmatrix_file = (
-                    f"session_data/ldmat-{my_session_id}-{i+1:03}-{len(regions):03}.txt"
-                )
+                sep_ldmatrix_file = f"session_data/ldmat-{my_session_id}-{i + 1:03}-{len(regions):03}.txt"
                 sep_ldmatrix_filepath = os.path.join(MYDIR, "static", sep_ldmatrix_file)
                 writeMat(ld_mat, sep_ldmatrix_filepath)
                 # subset dataset to SNPs in LD
@@ -1728,7 +1693,7 @@ def setbasedtest():
                     os.path.join(
                         MYDIR,
                         "static",
-                        f"session_data/ldmat_snps-{my_session_id}-{i+1:03}-{len(regions):03}.txt",
+                        f"session_data/ldmat_snps-{my_session_id}-{i + 1:03}-{len(regions):03}.txt",
                     ),
                 )
                 writeList(
@@ -1736,14 +1701,14 @@ def setbasedtest():
                     os.path.join(
                         MYDIR,
                         "static",
-                        f"session_data/ldmat_positions-{my_session_id}-{i+1:03}-{len(regions):03}.txt",
+                        f"session_data/ldmat_positions-{my_session_id}-{i + 1:03}-{len(regions):03}.txt",
                     ),
                 )
                 sep_PvaluesMat = np.matrix(
                     [sep_dataset[p][sep_dataset[bp].isin(ld_mat_snps_df.iloc[:, 3])]]
                 )
 
-                sep_Pvalues_file = f"session_data/Pvalues-{my_session_id}-{i+1:03}-{len(regions):03}.txt"
+                sep_Pvalues_file = f"session_data/Pvalues-{my_session_id}-{i + 1:03}-{len(regions):03}.txt"
                 sep_Pvalues_filepath = os.path.join(MYDIR, "static", sep_Pvalues_file)
                 writeMat(sep_PvaluesMat, sep_Pvalues_filepath)
 
@@ -1751,7 +1716,7 @@ def setbasedtest():
                 SSresult_path = os.path.join(
                     MYDIR,
                     "static",
-                    f"session_data/SSPvalues-{my_session_id}-{i+1:03}-{len(regions):03}.txt",
+                    f"session_data/SSPvalues-{my_session_id}-{i + 1:03}-{len(regions):03}.txt",
                 )
                 Rscript_args = [
                     "Rscript",
@@ -1858,7 +1823,7 @@ def setbasedtest():
                 plink_outfilepath = os.path.join(
                     MYDIR,
                     "static",
-                    f"session_data/ld-{my_session_id}-{i+1:03}-{len(regions):03}",
+                    f"session_data/ld-{my_session_id}-{i + 1:03}-{len(regions):03}",
                 )
                 ld_mat_snps_df, ld_mat = plink_ldmat(
                     coordinate,
@@ -1876,7 +1841,7 @@ def setbasedtest():
                     os.path.join(
                         MYDIR,
                         "static",
-                        f"session_data/ldmat-{my_session_id}-{i+1:03}-{len(regions):03}.txt",
+                        f"session_data/ldmat-{my_session_id}-{i + 1:03}-{len(regions):03}.txt",
                     ),
                 )
                 ld_mat_snp_df_list.append(ld_mat_snps_df)
@@ -2006,7 +1971,7 @@ app.config["SITEMAP_URL_SCHEME"] = "https"
 
 
 @ext.register_generator
-def index():
+def index_g():
     # Not needed if you set SITEMAP_INCLUDE_RULES_WITHOUT_PARAMS=True
     # yield 'index', {}
     urls = [

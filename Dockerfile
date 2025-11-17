@@ -45,7 +45,7 @@ ENV POETRY_HOME=/opt/poetry
 RUN python3 -m venv $POETRY_HOME
 
 RUN $POETRY_HOME/bin/pip install -U pip \
-  && $POETRY_HOME/bin/pip install poetry==1.5.1
+  && $POETRY_HOME/bin/pip install poetry==2.1.1
 
 ENV VIRTUAL_ENV=/poetry-env \
   PATH="/poetry-env/bin:$POETRY_HOME/bin:$PATH"

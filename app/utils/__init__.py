@@ -12,11 +12,11 @@ import numpy as np
 from flask import current_app as app
 from werkzeug.utils import secure_filename
 from werkzeug.exceptions import RequestEntityTooLarge
-from werkzeug.datastructures import ImmutableMultiDict, FileStorage
+from werkzeug.datastructures import FileStorage
 
-from app.utils.gtex import get_gtex_snps
 from app.utils.errors import InvalidUsage
 from app.utils.helpers import parse_region_text
+from app.utils.variants import get_variants_by_region
 
 GENOMIC_WINDOW_LIMIT = 2e6
 
@@ -158,7 +158,7 @@ def standardize_snps(variantlist, regiontxt, build):
     # Ensure valid region:
     chrom, startbp, endbp = parse_region_text(regiontxt, build)
 
-    variants_df = get_gtex_snps(chrom, startbp, endbp, build)
+    variants_df = get_variants_by_region(int(startbp), int(endbp), str(chrom), "V10")
 
     rsid_colname = (
         "rs_id_dbSNP147_GRCh37p13"
@@ -166,11 +166,16 @@ def standardize_snps(variantlist, regiontxt, build):
         else "rs_id_dbSNP151_GRCh38p7"
     )
 
-    suffix = "b37" if build.lower() in ["hg38", "grch38"] else "b37"
+    suffix = "b38" if build.lower() in ["hg38", "grch38"] else "b37"
 
     chrom = str(chrom).replace("23", "X")
 
     dbsnp_snps = get_dbnsp_snps(chrom, startbp, endbp, build)
+
+    if build.lower() in ["hg19", "grch37"]:
+        raise InvalidUsage(
+            "Cannot standardize SNPs to hg19; GTEx V7 is no longer available."
+        )
 
     rsids = dict(
         {}
@@ -198,7 +203,9 @@ def standardize_snps(variantlist, regiontxt, build):
         if variant == "":
             stdvariantlist.append(".")
             continue
-        variantstr = variant.replace("chr", "").replace("23_", "X_", 1)
+        # this seems dangerous, what if format is chr1_123_A_T?
+        # then you would have chr1_1X_A_T
+        variantstr = variant.replace("chr23_", "chrX_").replace("chr", "")
         if variantstr.startswith("rs"):
             try:
                 # Here's the difference from the first function version (we look at GTEx first)
@@ -211,7 +218,7 @@ def standardize_snps(variantlist, regiontxt, build):
                     stdvariantlist.append(stdvar)
                 else:
                     stdvariantlist.append(rsids[variantstr][0])
-            except:
+            except Exception:
                 stdvariantlist.append(".")
         elif re.search(
             r"^\d+_\d+_[A,T,G,C]+_[A,T,C,G]+,*", variantstr.replace("X", "23")
@@ -237,7 +244,7 @@ def standardize_snps(variantlist, regiontxt, build):
                         )
                 else:
                     stdvariantlist.append(".")
-            except:
+            except Exception:
                 raise InvalidUsage(f"Problem with variant {variant}", status_code=410)
         elif re.search(r"^\d+_\d+_*[A,T,G,C]*", variantstr.replace("X", "23")):
             strlist = variantstr.split("_")
@@ -256,7 +263,7 @@ def standardize_snps(variantlist, regiontxt, build):
                     stdvariantlist.append(fetch_snv(achr, astart, aref, build))
                 else:
                     stdvariantlist.append(".")
-            except:
+            except Exception:
                 raise InvalidUsage(f"Problem with variant {variant}", status_code=410)
         else:
             raise InvalidUsage(
@@ -274,7 +281,7 @@ def fetch_snv(chrom, bp, ref, build):
     # Ensure valid region:
     try:
         regiontxt = str(chrom) + ":" + str(bp) + "-" + str(int(bp) + 1)
-    except:
+    except Exception:
         raise InvalidUsage(f"Invalid input for {str(chrom):str(bp)}")
     chrom = parse_region_text(regiontxt, build)[0]
     chrom = str(chrom).replace("chr", "").replace("23", "X")
@@ -299,7 +306,7 @@ def fetch_snv(chrom, bp, ref, build):
     return variantid
 
 
-def x_to_23(l):
+def x_to_23(ls):
     """
     Given a list of chromosome strings,
     return list where all variations of string 'X' are converted to integer 23.
@@ -308,7 +315,7 @@ def x_to_23(l):
     newl = []
     validchroms = [str(i) for i in list(np.arange(1, 24))]
     validchroms.append(".")
-    for x in l:
+    for x in ls:
         if str(str(x).strip().lower().replace("chr", "").upper()) == "X":
             newl.append(23)
         elif str(str(x).strip().lower().replace("chr", "")) in validchroms:

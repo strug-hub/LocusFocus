@@ -5,7 +5,6 @@ import os
 
 import numpy as np
 import pandas as pd
-from werkzeug.datastructures import ImmutableMultiDict
 
 from app.colocalization.constants import (
     ONE_SIDED_SS_WINDOW_SIZE,
@@ -140,6 +139,7 @@ class SessionPayload:
     success: bool = False
     r2: List[float] = field(default_factory=list)
     liftover_lead_snp_warning: str = ""
+    lifted_over_coordinate: Optional[str] = None
 
     # Simple Sum
     ss_locustext: Optional[str] = None
@@ -173,6 +173,7 @@ class SessionPayload:
 
         Return either 'hg19' or 'hg38'.
         """
+
         if self.coordinate is None:
             if self.request_form.get("coordinate") not in VALID_COORDINATES:
                 raise InvalidUsage(
@@ -180,7 +181,11 @@ class SessionPayload:
                 )
 
             self.coordinate = self.request_form.get("coordinate")
-        return self.coordinate  # type: ignore
+
+        if self.lifted_over_coordinate is not None:
+            return self.lifted_over_coordinate
+        else:
+            return self.coordinate  # type: ignore
 
     def get_secondary_coordinate(self) -> str:
         """
@@ -336,7 +341,9 @@ class SessionPayload:
                 )
             SSchrom, _, _ = self.get_locus_tuple()
             lead_snp_position_index = self.get_lead_snp_index()
-            lead_snp_position = int(self.gwas_data.iloc[lead_snp_position_index, :]["POS"])  # type: ignore
+            lead_snp_position = int(
+                self.gwas_data.iloc[lead_snp_position_index, :]["POS"]
+            )  # type: ignore
             SS_start = max(int(lead_snp_position - ONE_SIDED_SS_WINDOW_SIZE), 0)
             SS_end = int(lead_snp_position + ONE_SIDED_SS_WINDOW_SIZE)
         SSlocustext = str(SSchrom) + ":" + str(SS_start) + "-" + str(SS_end)
@@ -382,15 +389,15 @@ class SessionPayload:
     def get_gtex_version(self) -> str:
         """
         Get the version of GTEx needed for fetching from MongoDB.
-        One of "V7" or "V8".
+        "V8" and "V10" are the only versions supported for now.
         """
         version = self.request_form.get("GTEx-version")
         if version is None:
-            version = "V7"
+            version = "V10"
         version = version.upper()
-        if version not in ["V7", "V8"]:
+        if version not in ["V8", "V10"]:
             raise InvalidUsage(
-                f"Invalid GTEx version: {version}. Must be one of 'V7' or 'V8'",
+                f"Invalid GTEx version: '{version}'. Please select 'V8' or 'V10'.",
                 status_code=410,
             )
         return version
@@ -411,7 +418,7 @@ class SessionPayload:
                         raise InvalidUsage(
                             "Set-based p-value threshold given is not between 0 and 1"
                         )
-                except:
+                except Exception:
                     raise InvalidUsage(
                         "Invalid value provided for the set-based p-value threshold. Value must be numeric between 0 and 1."
                     )

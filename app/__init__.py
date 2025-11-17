@@ -73,7 +73,7 @@ def create_app(config_class=ConfigClass):
         app.logger.debug(f"Cache is enabled: {app.config['CACHE_TYPE']}")
 
     with app.app_context():
-        from app import routes
+        from app import routes  # noqa: F401
         from app.jobs import routes as jobs_routes
 
         app.register_blueprint(jobs_routes.jobs_bp)

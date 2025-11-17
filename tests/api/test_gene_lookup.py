@@ -14,20 +14,17 @@ try:
 except FileNotFoundError:
     GENE_DF = None
 
-@pytest.mark.skipif(GENE_DF is None, reason="data/collapsed_gencode_v26_hg38.gz not found; cannot test gencode lookup parity")
+
+@pytest.mark.skipif(
+    GENE_DF is None,
+    reason="data/collapsed_gencode_v26_hg38.gz not found; cannot test gencode lookup parity",
+)
 def test_gencode_id_lookup_parity():
     """
     Test that gencode ID lookups using the API and the local dataframe are the same.
     """
     assert GENE_DF is not None  # gets linter to behave
-    gene_symbols = [
-        "CDK18",
-        "ELK4",
-        "MFSD4",
-        "NUCKS1",
-        "PM20D1",
-        "RAB7L1"
-    ]
+    gene_symbols = ["CDK18", "ELK4", "MFSD4", "NUCKS1", "PM20D1", "RAB7L1"]
 
     # Get the genes from the local dataframe
     # (columns are ENSG_name, name)
@@ -39,7 +36,9 @@ def test_gencode_id_lookup_parity():
     assert len(api_gene_results.data) == len(local_gene_results)
 
     # Order is expected to be different but contents are the same
-    assert set(local_gene_results["name"]) == set(map(lambda x: x.gene_symbol, api_gene_results.data))
+    assert set(local_gene_results["name"]) == set(
+        map(lambda x: x.gene_symbol, api_gene_results.data)
+    )
 
     # Check that GENCODE IDs are the same
     sorted_local_gene_results = local_gene_results.sort_values(by="name")

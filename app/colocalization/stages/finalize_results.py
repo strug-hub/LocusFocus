@@ -10,12 +10,11 @@ class FinalizeResultsStage(PipelineStage):
 
     def name(self) -> str:
         return "finalize-results"
-    
+
     def description(self) -> str:
         return "Finalize results"
 
     def invoke(self, payload: SessionPayload) -> SessionPayload:
-
         # Indicate that the request was a success
         payload.success = True
 

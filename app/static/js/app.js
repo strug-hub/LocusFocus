@@ -6,8 +6,8 @@ var submitButton = d3.select("#submit-btn");
 var errorDiv = d3.select("#error-messages");
 var theTable = d3.select("#variants-table");
 var gtexTissuesMsgDiv = d3.select("#tissue-select");
-var coordinate = "hg19"; // default
-var gtex_version = "v7"; // default
+var coordinate = "hg38"; // default
+var gtex_version = "v10"; // default
 var gtexurl = `/gtex/${gtex_version}/tissues_list`;
 var markerColDiv = d3.select("#snp");
 var variantInputsDiv = d3.select("#variantInputs");
@@ -36,11 +36,6 @@ function setLoading(loading) {
 function gtexVersionChange(newVersion) {
   gtex_version = newVersion.toLowerCase();
   gtexurl = `/gtex/${gtex_version}/tissues_list`;
-  if (newVersion.toLowerCase() === "v7") {
-    coordinate = "hg19";
-  } else if (newVersion.toLowerCase() === "v8") {
-    coordinate = "hg38";
-  }
   let currentLocus = d3.select("#locus").property("value");
   loadGenes(coordinate, currentLocus || "1:205,500,000-206,000,000");
   gtexTissuesMsgDiv.text(`Select GTEx (${gtex_version.toUpperCase()}) Tissues`);
@@ -56,6 +51,18 @@ function gtexVersionChange(newVersion) {
         .attr("value", gtex_tissues[i])
         .text(gtex_tissues[i].replaceAll("_", " "));
     }
+    //there's a better way to do this but i need to find it
+    $("#GTEx-tissues").multiselect("destroy");
+
+    $("#GTEx-tissues").multiselect({
+      enableCaseInsensitiveFiltering: true,
+      includeSelectAllOption: true,
+      maxHeight: 400,
+      buttonWidth: "400px",
+      checkboxName: function (option) {
+        return "multiselect[]";
+      },
+    });
   });
 }
 
@@ -67,9 +74,7 @@ function coordinateChange(newCoordinate) {
     `${startingChr}:${startingPos}-${endingPos}`
   );
   if (!["hg38", "hg19"].includes(newCoordinate)) {
-    alert(
-      "Invalid coordinate system. Please select hg38 or hg19 coordinates."
-    );
+    alert("Invalid coordinate system. Please select hg38 or hg19 coordinates.");
     return;
   }
   setLoading(true);
@@ -302,10 +307,14 @@ function askColocInputs() {
 function inferVariant(snpbox) {
   if (snpbox.checked) {
     $("#variantInputs").hide();
-    ["#chrom-col", "#pos-col", "#ref-col", "#alt-col"].forEach((id) => $(id).prop("disabled", true));
+    ["#chrom-col", "#pos-col", "#ref-col", "#alt-col"].forEach((id) =>
+      $(id).prop("disabled", true)
+    );
   } else {
     $("#variantInputs").show();
-    ["#chrom-col", "#pos-col", "#ref-col", "#alt-col"].forEach((id) => $(id).prop("disabled", false));
+    ["#chrom-col", "#pos-col", "#ref-col", "#alt-col"].forEach((id) =>
+      $(id).prop("disabled", false)
+    );
   }
   // re-initialize popover and tooltip
   $(function () {
@@ -432,7 +441,10 @@ function handleLDPopulations() {
 function updateChrXWarning() {
   const regionText = $("#locus").val().toLowerCase();
   const selectedAssembly = $("#coordinate").val();
-  const uploadedFileNames = $.map($("#file-upload").prop("files"), f => f.name);
+  const uploadedFileNames = $.map(
+    $("#file-upload").prop("files"),
+    (f) => f.name
+  );
 
   console.log(
     `[updateChrXWarning]
@@ -441,9 +453,11 @@ function updateChrXWarning() {
     uploadedFileNames: ${uploadedFileNames}`
   );
 
-  const hideWarning = !((["x", "23", "chrx"].some(start => regionText.startsWith(start)))  // x chromosome
-                        && (selectedAssembly.toLowerCase() === "hg38")  // hg38
-                        && (uploadedFileNames.every(name => !(name.toLowerCase().endsWith(".ld")))));  // no LD provided
+  const hideWarning = !(
+    ["x", "23", "chrx"].some((start) => regionText.startsWith(start)) && // x chromosome
+    selectedAssembly.toLowerCase() === "hg38" && // hg38
+    uploadedFileNames.every((name) => !name.toLowerCase().endsWith(".ld"))
+  ); // no LD provided
 
   $("#chrX-warning").prop("hidden", hideWarning);
 }
@@ -484,7 +498,6 @@ function init() {
   console.log("Loading genes:");
   loadGenes(coordinate, "1:205,500,000-206,000,000");
 
-  
   d3.json(gtexurl).then((response) => {
     var gtex_tissues = response.map((k) => k);
 
@@ -572,7 +585,9 @@ function init() {
   });
 
   // add warning listeners
-  ["#locus", "#coordinate", "#file-upload"].forEach(id => $(id).on("change", updateChrXWarning));
+  ["#locus", "#coordinate", "#file-upload"].forEach((id) =>
+    $(id).on("change", updateChrXWarning)
+  );
 }
 
 init();

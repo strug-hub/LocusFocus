@@ -5,6 +5,7 @@ import numpy as np
 from flask import current_app as app
 
 from app.colocalization.payload import SessionPayload
+from app.colocalization.util import get_std_snp_list
 from app.utils import (
     get_file_with_ext,
     standardize_snps,
@@ -12,7 +13,7 @@ from app.utils import (
     x_to_23,
 )
 from app.pipeline import PipelineStage
-from app.utils.errors import InvalidUsage, ServerError
+from app.utils.errors import InvalidUsage
 
 
 @dataclass
@@ -78,7 +79,6 @@ class ReadGWASFileStage(PipelineStage):
         self.enforce_one_chrom = enforce_one_chrom
 
     def invoke(self, payload: SessionPayload) -> SessionPayload:
-
         gwas_data = self._read_gwas_file(payload)
         gwas_data = self._set_gwas_columns(payload, gwas_data)
         gwas_data = self._validate_gwas_file(payload, gwas_data)
@@ -90,7 +90,7 @@ class ReadGWASFileStage(PipelineStage):
         payload.gwas_indices_kept = pd.Series(True, index=gwas_data.index)
 
         # Get standardized list of SNPs
-        payload.std_snp_list = self._get_std_snp_list(payload, gwas_data)
+        payload.std_snp_list = get_std_snp_list(payload, gwas_data)
 
         self._snp_format_check(gwas_data)
 
@@ -115,7 +115,7 @@ class ReadGWASFileStage(PipelineStage):
 
         try:
             gwas_data = pd.read_csv(gwas_filepath, sep="\t", encoding="utf-8")
-        except:
+        except Exception:
             outfile = gwas_filepath.replace(".txt", "_mod.txt").replace(
                 ".tsv", "_mod.tsv"
             )
@@ -127,7 +127,7 @@ class ReadGWASFileStage(PipelineStage):
                             fout.write(line.replace("\t\t\n", "\t\n"))
             try:
                 gwas_data = pd.read_csv(outfile, sep="\t", encoding="utf-8")
-            except:
+            except Exception:
                 raise InvalidUsage(
                     "Failed to load primary dataset as tab-separated file. Please check formatting is adequate, and that the file is not empty.",
                     status_code=410,
@@ -238,7 +238,7 @@ class ReadGWASFileStage(PipelineStage):
         """
         if "SNP" not in gwas_data.columns:
             raise InvalidUsage(
-                f"SNP ID column not found when requesting to infer variant information."
+                "SNP ID column not found when requesting to infer variant information."
             )
 
         coordinate = payload.get_coordinate()
@@ -280,21 +280,21 @@ class ReadGWASFileStage(PipelineStage):
         converted_chorms = x_to_23(list(gwas_data["CHROM"]))
         if not all(isinstance(x, int) for x in converted_chorms):
             raise InvalidUsage(
-                f'Chromosome column contains unrecognizable values: {", ".join(f"Row {i+1}: {x}" for i, x in enumerate(converted_chorms) if not isinstance(x, int))}',
+                f"Chromosome column contains unrecognizable values: {', '.join(f'Row {i + 1}: {x}' for i, x in enumerate(converted_chorms) if not isinstance(x, int))}",
                 status_code=410,
             )
 
         # Position check
         if not all(isinstance(x, int) for x in list(gwas_data["POS"])):
             raise InvalidUsage(
-                f'Position column has non-integer entries: {", ".join(f"Row {i+1}: {x}" for i, x in enumerate(list(gwas_data["POS"])) if not isinstance(x, int))}',
+                f"Position column has non-integer entries: {', '.join(f'Row {i + 1}: {x}' for i, x in enumerate(list(gwas_data['POS'])) if not isinstance(x, int))}",
                 status_code=410,
             )
 
         # P value check
         if not all(isinstance(x, float) for x in list(gwas_data["P"])):
             raise InvalidUsage(
-                f'P-value column has non-numeric entries: {", ".join(f"Row {i+1}: {x}" for i, x in enumerate(list(gwas_data["P"])) if not isinstance(x, float))}',
+                f"P-value column has non-numeric entries: {', '.join(f'Row {i + 1}: {x}' for i, x in enumerate(list(gwas_data['P'])) if not isinstance(x, float))}",
                 status_code=410,
             )
 
@@ -302,22 +302,22 @@ class ReadGWASFileStage(PipelineStage):
         if payload.get_is_coloc2():
             if not all(isinstance(x, float) for x in list(gwas_data["BETA"])):
                 raise InvalidUsage(
-                    f'Beta column has non-numeric entries: {", ".join(f"Row {i+1}: {x}" for i, x in enumerate(list(gwas_data["BETA"])) if not isinstance(x, float))}',
+                    f"Beta column has non-numeric entries: {', '.join(f'Row {i + 1}: {x}' for i, x in enumerate(list(gwas_data['BETA'])) if not isinstance(x, float))}",
                     status_code=410,
                 )
             if not all(isinstance(x, float) for x in list(gwas_data["SE"])):
                 raise InvalidUsage(
-                    f'Standard error column has non-numeric entries: {", ".join(f"Row {i+1}: {x}" for i, x in enumerate(list(gwas_data["SE"])) if not isinstance(x, float))}',
+                    f"Standard error column has non-numeric entries: {', '.join(f'Row {i + 1}: {x}' for i, x in enumerate(list(gwas_data['SE'])) if not isinstance(x, float))}",
                     status_code=410,
                 )
             if not all(isinstance(x, int) for x in list(gwas_data["N"])):
                 raise InvalidUsage(
-                    f'Number of samples column has non-integer entries: {", ".join(f"Row {i+1}: {x}" for i, x in enumerate(list(gwas_data["N"])) if not isinstance(x, int))}',
+                    f"Number of samples column has non-integer entries: {', '.join(f'Row {i + 1}: {x}' for i, x in enumerate(list(gwas_data['N'])) if not isinstance(x, int))}",
                     status_code=410,
                 )
             if not all(isinstance(x, float) for x in list(gwas_data["MAF"])):
                 raise InvalidUsage(
-                    f'MAF column has non-numeric entries: {", ".join(f"Row {i+1}: {x}" for i, x in enumerate(list(gwas_data["MAF"])) if not isinstance(x, float))}',
+                    f"MAF column has non-numeric entries: {', '.join(f'Row {i + 1}: {x}' for i, x in enumerate(list(gwas_data['MAF'])) if not isinstance(x, float))}",
                     status_code=410,
                 )
 
@@ -368,41 +368,13 @@ class ReadGWASFileStage(PipelineStage):
         zero_p = [x for x in list(gwas_data["P"]) if x == 0]
         if len(zero_p) > 0:
             raise InvalidUsage(
-                f'P-values of zero detected; please replace with a non-zero p-value: {", ".join(f"Row {i+1}: {x}" for i, x in enumerate(zero_p) if x==0)}',
+                f"P-values of zero detected; please replace with a non-zero p-value: {', '.join(f'Row {i + 1}: {x}' for i, x in enumerate(zero_p) if x == 0)}",
                 status_code=410,
             )
 
         # payload.gwas_indices_kept = gwas_indices_kept
 
         return gwas_data
-
-    def _get_std_snp_list(
-        self, payload: SessionPayload, gwas_data: pd.DataFrame
-    ) -> pd.Series:
-        """
-        Return standardized list of SNPs with format CHR_POS_REF_ALT_build.
-
-        gwas_data needs to be subsetted in advance.
-        """
-        std_snp_list = []
-        buildstr = "b37"
-        if payload.get_coordinate() == "hg38":
-            buildstr = "b38"
-
-        std_snp_list = pd.Series(
-            [
-                f"{str(row['CHROM']).replace('23', 'X')}_{str(row['POS'])}_{str(row['REF'])}_{str(row['ALT'])}_{buildstr}"
-                for _, row in gwas_data.iterrows()
-            ]
-        )
-        # Sanity check
-        try:
-            assert len(std_snp_list) == len(gwas_data)
-            assert len(std_snp_list) == len(payload.gwas_indices_kept)
-        except AssertionError:
-            raise ServerError("GWAS data and indices are not in sync")
-
-        return std_snp_list
 
     def _snp_format_check(self, gwas_data: pd.DataFrame) -> None:
         """
