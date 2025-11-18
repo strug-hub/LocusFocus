@@ -1,17 +1,17 @@
 services:
   flask:
     build:
-      context: .
+      context: ./flask
       target: dev
       args:
         - USER_UID=${USER_UID}
     volumes:
-      - ./app:/code/app
-      - ./misc:/code/misc
-      - ./data:/code/data
-      - ./tests:/code/tests
-      - ./pyproject.toml:/code/pyproject.toml
-      - ./poetry.lock:/code/poetry.lock
+      - ./flask/app:/code/app
+      - ./flask/misc:/code/misc
+      - ./flask/data:/code/data
+      - ./flask/tests:/code/tests
+      - ./flask/pyproject.toml:/code/pyproject.toml
+      - ./flask/poetry.lock:/code/poetry.lock
     ports:
       - "${FLASK_PORT}:${FLASK_PORT}"
     restart: unless-stopped
@@ -30,6 +30,19 @@ services:
       - DISABLE_CELERY=true
       - DISABLE_CACHE=${DISABLE_CACHE:-true}
     entrypoint: ["python3", "-m", "app.wsgi"]
+  next:
+    image: node:22-slim
+    working_dir: /app/locus-focus
+    entrypoint: npm run dev
+    environment:
+      - NEXT_TELEMETRY_DISABLED=1
+    volumes:
+      - "./next:/app"
+    ports:
+      - "${NEXT_PORT}:3000"
+    user: ${USER_UID}
+    networks:
+      - lf-net
   mongo:
     image:  mongo:6
     restart: unless-stopped
