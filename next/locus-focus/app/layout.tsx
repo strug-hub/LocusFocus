@@ -12,7 +12,8 @@ import { AppContainer, Footer } from "@/components";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "LocusFocus",
+  title:
+    "LocusFocus: A Colocalization Tool to Prioritize Genes and Tissues from GWAS and eQTL Integration",
   description: "Lipsum lipsum lipsum!",
 };
 

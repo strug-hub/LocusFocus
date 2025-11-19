@@ -11,31 +11,41 @@ const Header: React.FC = () => {
   return (
     <AppBar position="static" color="primary" sx={{ marginBottom: 3 }}>
       <Toolbar alignItems="center" component={Grid} container>
-        <Grid alignItems="center" spacing={1} container size={{ xs: 10 }}>
-          <Grid>
+        <Grid alignItems="center" spacing={2} container size={{ xs: 10 }}>
+          <Grid marginRight={4}>
             <HeaderNavLink noDecoration href="/">
               <Typography
                 sx={(theme) => ({
                   fontWeight: theme.typography.fontWeightLight,
                 })}
                 textAlign="center"
-                variant="h6"
+                variant="h5"
               >
                 LocusFocus
               </Typography>
             </HeaderNavLink>
           </Grid>
           <Grid>
-            <HeaderNavLink href="/colocalization">Colocalization</HeaderNavLink>
+            <HeaderNavLink href="/">Colocalization</HeaderNavLink>
           </Grid>
           <Grid>
             <HeaderNavLink href="/set-based-test">Set-based Test</HeaderNavLink>
           </Grid>
           <Grid>
-            <HeaderNavLink href="/gwas-svatalog">GWAS SVatalog</HeaderNavLink>
+            <HeaderNavLink
+              target="_blank"
+              href="https://svatalog.research.sickkids.ca/"
+            >
+              GWAS SVatalog
+            </HeaderNavLink>
           </Grid>
           <Grid>
-            <HeaderNavLink href="/documentation">Documentation</HeaderNavLink>
+            <HeaderNavLink
+              href="https://locusfocus.readthedocs.io/en/latest/"
+              target="_blank"
+            >
+              Documentation
+            </HeaderNavLink>
           </Grid>
           <Grid>
             <HeaderNavLink href="/contact">Contact Us</HeaderNavLink>

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Box, Container } from "@mui/material";
+import { Container } from "@mui/material";
 import { Header } from "@/components";
 
 // interface LocusFocusDataContext {}
@@ -15,12 +15,12 @@ interface AppContainerProps {
 const AppContainer: React.FC<AppContainerProps> = ({ children }) => {
   return (
     //    <LocusFocusContext.Provider value={{}}>
-    <Container maxWidth={false} sx={{ minHeight: "92vh" }}>
+    <>
       <Header />
-      <Box flexGrow={1} overflow="auto" padding={2}>
+      <Container maxWidth="lg" sx={{ minHeight: "92vh" }}>
         {children}
-      </Box>
-    </Container>
+      </Container>
+    </>
     //  </LocusFocusContext.Provider>
   );
 };

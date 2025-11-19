@@ -2,12 +2,13 @@
 
 import React from "react";
 import Link, { LinkProps } from "next/link";
-import { Link as MuiLink, LinkProps as MuiLinkProps } from "@mui/material";
+import { Link as MuiLink } from "@mui/material";
 import { usePathname } from "next/navigation";
 
 export interface NavLinkProps extends LinkProps {
   children: React.ReactNode;
   noDecoration?: boolean;
+  target?: string;
   thin?: boolean;
 }
 
@@ -15,6 +16,7 @@ const NavLink: React.FC<NavLinkProps> = ({
   children,
   href,
   noDecoration,
+  target,
   thin,
 }) => {
   const pathname = usePathname();
@@ -34,6 +36,7 @@ const NavLink: React.FC<NavLinkProps> = ({
         },
       })}
       component={Link}
+      target={target}
       href={href}
     >
       {children}
