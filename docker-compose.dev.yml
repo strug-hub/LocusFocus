@@ -36,6 +36,8 @@ services:
     entrypoint: npm run dev
     environment:
       - NEXT_TELEMETRY_DISABLED=1
+      - NEXT_PUBLIC_SERVER_API_HOST
+      - NEXT_PUBLIC_BROWSER_API_HOST
     volumes:
       - "./next:/app"
     ports:

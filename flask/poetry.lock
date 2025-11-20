@@ -749,6 +749,22 @@ cachelib = ">=0.9.0"
 Flask = "*"
 
 [[package]]
+name = "flask-cors"
+version = "6.0.1"
+description = "A Flask extension simplifying CORS support"
+optional = false
+python-versions = "<4.0,>=3.9"
+groups = ["main"]
+files = [
+    {file = "flask_cors-6.0.1-py3-none-any.whl", hash = "sha256:c7b2cbfb1a31aa0d2e5341eea03a6805349f7a61647daee1a15c46bbe981494c"},
+    {file = "flask_cors-6.0.1.tar.gz", hash = "sha256:d81bcb31f07b0985be7f48406247e9243aced229b7747219160a0559edd678db"},
+]
+
+[package.dependencies]
+flask = ">=0.9"
+Werkzeug = ">=0.7"
+
+[[package]]
 name = "flask-pymongo"
 version = "2.3.0"
 description = "PyMongo support for Flask applications"
@@ -2603,4 +2619,4 @@ watchdog = ["watchdog (>=2.3)"]
 [metadata]
 lock-version = "2.1"
 python-versions = "~3.10"
-content-hash = "a409ba37095e9ae1c421ac37a4deedc37209db8accfde1595743625a628db63b"
+content-hash = "d81cb18a8188715cfc410c833d0da42e80e0c2ede84f2b30b0ce5546a7cc9d9c"
