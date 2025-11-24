@@ -9,8 +9,8 @@ export interface ColocFormFields extends Record<string, any> {
   GTExTissues: string[]; // GTEx-Tissues
   GTExVersion: string; // GTEx-version
   htmlFile: File | null; // html-file
-  htmlFileCoordinate: string; //html-file-coordinate
   gwasFile: File | null; // gwas-file
+  htmlFileCoordinate: string; // html-file-coordinate
   LDPopulations: string; // LD-populations
   leadSnp: string; // lead-snp
   locus: string;

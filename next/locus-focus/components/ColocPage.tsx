@@ -1,9 +1,11 @@
 "use client";
 import { use, useEffect, useState } from "react";
+import Link from "next/link";
 import {
   alpha,
   Autocomplete,
   Box,
+  Button,
   Checkbox,
   Divider,
   FormControlLabel,
@@ -13,6 +15,7 @@ import {
   ListItem,
   MenuItem,
   Paper,
+  SxProps,
   TextField,
   Typography,
   useTheme,
@@ -73,7 +76,7 @@ const defaultValues = {
   GTExTissues: [] as string[],
   GTExVersion: "V10",
   htmlFile: null,
-  htmlFileCoordinate: "",
+  htmlFileCoordinate: "gwas",
   gwasFile: null,
   LDPopulations: "",
   leadSnp: "",
@@ -120,6 +123,7 @@ const ColocPage: React.FC<{
 
   const { field: gwasFileField } = useController({ name: "gwasFile", control });
   const { field: ldFileField } = useController({ name: "ldFile", control });
+  const { field: htmlFileField } = useController({ name: "htmlFile", control });
 
   const formValues = watch();
 
@@ -587,6 +591,161 @@ const ColocPage: React.FC<{
           />
         </Grid>
       </Grid>
+      <Grid container direction="column">
+        <Grid>
+          <Typography variant="h6">Upload Secondary Datasets</Typography>
+        </Grid>
+        <Grid container spacing={1} direction="row">
+          <Grid container direction="column" spacing={2}>
+            <Grid container alignItems="center" direction="row">
+              <Grid>
+                <UploadButton
+                  onChange={(e) =>
+                    htmlFileField.onChange(
+                      (e.currentTarget?.files || [null])[0]
+                    )
+                  }
+                  multiple={false}
+                  label="Choose file"
+                  accept=".html"
+                  tooltipMessage="HTML file generated with LocusFocus"
+                />
+              </Grid>
+              <Grid>
+                <Typography variant="caption">
+                  {formValues.ldFile
+                    ? formValues.ldFile.name
+                    : "No file chosen"}
+                </Typography>
+              </Grid>
+            </Grid>
+            <Grid>
+              <HFTextField
+                defaultValue={defaultValues.htmlFileCoordinate}
+                select
+                name="htmlFileCoordinate"
+                register={register}
+                hasError={!!errors.htmlFileCoordinate}
+                label="Select Coordinate System"
+                errorText={errors.htmlFileCoordinate?.message}
+                options={[
+                  { label: "Same as GWAS", value: "gwas" },
+                  { label: "hg19", value: "hg19" },
+                  { label: "hg38", value: "hg38" },
+                ]}
+                wide
+              />
+            </Grid>
+          </Grid>
+          <InfoGrid>
+            <Typography>
+              For convenience, we are making available eQTL datasets from the
+              GTEx project for use as secondary datasets.
+            </Typography>
+            <Typography>
+              LocusFocus, however, can perform more custom colocalization
+              analyses utilizing other secondary (e.g. eQTL, mQTL, other
+              phenotypes) datasets provided by the user.
+            </Typography>
+            <Typography>
+              Custom secondary datasets may be uploaded after conversion to HTML
+              format as described above or in the documentation.
+            </Typography>
+            <Typography>
+              Refer to the documentation on how to generate the HTML file. You
+              may use the merge_and_convert_to_html.py script, or
+              merge_and_convert_to_html_coloc2.py. You may use provided sample
+              datasets as a guide to formatting your files.
+            </Typography>
+            <List sx={{ listStyleType: "disc", marginLeft: 3 }}>
+              <ListItem sx={{ display: "list-item" }}>
+                <Typography>
+                  Refer to the{" "}
+                  <Link
+                    target="_blank"
+                    href="https://locusfocus.readthedocs.io/en/latest/quick_start.html#formatting-custom-secondary-datasets"
+                  >
+                    documentation
+                  </Link>{" "}
+                  on how to generate the HTML file.
+                </Typography>
+              </ListItem>
+              <ListItem sx={{ display: "list-item" }}>
+                <Typography>
+                  You may use the{" "}
+                  <Link
+                    target="_blank"
+                    href="https://github.com/strug-hub/LocusFocus/blob/master/merge_and_convert_to_html.py"
+                  >
+                    merge_and_convert_to_html.py
+                  </Link>{" "}
+                  script, or{" "}
+                  <Link
+                    target="_blank"
+                    href="https://github.com/strug-hub/LocusFocus/blob/master/merge_and_convert_to_html_coloc2.py"
+                  >
+                    merge_and_convert_to_html_coloc2.py
+                  </Link>
+                  .
+                </Typography>
+              </ListItem>
+              <ListItem sx={{ display: "list-item" }}>
+                <Typography>
+                  You may use provided{" "}
+                  <Link
+                    target="_blank"
+                    href="https://github.com/strug-hub/LocusFocus/tree/master/data/sample_datasets"
+                  >
+                    sample datasets
+                  </Link>{" "}
+                  as a guide to formatting your files.
+                </Typography>
+              </ListItem>
+            </List>
+          </InfoGrid>
+        </Grid>
+      </Grid>
+      <Grid>
+        <Divider />
+      </Grid>
+      <Grid container direction="column">
+        <Grid>
+          <Typography variant="h5">
+            Stage one set-based p-value threshold
+          </Typography>
+        </Grid>
+        <Grid>
+          <HFTextField
+            register={register}
+            hasError={!!errors.setbasedP}
+            errorText={errors.setbasedP?.message}
+            name="setbasedP"
+            label="Threshold"
+            placeholder="default: 0.05 / (number of tissues &times; number of genes + additional secondary datasets uploaded)"
+            sx={{ width: "100%" }}
+          />
+        </Grid>
+        <Grid>
+          <InfoGrid>
+            <Typography>
+              For the Simple Sum method, a first-stage set-based Bonferroni
+              p-value threshold is used for the set of secondary datasets with
+              alpha 0.05 (0.05 divided by the number of secondary datasets)
+            </Typography>
+            <Typography>
+              Enter a value if you would like to override the default threshold.
+            </Typography>
+          </InfoGrid>
+        </Grid>
+      </Grid>
+      <Grid>
+        <Divider />
+      </Grid>
+      <Grid container direction="column">
+        <Grid>
+          <Button variant="contained">Submit</Button>
+        </Grid>
+      </Grid>
     </Grid>
   );
 };
@@ -605,6 +764,7 @@ interface HFTextFieldProps<F extends FieldValues> {
   placeholder?: string;
   required?: boolean;
   select?: boolean;
+  sx?: SxProps;
   register: UseFormRegister<any>;
   validate?: Validate<any, F> | Record<string, Validate<any, F>> | undefined;
   wide?: boolean;
@@ -623,12 +783,13 @@ function HFTextField<F extends FieldValues>({
   register,
   required,
   select,
+  sx,
   validate,
   wide,
 }: HFTextFieldProps<F>) {
   return (
     <TextField
-      sx={{ width: wide ? 350 : 200 }}
+      sx={{ width: wide ? 350 : 200, ...sx }}
       defaultValue={defaultValue}
       disabled={disabled}
       error={hasError}
@@ -662,6 +823,9 @@ const InfoGrid: React.FC<GridProps> = (props) => (
     sx={(theme) => ({
       backgroundColor: alpha(theme.palette.secondary.light, 0.4),
       borderRadius: 2,
+      "p + p": {
+        marginTop: 2,
+      },
     })}
   />
 );
