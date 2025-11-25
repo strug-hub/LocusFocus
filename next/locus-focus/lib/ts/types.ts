@@ -1,12 +1,10 @@
-//TODO: confirm these are all in coloc form
-//also, in index route the payload comes in: request.form and request.files
 export interface ColocFormFields extends Record<string, any> {
   altCol: string; // alt-col
   betaCol: string; // beta-col
   chromCol: string; // chrom-col
   coloc2check: boolean;
   coordinate: string;
-  GTExTissues: string[]; // GTEx-Tissues
+  GTExTissues: string[]; // GTEx-tissues
   GTExVersion: string; // GTEx-version
   htmlFile: File | null; // html-file
   gwasFile: File | null; // gwas-file

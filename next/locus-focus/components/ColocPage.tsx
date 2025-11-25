@@ -14,6 +14,7 @@ import {
   List,
   ListItem,
   MenuItem,
+  Modal,
   Paper,
   SxProps,
   TextField,
@@ -32,12 +33,26 @@ import {
 import { ColocFormFields } from "@/lib/ts/types";
 import { UploadButton } from "@/components";
 
-const validatePosition = (position: string) =>
-  /^(chr)?(X|Y|[1-9]|1[0-9]|2[0-2])[:-]\d+-\d+$/.test(
-    position.replaceAll(",", "")
-  );
+// Validate position, return true if empty string
+const validatePosition = (position: string) => {
+  if (
+    !position ||
+    /^(chr)?(X|Y|[1-9]|1[0-9]|2[0-2])[:-]\d+-\d+$/.test(
+      position.replaceAll(",", "")
+    )
+  ) {
+    return true;
+  } else {
+    return "Invalid position format!";
+  }
+};
 
+// Validate range, assumes either empty string or valid position format,
+// in other words, that it's already been validated by validatePosition
 const validateRange = (value: string) => {
+  if (!value) {
+    return true;
+  }
   const range = value.replaceAll(",", "").split(":")[1];
   const [p1, p2] = range.split("-");
   if (+p2 - +p1 > 2e6) {
@@ -67,6 +82,47 @@ const lDPopsHg38 = [
   { label: "1000 Genomes 2018 NFE", value: "NFE" },
 ];
 
+const submitFieldMapping: Record<string, string> = {
+  altCol: "alt-col",
+  betaCol: "beta-col",
+  chromCol: "chrom-col",
+  coloc2check: "coloc2check",
+  coordinate: "coordinate",
+  GTExTissues: "GTEx-tissues",
+  GTExVersion: "GTEx-version",
+  htmlFile: "html-file",
+  gwasFile: "gwas-file",
+  htmlFileCoordinate: "html-file-coordinate",
+  LDPopulations: "LD-populations",
+  leadSnp: "lead-snp",
+  locus: "locus",
+  ldFile: "ld-file",
+  mafCol: "maf-col",
+  markerCheckbox: "markercheckbox",
+  multiRegion: "multi-region",
+  numcases: "numcases",
+  numsamplesCol: "numsamples-col",
+  posCol: "pos-col",
+  pvalCol: "pval-col",
+  refCol: "ref-col",
+  regionGenes: "region-genes",
+  snpCol: "snp-col",
+  separateTestCheckbox: "separate-test-checkbox",
+  sessionId: "session-id",
+  setbasedP: "setbasedP",
+  SSlocus: "SSlocus",
+  stderrCol: "stderr-col",
+  studytype: "studytype",
+};
+
+const coloc2Cols = [
+  "betaCol",
+  "stderrCol",
+  "numsamplesCol",
+  "mafCol",
+  "studytype",
+];
+
 const defaultValues = {
   altCol: "ALT",
   betaCol: "",
@@ -88,7 +144,7 @@ const defaultValues = {
   numcases: 0,
   numsamplesCol: "",
   posCol: "POS",
-  pvalCol: "",
+  pvalCol: "P",
   refCol: "REF",
   regionGenes: [],
   snpCol: "SNP",
@@ -107,6 +163,7 @@ const ColocPage: React.FC<{
   "use no memo";
   const [genesLoading, setGenesLoading] = useState(false);
   const [genes, setGenes] = useState<string[]>([]);
+  const [submitted, setSubmitted] = useState(false);
 
   const v8Tissues = use(_tissuesV8);
   const v10Tissues = use(_tissuesV10);
@@ -115,19 +172,30 @@ const ColocPage: React.FC<{
     control,
     formState: { errors },
     register,
+    trigger,
     watch,
   } = useForm<ColocFormFields>({
     mode: "onChange", //validate on change
     defaultValues,
   });
 
-  const { field: gwasFileField } = useController({ name: "gwasFile", control });
+  const { field: gwasFileField } = useController({
+    name: "gwasFile",
+    control,
+    rules: { required: "GWAS file is required!" },
+  });
   const { field: ldFileField } = useController({ name: "ldFile", control });
   const { field: htmlFileField } = useController({ name: "htmlFile", control });
 
   const formValues = watch();
 
   const theme = useTheme();
+
+  useEffect(() => {
+    if (trigger) {
+      trigger();
+    }
+  }, [trigger]);
 
   useEffect(() => {
     if (formValues.locus && !errors.locus) {
@@ -227,9 +295,11 @@ const ColocPage: React.FC<{
           </Grid>
           <Grid>
             <Typography variant="caption">
-              {formValues.gwasFile
-                ? formValues.gwasFile.name
-                : "No file chosen"}
+              {formValues.gwasFile ? (
+                formValues.gwasFile.name
+              ) : (
+                <Typography color="error">No file chosen</Typography>
+              )}
             </Typography>
           </Grid>
         </Grid>
@@ -318,6 +388,16 @@ const ColocPage: React.FC<{
             }
           />
         </Grid>
+        <Grid>
+          <HFTextField
+            register={register}
+            name="pvalCol"
+            required={!formValues.pvalCol}
+            label="P-value Column Name"
+            hasError={!!errors.pvalCol}
+            errorText={errors.pvalCol?.message}
+          />
+        </Grid>
         <Divider />
         {formValues.coloc2check && (
           <Grid container direction="row">
@@ -351,16 +431,7 @@ const ColocPage: React.FC<{
                 errorText={errors.numsamplesCol?.message}
               />
             </Grid>
-            <Grid>
-              <HFTextField
-                register={register}
-                name="pvalCol"
-                required={formValues.coloc2check}
-                label="P-value Column Name"
-                hasError={!!errors.pvalCol}
-                errorText={errors.pvalCol?.message}
-              />
-            </Grid>
+
             <Grid>
               <HFTextField
                 register={register}
@@ -399,10 +470,8 @@ const ColocPage: React.FC<{
               name="locus"
               required
               validate={{
-                format: (value) =>
-                  (!!value && validatePosition(value)) ||
-                  "Invalid position format!",
-                range: (value) => validateRange(value),
+                format: validatePosition,
+                range: validateRange,
               }}
               label="Coordinates (max 2Mbp)"
               hasError={!!errors.locus}
@@ -446,10 +515,8 @@ const ColocPage: React.FC<{
               label="Coordinates"
               errorText={errors.SSlocus?.message}
               validate={{
-                format: (value) =>
-                  (!!value && validatePosition(value)) ||
-                  "Invalid position format!",
-                range: (value) => validateRange(value),
+                format: validatePosition,
+                range: validateRange,
               }}
               wide
             />
@@ -482,12 +549,23 @@ const ColocPage: React.FC<{
             <HFTextField
               disabled={!!formValues.ldFile}
               select
+              deps={["ldFile"]}
               name="LDPopulations"
               register={register}
               defaultValue={defaultValues.LDPopulations}
               hasError={!!errors.LDPopulations}
               label="LD Population"
               errorText={errors.LDPopulations?.message}
+              validate={{
+                required: (value) => {
+                  console.log(value);
+                  return (
+                    !!value ||
+                    !!formValues.ldFile ||
+                    "LD population is required"
+                  );
+                },
+              }}
               options={
                 formValues.coordinate === "hg19" ? lDPopsHg19 : lDPopsHg38
               }
@@ -509,7 +587,15 @@ const ColocPage: React.FC<{
             </Grid>
             <Grid>
               <Typography variant="caption">
-                {formValues.ldFile ? formValues.ldFile.name : "No file chosen"}
+                {formValues.ldFile ? (
+                  formValues.ldFile.name
+                ) : (
+                  <Typography
+                    color={!!formValues.LDPopulations ? undefined : "error"}
+                  >
+                    No file chosen
+                  </Typography>
+                )}
               </Typography>
             </Grid>
           </Grid>
@@ -568,25 +654,35 @@ const ColocPage: React.FC<{
         <Grid>
           <Multiselect
             control={control}
+            required
             name="GTExTissues"
             hasError={!!errors.GTExTissues}
             label={`GTEx (V${formValues.GTExVersion === "V10" ? "10" : "8"}) Tissues`}
             errorText={errors.GTExTissues?.message}
             options={formValues.GTExVersion === "V8" ? v8Tissues : v10Tissues}
             selected={formValues.GTExTissues}
+            validate={{
+              required: (val) =>
+                (!!val && !!val.length) || "GTExTissues is required!",
+            }}
             wide
           />
         </Grid>
         <Grid>
           <Multiselect
+            required
             name="regionGenes"
-            disabled={!formValues.locus}
+            disabled={!formValues.locus || genesLoading}
             control={control}
             hasError={!!errors.regionGenes}
             label={`Select genes found in ${formValues.locus}`}
             errorText={errors.regionGenes?.message}
             options={genes}
             selected={formValues.regionGenes}
+            validate={{
+              required: (val) =>
+                (!!val && !!val.length) || "GTExTissues is required!",
+            }}
             wide
           />
         </Grid>
@@ -613,9 +709,11 @@ const ColocPage: React.FC<{
               </Grid>
               <Grid>
                 <Typography variant="caption">
-                  {formValues.ldFile
-                    ? formValues.ldFile.name
-                    : "No file chosen"}
+                  {formValues.ldFile ? (
+                    formValues.ldFile.name
+                  ) : (
+                    <Typography>No file chosen</Typography>
+                  )}
                 </Typography>
               </Grid>
             </Grid>
@@ -743,9 +841,79 @@ const ColocPage: React.FC<{
       </Grid>
       <Grid container direction="column">
         <Grid>
-          <Button variant="contained">Submit</Button>
+          <Button
+            disabled={Object.keys(errors).length > 0}
+            onClick={() => {
+              const formData = new FormData();
+
+              Object.entries(formValues)
+                // drop coloc2 fields if not selected
+                .filter(
+                  ([k]) => !formValues.coloc2check && !coloc2Cols.includes(k)
+                )
+                // map booleans
+                .map(([k, v]) => [
+                  k,
+                  typeof v === "boolean" ? (v === true ? 1 : "") : v,
+                ])
+                // append to form data
+                .forEach(([k, v]) => {
+                  // handle arrays
+                  if (Array.isArray(v)) {
+                    v.forEach((item) => {
+                      formData.append(submitFieldMapping[k], item);
+                    });
+                  } else {
+                    formData.append(submitFieldMapping[k], v);
+                  }
+                });
+
+              fetch(`${process.env.NEXT_PUBLIC_BROWSER_API_HOST}`, {
+                method: "POST",
+                body: formData,
+              });
+            }}
+            variant="contained"
+          >
+            Submit
+          </Button>
+        </Grid>
+        <Grid>
+          {Object.entries(errors).map(([k, v]) => (
+            <Typography key={k} color="error">
+              <>{v?.message}</>
+            </Typography>
+          ))}
         </Grid>
       </Grid>
+      <Modal
+        sx={{ display: "flex", justifyContent: "center" }}
+        onClose={() => setSubmitted(false)}
+        open={submitted}
+      >
+        <Box
+          sx={{
+            marginY: 10,
+            width: "75%",
+            maxWidth: "800px",
+            maxHeight: "500px",
+            backgroundColor: "white",
+            overflowY: "scroll",
+          }}
+        >
+          <pre>
+            {JSON.stringify(
+              Object.fromEntries(
+                Object.entries(formValues)
+
+                  .map(([k, v]) => [k, (v || {}).name ? v.name : v])
+              ),
+              null,
+              2
+            )}
+          </pre>
+        </Box>
+      </Modal>
     </Grid>
   );
 };
@@ -799,7 +967,6 @@ function HFTextField<F extends FieldValues>({
       required={required}
       select={select}
       title={label}
-      //todo: maybe juse use UseController.... that will give you the default, at least
       {...register(name, {
         required: required ? `${name} is required!` : false,
         validate,
@@ -832,8 +999,7 @@ const InfoGrid: React.FC<GridProps> = (props) => (
 
 interface MultiselectProps<F extends FieldValues>
   extends Omit<HFTextFieldProps<F>, "options" | "register" | "select"> {
-  //TODO: clean this up
-  control: Control<ColocFormFields, any, ColocFormFields>;
+  control: Control<F, any, F>;
   options: string[];
   selected: string[];
 }
@@ -853,7 +1019,7 @@ export function Multiselect<F extends FieldValues>({
   validate,
   wide,
 }: MultiselectProps<F>) {
-  const { field } = useController({ name, control });
+  const { field } = useController({ name, control, rules: { validate } });
 
   return (
     <Autocomplete
@@ -874,10 +1040,10 @@ export function Multiselect<F extends FieldValues>({
           placeholder={placeholder}
         />
       )}
-      renderOption={(props, option) => {
+      renderOption={(props, option, { selected: optionSelected }) => {
         const { key, ...optionProps } = props;
         return (
-          <li key={key} {...optionProps}>
+          <ListItem key={key} {...optionProps}>
             <Checkbox
               style={{ marginRight: 8 }}
               checked={selected.includes(option)}
@@ -889,8 +1055,18 @@ export function Multiselect<F extends FieldValues>({
                 )
               }
             />
-            {option}
-          </li>
+            <span
+              onClick={() =>
+                field.onChange(
+                  optionSelected
+                    ? selected.filter((o) => o !== option)
+                    : selected.concat(option)
+                )
+              }
+            >
+              {option}
+            </span>
+          </ListItem>
         );
       }}
       value={selected}
