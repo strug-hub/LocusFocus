@@ -123,11 +123,10 @@ d3.select(".inputs-and-upload-form form").on("submit", storeFormArgs);
 $(".inputs-and-upload-form form").on("submit", async (e) => {
   e.preventDefault();
   $("#submit-btn").prop("disabled", true);
-  $("#submit-btn + .spinner-border").show();
 
   let modalTimeout = setTimeout(() => {
     $("#loading-modal").modal("show");
-  }, 500);
+  }, 700);
   try {
     const res = await fetch("/", {
       method: "POST",
@@ -160,48 +159,135 @@ $(".inputs-and-upload-form form").on("submit", async (e) => {
       );
     }
     $("#submit-btn").prop("disabled", false);
-    $("#submit-btn + .spinner-border").hide();
   } finally {
     clearTimeout(modalTimeout);
     $("#loading-modal").modal("hide");
+    $("#submit-btn").prop("disabled", false);
   }
 });
+
+async function openJobModal(sessionId) {
+  $("#job-modal .modal-header #sessionid-header-link").text(sessionId);
+  $("#job-modal .modal-header #sessionid-header-link").attr("href", `/session_id/${sessionId}`);
+  $("#job-modal-sessionid-link").text(sessionId);
+  $("#job-modal-sessionid-link").attr("href", `/session_id/${sessionId}`);
+  $("#job-modal .progress-bar").css("width", "0%");
+  $("#job-modal .progress-bar").attr("aria-valuenow", 0);
+  $("#job-modal .progress-bar").removeClass("bg-danger bg-success");
+  await $("#job-modal #error-section").collapse("hide");
+  $("#job-modal #job-status-text").html(`<i>Your job is currently running...</i>`);
+  $("#job-modal .modal-footer button").hide();
+  $("#job-modal .modal-footer button").prop("disabled", true);
+  await $("#job-modal .modal-footer").collapse("hide");
+  $("#job-modal").modal("show");
+}
+
+function closeJobModal() {
+  $("#job-modal").modal("hide");
+}
+
+function buildMailToLink(data, sessionId) {
+  const subject = `LocusFocus Error Report [${sessionId}]`;
+  const body = `Hello,
+    I received a server error from LocusFocus from submitting a job. Please see the details below.
+
+    Details:
+    - Session ID: ${sessionId}
+    - Error Title: ${data.error_title}
+    - Error Message: ${data.error_message}
+    - Payload: ${data.payload}
+
+    Thanks!
+  `;
+  const link = `mailto:mackenzie.frew@sickkids.ca?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  return link;
+}
+
+function handleError(data, sessionId) {
+  $("#error-section #error-title").text(data.error_title);
+  $("#error-section #error-message").html(`<code>${data.error_message}</code>`);
+  
+  if (data.status_code >= 400 && data.status_code < 500) {
+    $("#error-section #error-subtitle").text("This error is due to an issue with your form input or your uploaded files. Please see the error message below for more details.");
+  } else if (data.status_code >= 500) {
+    $("#error-section #error-subtitle").text("This error is due to an issue with the server. Please see the error message below for more details, and report this to our system administrator using the link below.");
+    $("#error-section #error-contact-section").collapse("show");
+    $("#error-section #error-contact-link").attr("href", buildMailToLink(data, sessionId));
+  }
+
+  if (data.payload) {
+    $("error-payload").html(`<pre><code>${JSON.stringify(data.payload, null, 2)}</code></pre>`);
+  }
+}
+
 
 /**
  * Handle checking the status of a job and
  * updating the progress bar on the waiting page.
  */
 async function handleJobStatus(jobStatusURL, sessionId) {
-  const statusResponse = await fetch(jobStatusURL);
-  const statusData = await statusResponse.json();
-  const jobStatus = statusData.status;
-  if (jobStatus == "PENDING") {
-    closeActiveModal();
-    setPendingModalOpen();
-    await new Promise((resolve) =>
-      setTimeout(() => resolve(handleJobStatus(jobStatusURL, sessionId)), 10000)
-    );
+  let checks = 0;
+  let jobStatus = "PENDING";
+  await openJobModal(sessionId);
+
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+
+  // Pending loop
+  while (jobStatus == "PENDING") {
+    let response = await fetch(jobStatusURL);
+    var data = await response.json();
+    jobStatus = data.status;
+    if (jobStatus == "PENDING") {
+      // wait 5 seconds
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+    }
   }
 
-  if (jobStatus == "RUNNING") {
-    const stage_index = statusData.stage_index + 1;
-    const stage_count = statusData.stage_count;
-    closeActiveModal();
-    setRunningModalOpen(stage_index, stage_count);
-    await new Promise((resolve) =>
-      setTimeout(() => resolve(handleJobStatus(jobStatusURL, sessionId)), 500)
-    );
+  // Running loop
+  let last_stage_index = 0;
+  while (jobStatus == "RUNNING") {
+    checks += 1;
+    let response = await fetch(jobStatusURL);
+    var data = await response.json();
+    jobStatus = data.status;
+
+    if (jobStatus == "RUNNING") {
+      let stage_index = data.stage_index + 1;
+      let stage_count = data.stage_count;
+      let gap = (1 / stage_count) * 100;
+      if (stage_index !== last_stage_index) {
+        checks = 0;
+        last_stage_index = stage_index;
+      }
+      let percent = ((stage_index-0.5) / stage_count) * 100 + (1 - (1/(1+(checks*0.25)))) * gap;
+      
+      $("#job-modal .progress-bar").css("width", percent + "%");
+      $("#job-modal .progress-bar").attr("aria-valuenow", percent);
+
+      $("#job-modal #job-status-text").html(`<i>Your job is currently running. Stage ${stage_index} of ${stage_count}: <b>"${data.stage_description}..."</b></i>`);
+      
+      // wait 5 seconds
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+    }
   }
+
+  $("#job-modal .modal-footer button").prop("disabled", false);
+  $("#job-modal .modal-footer").collapse("show");
+  $("#job-modal .modal-footer button").show();
 
   if (jobStatus == "FAILURE") {
-    setErrorModalOpen(
-      `Error: ${statusData.error_title}; Details: ${statusData.error_message}`
-    );
-  }
-
-  if (jobStatus == "SUCCESS") {
-    const { redirect_url } = statusData;
-    window.location = redirect_url;
+    $("#job-modal .progress-bar").css("width", "100%");
+    $("#job-modal .progress-bar").attr("aria-valuenow", 100);
+    $("#job-modal .progress-bar").addClass("bg-danger");
+    $("#job-modal #error-section").collapse("show");
+    $("#job-modal #job-status-text").html(`<i>Your submission has failed. Please see the error message below.</i>`);
+    handleError(data, sessionId);
+  } else if (jobStatus == "SUCCESS") {
+    $("#job-modal .progress-bar").css("width", "100%");
+    $("#job-modal .progress-bar").attr("aria-valuenow", 100);
+    $("#job-modal .progress-bar").addClass("bg-success");
+    $("#job-modal #job-status-text").html(`<i>Your results are ready!</i>`);
+    window.location = `/session_id/${sessionId}`;
   }
 }
 

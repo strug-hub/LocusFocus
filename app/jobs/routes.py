@@ -67,10 +67,16 @@ def get_job_status(job_id):
         )
 
     # default (in-progress)
-    return jsonify(
-        {
-            "status": result.status,
-            "stage_index": result.info.get("stage_index"),
-            "stage_count": result.info.get("stage_count"),
-        }
-    )
+    response_json = {
+        "status": result.status,
+    }
+
+    if result.info is not None:
+        response_json.update(
+            {
+                "stage_index": result.info.get("stage_index"),
+                "stage_count": result.info.get("stage_count"),
+            }
+        )
+
+    return jsonify(response_json)
