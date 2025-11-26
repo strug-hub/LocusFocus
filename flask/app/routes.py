@@ -1569,20 +1569,14 @@ def index():
         from app.colocalization.pipeline import ColocalizationPipeline
 
         pipeline = ColocalizationPipeline(id=session_id)
-        result = pipeline.process(request_form, filepaths)
+        pipeline.process(request_form, filepaths)
 
-        return render_template(
-            "plot.html",
-            **result.file.get_plot_template_paths(session_id=str(result.session_id)),
-        )
+        return jsonify({"session_id": session_id, "queued": False})
 
     job_result = run_pipeline_async("colocalization", request_form, filepaths)
     session_id = job_result.id
 
-    return render_template(
-        "waiting_page.html",
-        session_id=session_id,
-    )
+    return jsonify({"session_id": session_id, "queued": True})
 
 
 ALLOWED_SBT_EXTENSIONS = set(["txt", "tsv", "ld"])
@@ -1729,7 +1723,9 @@ def setbasedtest():
 
     combine_lds = False
 
-    snps_used_in_test = []  # List of list of positions, one list per test; position is (chrom, bp) tuple
+    snps_used_in_test = (
+        []
+    )  # List of list of positions, one list per test; position is (chrom, bp) tuple
 
     # TODO: need to determine used SNPs AFTER tests are performed
 

@@ -1,5 +1,24 @@
 services:
+  celery:
+    image: locusfocus-flask
+    volumes:
+      - ./flask/app:/code/app
+      - ./flask/misc:/code/misc
+      - ./flask/data:/code/data
+      - ./flask/pyproject.toml:/code/pyproject.toml
+      - ./flask/poetry.lock:/code/poetry.lock
+    restart: unless-stopped
+    environment:
+      - APP_ENV
+      - FLASK_SECRET_KEY
+      - MONGO_CONNECTION_STRING
+      - CELERY_BROKER_URL=redis://redis:6379
+      - DISABLE_CACHE=false
+    entrypoint: ["celery", "-A", "app.make_celery.celery_app", "worker", "--loglevel=INFO"]
+    networks:
+      - lf-net
   flask:
+    image: locusfocus-flask
     build:
       context: ./flask
       target: dev
@@ -27,8 +46,9 @@ services:
       - FLASK_DEBUG=1
       - FLASK_SECRET_KEY
       - MONGO_CONNECTION_STRING
-      - DISABLE_CELERY=true
+      - DISABLE_CELERY=${DISABLE_CELERY:-true}
       - DISABLE_CACHE=${DISABLE_CACHE:-true}
+      - CELERY_BROKER_URL=redis://redis:6379/0
     entrypoint: ["python3", "-m", "app.wsgi"]
   next:
     image: node:22-slim
@@ -54,6 +74,13 @@ services:
       - MONGO_INITDB_ROOT_USERNAME=${MONGO_USERNAME}
       - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
       - MONGO_INITDB_DATABASE=${MONGO_DATABASE}
+    networks:
+      - lf-net
+  redis:
+    image: redis:7.4.2-alpine
+    restart: unless-stopped
+    # bind to 0.0.0.0
+    command: ["redis-server", "--bind", "0.0.0.0"]
     networks:
       - lf-net
 

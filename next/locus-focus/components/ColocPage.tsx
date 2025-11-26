@@ -1,5 +1,6 @@
 "use client";
 import { use, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   alpha,
@@ -14,7 +15,6 @@ import {
   List,
   ListItem,
   MenuItem,
-  Modal,
   Paper,
   SxProps,
   TextField,
@@ -31,7 +31,7 @@ import {
   Validate,
 } from "react-hook-form";
 import { ColocFormFields } from "@/lib/ts/types";
-import { UploadButton } from "@/components";
+import { LoadingOverlay, Modal, UploadButton } from "@/components";
 
 // Validate position, return true if empty string
 const validatePosition = (position: string) => {
@@ -160,17 +160,24 @@ const ColocPage: React.FC<{
   _tissuesV8: Promise<string[]>;
   _tissuesV10: Promise<string[]>;
 }> = ({ _tissuesV8, _tissuesV10 }) => {
-  "use no memo";
   const [genesLoading, setGenesLoading] = useState(false);
   const [genes, setGenes] = useState<string[]>([]);
-  const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [errorModalText, setErrorModalText] = useState("");
+  const [runningModalOpen, setRunningModalOpen] = useState<{
+    stageIndex: number;
+    stageCount: number;
+  } | null>(null);
+  const [pendingModalOpen, setPendingModalOpen] = useState(false);
 
   const v8Tissues = use(_tissuesV8);
   const v10Tissues = use(_tissuesV10);
 
+  const router = useRouter();
+
   const {
     control,
-    formState: { errors },
+    formState: { errors, isValid },
     register,
     trigger,
     watch,
@@ -191,6 +198,7 @@ const ColocPage: React.FC<{
 
   const theme = useTheme();
 
+  // run initial validation
   useEffect(() => {
     if (trigger) {
       trigger();
@@ -211,6 +219,41 @@ const ColocPage: React.FC<{
         .finally(() => setGenesLoading(false));
     }
   }, [formValues.locus, formValues.coordinate, errors.locus]);
+
+  const handleJobStatus = async (jobStatusURL: string, sessionId: string) => {
+    const statusResponse = await fetch(jobStatusURL);
+    const statusData = await statusResponse.json();
+    const jobStatus = statusData.status;
+    if (jobStatus == "PENDING") {
+      setPendingModalOpen(true);
+      await new Promise((resolve) =>
+        setTimeout(
+          () => resolve(handleJobStatus(jobStatusURL, sessionId)),
+          10000
+        )
+      );
+    }
+
+    if (jobStatus == "RUNNING") {
+      const stageIndex = statusData.stage_index + 1;
+      const stageCount = statusData.stage_count;
+      setRunningModalOpen({ stageIndex, stageCount });
+      await new Promise((resolve) =>
+        setTimeout(() => resolve(handleJobStatus(jobStatusURL, sessionId)), 500)
+      );
+    }
+
+    if (jobStatus == "FAILURE") {
+      setErrorModalText(
+        `Error: ${statusData.error_title}; Details: ${statusData.error_message}`
+      );
+    }
+
+    if (jobStatus == "SUCCESS") {
+      const { redirect_url } = statusData;
+      window.location = redirect_url;
+    }
+  };
 
   return (
     <Grid container direction="column" spacing={3} margin={2}>
@@ -558,7 +601,6 @@ const ColocPage: React.FC<{
               errorText={errors.LDPopulations?.message}
               validate={{
                 required: (value) => {
-                  console.log(value);
                   return (
                     !!value ||
                     !!formValues.ldFile ||
@@ -663,7 +705,7 @@ const ColocPage: React.FC<{
             selected={formValues.GTExTissues}
             validate={{
               required: (val) =>
-                (!!val && !!val.length) || "GTExTissues is required!",
+                (!!val && !!val.length) || "GTEx Tissues is required!",
             }}
             wide
           />
@@ -681,7 +723,7 @@ const ColocPage: React.FC<{
             selected={formValues.regionGenes}
             validate={{
               required: (val) =>
-                (!!val && !!val.length) || "GTExTissues is required!",
+                (!!val && !!val.length) || "Region Genes is required!",
             }}
             wide
           />
@@ -842,8 +884,11 @@ const ColocPage: React.FC<{
       <Grid container direction="column">
         <Grid>
           <Button
-            disabled={Object.keys(errors).length > 0}
-            onClick={() => {
+            disabled={!isValid}
+            onClick={async () => {
+              //TODO: moveout
+              setLoading(true);
+
               const formData = new FormData();
 
               Object.entries(formValues)
@@ -868,10 +913,42 @@ const ColocPage: React.FC<{
                   }
                 });
 
-              fetch(`${process.env.NEXT_PUBLIC_BROWSER_API_HOST}`, {
-                method: "POST",
-                body: formData,
-              });
+              try {
+                const response = await fetch(
+                  `${process.env.NEXT_PUBLIC_BROWSER_API_HOST}`,
+                  {
+                    method: "POST",
+                    body: formData,
+                  }
+                );
+
+                if (!response.status.toString().startsWith("2")) {
+                  throw response;
+                }
+                const content = await response.json();
+
+                if (!content.queued) {
+                  router.push(`/colocResults?sessionId=${content.sessionId}}`);
+                } else {
+                  handleJobStatus(
+                    `${process.env.NEXT_PUBLIC_BROWSER_API_HOST}/job/status/${content.session_id}`,
+                    content.session_id
+                  );
+                }
+              } catch (e: unknown) {
+                console.error(e);
+                if ((e as Response)?.status.toString().startsWith("4")) {
+                  const error = await (e as Response).json();
+                  const message = error.message;
+                  setErrorModalText(message);
+                } else {
+                  setErrorModalText(
+                    "The job failed due to an unexpected error, please try again later."
+                  );
+                }
+              } finally {
+                setLoading(false);
+              }
             }}
             variant="contained"
           >
@@ -886,34 +963,27 @@ const ColocPage: React.FC<{
           ))}
         </Grid>
       </Grid>
-      <Modal
-        sx={{ display: "flex", justifyContent: "center" }}
-        onClose={() => setSubmitted(false)}
-        open={submitted}
-      >
-        <Box
-          sx={{
-            marginY: 10,
-            width: "75%",
-            maxWidth: "800px",
-            maxHeight: "500px",
-            backgroundColor: "white",
-            overflowY: "scroll",
-          }}
-        >
-          <pre>
-            {JSON.stringify(
-              Object.fromEntries(
-                Object.entries(formValues)
-
-                  .map(([k, v]) => [k, (v || {}).name ? v.name : v])
-              ),
-              null,
-              2
-            )}
-          </pre>
-        </Box>
+      <LoadingOverlay open={loading} />
+      <Modal open={!!errorModalText} onClose={() => setErrorModalText("")}>
+        <Typography color="error">{errorModalText}</Typography>
       </Modal>
+      <Modal
+        open={pendingModalOpen}
+        sx={{ alignItems: "center" }}
+        onClose={() => setPendingModalOpen(false)}
+      >
+        <Typography variant="h4" color="info">
+          Job pending....
+        </Typography>
+      </Modal>
+      {!!runningModalOpen && (
+        <Modal open={!!runningModalOpen}>
+          <Typography variant="h4" color="info">
+            Job running, stage {runningModalOpen!.stageIndex - 1} of{" "}
+            {runningModalOpen?.stageCount}...
+          </Typography>
+        </Modal>
+      )}
     </Grid>
   );
 };
