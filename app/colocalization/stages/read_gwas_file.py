@@ -186,7 +186,7 @@ class ReadGWASFileStage(PipelineStage):
             for column in ["CHROM", "POS", "REF", "ALT", "SNP"]:
                 if column not in gwas_data.columns:
                     raise InvalidUsage(
-                        f"'{column}' column missing where required. '{column_inputs[column]}' not in columns '{', '.join(old_gwas_columns)}'. Please update your GWAS columns to match, or type a different column name that is found in your dataset."
+                        f"'{column}' column missing where required. '{column_inputs[column]}' not in columns '{', '.join(old_gwas_columns)}'. Please update your GWAS columns to match, or type a different column name that is found in your GWAS file."
                     )
 
         # Get coloc2 if applicable

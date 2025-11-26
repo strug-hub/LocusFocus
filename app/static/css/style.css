@@ -116,10 +116,10 @@ bottom: .5em;
   transition: width 4s ease;
 }
 
-.modal {
+/* .modal {
   height: auto;
-}
-
+} */
+/* 
 #error-modal a[href$="#close-modal"] {
     top: 3px;
     right: 3px;
@@ -131,4 +131,5 @@ bottom: .5em;
 
 #loading-modal .icon-remove, #job-running-modal .icon-remove, #job-pending-modal .icon-remove {
   display: none
-}
+} */
+

@@ -100,15 +100,11 @@ function storeFormArgs(e) {
   localStorage.setItem("formVals", JSON.stringify(vals));
 }
 
-const addLoadingIndicator = () => {
-  $("#loading-modal").modal({ closeClass: "icon-remove" });
-};
-
-const closeActiveModal = () => $.modal.close();
+const closeActiveModal = () => $(".modal").modal("hide");
 
 const setErrorModalOpen = (message) => {
-  d3.select("#error-modal p.message").text(message);
-  $("#error-modal").modal();
+  $("#error-modal .modal-body p").text(message);
+  $("#error-modal").modal("show");
 };
 
 const setPendingModalOpen = () => {
@@ -126,9 +122,12 @@ d3.select(".inputs-and-upload-form form").on("submit", storeFormArgs);
 
 $(".inputs-and-upload-form form").on("submit", async (e) => {
   e.preventDefault();
+  $("#submit-btn").prop("disabled", true);
+  $("#submit-btn + .spinner-border").show();
 
-  addLoadingIndicator();
-
+  let modalTimeout = setTimeout(() => {
+    $("#loading-modal").modal("show");
+  }, 500);
   try {
     const res = await fetch("/", {
       method: "POST",
@@ -142,8 +141,10 @@ $(".inputs-and-upload-form form").on("submit", async (e) => {
     const content = await res.json();
 
     if (!content.queued) {
-      window.location = `${window.location}/session_id/${content.session_id}`;
+      window.location = `${window.location}session_id/${content.session_id}`;
     } else {
+      clearTimeout(modalTimeout);
+      $("#loading-modal").modal("hide");
       handleJobStatus(`/job/status/${content.session_id}`, content.session_id);
     }
   } catch (e) {
@@ -158,6 +159,11 @@ $(".inputs-and-upload-form form").on("submit", async (e) => {
         "The job failed due to an unexpected error, please try again later."
       );
     }
+    $("#submit-btn").prop("disabled", false);
+    $("#submit-btn + .spinner-border").hide();
+  } finally {
+    clearTimeout(modalTimeout);
+    $("#loading-modal").modal("hide");
   }
 });
 
@@ -625,13 +631,6 @@ function updateChrXWarning() {
   const uploadedFileNames = $.map(
     $("#file-upload").prop("files"),
     (f) => f.name
-  );
-
-  console.log(
-    `[updateChrXWarning]
-    regionText: ${regionText}
-    selectedAssembly: ${selectedAssembly}
-    uploadedFileNames: ${uploadedFileNames}`
   );
 
   const hideWarning = !(

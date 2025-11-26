@@ -23,7 +23,9 @@
   <!-- JQuery-UI -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/jquery-ui.css') }}">
   <!-- JQuery -->
-  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+  <script type="text/javascript" src="https://code.jquery.com/jquery-3.7.1.min.js"
+    integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo="
+    crossorigin="anonymous"></script>
   <!-- JQuery-UI -->
   <script type="text/javascript" src="{{ url_for('static', filename='js/lib/jquery-ui.js') }}"></script>
   <!-- Bootstrap core CSS -->
@@ -117,23 +119,23 @@
               <div class="alert alert-info">
                 <h5>Specify one or more regions in your dataset</h5>
                 <p>
-                  Please specify your region(s) of interest here with the following format: 
-                  <code>{CHROM}:{START}-{END}</code> 
+                  Please specify your region(s) of interest here with the following format:
+                  <code>{CHROM}:{START}-{END}</code>
                   <strong>Each region must be typed on a separate line as shown.</strong>
                 </p>
                 <p>
-                  If no LD is provided, LocusFocus will generate an LD matrix for each provided region, 
-                  and regions within 2 Mbps of each other will be combined. 
+                  If no LD is provided, LocusFocus will generate an LD matrix for each provided region,
+                  and regions within 2 Mbps of each other will be combined.
                   <strong>Regions may not be greater than 2,000,000 BPs in size.</strong>
                 </p>
                 <p>
-                  If no regions are provided, 
-                  LocusFocus will infer the regions from the provided GWAS dataset 
+                  If no regions are provided,
+                  LocusFocus will infer the regions from the provided GWAS dataset
                   (1 region per chromosome in dataset).
                 </p>
                 <p>
                   <strong>
-                    SNPs that are outside of these regions will be removed before LD calculation 
+                    SNPs that are outside of these regions will be removed before LD calculation
                     and before the set-based test.
                   </strong>
                   <br>
@@ -228,7 +230,7 @@
   <script>
     $("#multi-region").on("change", checkMultipleRegionsInput);
     $("#file-upload").on("change", function() {
-      
+
     });
   </script>
 </body>

@@ -30,6 +30,7 @@ class BaseConfig:
             "https://*.googletagmanager.com",
             "cdnjs.cloudflare.com",
             "cdn.plot.ly",
+            "code.jquery.com",
         ],
         "style-src": [
             "'self'",
