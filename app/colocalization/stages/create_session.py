@@ -14,6 +14,9 @@ class CreateSessionStage(PipelineStage):
 
     def name(self) -> str:
         return "create-session"
+    
+    def description(self) -> str:
+        return "Creating session"
 
     def invoke(self, payload: SessionPayload) -> SessionPayload:
         self._create_metadata_file(payload)

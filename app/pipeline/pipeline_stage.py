@@ -2,7 +2,7 @@ class PipelineStage:
     """
     An abstract pipeline stage.
 
-    Other stages must inherit from this one and implement the `invoke` and `name` methods.
+    Other stages must inherit from this one.
     """
 
     def name(self) -> str:

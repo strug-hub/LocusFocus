@@ -14,7 +14,7 @@ class LiftoverSecondaryDatasets(PipelineStage):
         return "liftover-secondary-datasets"
 
     def description(self) -> str:
-        return "LiftOver secondary datasets (if needed, may be skipped)"
+        return "Checking if secondary datasets need to be lifted over"
 
     def invoke(self, payload: SessionPayload) -> object:
         if payload.secondary_datasets is None:

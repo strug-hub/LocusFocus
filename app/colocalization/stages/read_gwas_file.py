@@ -73,7 +73,7 @@ class ReadGWASFileStage(PipelineStage):
         return "read-gwas-file"
 
     def description(self) -> str:
-        return "Read GWAS data from file"
+        return "Reading GWAS data from file"
 
     def __init__(self, enforce_one_chrom=True):
         self.enforce_one_chrom = enforce_one_chrom

@@ -76,6 +76,8 @@ def get_job_status(job_id):
             {
                 "stage_index": result.info.get("stage_index"),
                 "stage_count": result.info.get("stage_count"),
+                "stage_name": result.info.get("stage_name"),
+                "stage_description": result.info.get("stage_description"),
             }
         )
 

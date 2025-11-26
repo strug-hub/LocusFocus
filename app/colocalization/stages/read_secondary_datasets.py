@@ -19,7 +19,7 @@ class ReadSecondaryDatasetsStage(PipelineStage):
         return "read-secondary-datasets"
 
     def description(self) -> str:
-        return "Read secondary datasets (if any)"
+        return "Reading secondary datasets (if any)"
 
     def invoke(self, payload: SessionPayload) -> SessionPayload:
         secondary_datasets = self._read_dataset_file(payload)
