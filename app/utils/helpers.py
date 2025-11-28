@@ -1,6 +1,13 @@
+import os
+import re
 from typing import List
 
+from flask import current_app as app
 import pandas as pd
+
+from app.utils.errors import InvalidUsage
+
+GENOMIC_WINDOW_LIMIT = 2e6
 
 
 def validate_chromosome(
@@ -109,3 +116,65 @@ def adjust_snp_column(
         )
 
     return snps_df
+
+
+def parse_region_text(regiontext, build):
+    if build not in ["hg19", "hg38"]:
+        raise InvalidUsage(f"Unrecognized build: {build}", status_code=410)
+    regiontext = regiontext.strip().replace(" ", "").replace(",", "").replace("chr", "")
+    if not re.search(
+        r"^\d+:\d+-\d+$", regiontext.replace("X", "23").replace("x", "23")
+    ):
+        raise InvalidUsage(
+            f"Invalid coordinate format. '{regiontext}' e.g. 1:205,000,000-206,000,000",
+            status_code=410,
+        )
+    chrom = regiontext.split(":")[0].lower().replace("chr", "").upper()
+    pos = regiontext.split(":")[1]
+    startbp = pos.split("-")[0].replace(",", "")
+    endbp = pos.split("-")[1].replace(",", "")
+    chromLengths = pd.read_csv(
+        os.path.join(app.config["LF_DATA_FOLDER"], build + "_chrom_lengths.txt"),
+        sep="\t",
+        encoding="utf-8",
+    )
+    chromLengths.set_index("sequence", inplace=True)
+    if chrom in ["X", "x"] or chrom == "23":
+        chrom = 23
+        maxChromLength = chromLengths.loc["chrX", "length"]
+        try:
+            startbp = int(startbp)
+            endbp = int(endbp)
+        except Exception:
+            raise InvalidUsage(
+                f"Invalid coordinates input: '{regiontext}'", status_code=410
+            )
+    else:
+        try:
+            chrom = int(chrom)
+            if chrom == 23:
+                maxChromLength = chromLengths.loc["chrX", "length"]
+            else:
+                maxChromLength = chromLengths.loc["chr" + str(chrom), "length"]
+            startbp = int(startbp)
+            endbp = int(endbp)
+        except Exception:
+            raise InvalidUsage(
+                f"Invalid coordinates input '{regiontext}'", status_code=410
+            )
+    if chrom < 1 or chrom > 23:
+        raise InvalidUsage("Chromosome input must be between 1 and 23", status_code=410)
+    elif startbp > endbp:
+        raise InvalidUsage(
+            "Starting chromosome basepair position is greater than ending basepair position",
+            status_code=410,
+        )
+    elif startbp > maxChromLength or endbp > maxChromLength:
+        raise InvalidUsage("Start or end coordinates are out of range", status_code=410)
+    elif (endbp - startbp) > GENOMIC_WINDOW_LIMIT:
+        raise InvalidUsage(
+            f"Entered region size is larger than {GENOMIC_WINDOW_LIMIT/1e6} Mbp",
+            status_code=410,
+        )
+    else:
+        return chrom, startbp, endbp

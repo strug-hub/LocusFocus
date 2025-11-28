@@ -6,7 +6,7 @@ import os
 from typing import List
 
 import pandas as pd
-from app.utils import parse_region_text
+from app.utils.helpers import parse_region_text
 
 # /app/utils/gencode.py -> /data/
 DATA_FOLDER = os.path.abspath(

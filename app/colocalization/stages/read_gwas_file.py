@@ -229,11 +229,10 @@ class ReadGWASFileStage(PipelineStage):
         self, payload: SessionPayload, gwas_data: pd.DataFrame
     ) -> pd.DataFrame:
         """
-        Given that the user wishes to infer the variant information using dbSNP,
-        validate and rename the columns in the DataFrame accordingly, if possible.
-
-        This assumes that the only columns provided in the GWAS file are "SNP" and "P", where "SNP" contains
-        snp IDs that can be looked up using dbSNP for variant information.
+        Look up CHROM/POS/REF/ALT from dbSNP based on information in the SNP column,
+        then validate and rename the columns in the DataFrame accordingly, if possible.
+        This assumes that "SNP" contains SNP IDs that can be looked up using dbSNP for variant information.
+        If the dataframe has columns already named CHROM, POS, REF, or ALT, they will be overwritten.
 
         Prerequisite: gwas_data columns are set as default values (eg. "SNP", "P", etc.)
         """
@@ -246,17 +245,25 @@ class ReadGWASFileStage(PipelineStage):
         regionstr = payload.get_locus()
 
         variant_list = standardize_snps(list(gwas_data["SNP"]), regionstr, coordinate)
+
         if all(x == "." for x in variant_list):
             raise InvalidUsage(
                 f"None of the variants provided could be mapped to {regionstr}!",
                 status_code=410,
             )
+
         var_df = decompose_variant_list(variant_list)
-        gwas_data = pd.concat([var_df, gwas_data], axis=1)  # add CHROM, POS, REF, ALT
-        gwas_data = gwas_data.loc[
-            [str(x) != "." for x in list(gwas_data["CHROM"])]
-        ].copy()
-        gwas_data.reset_index(drop=True, inplace=True)
+
+        gwas_data = gwas_data.reset_index(drop=True).join(
+            var_df.reset_index(drop=True), lsuffix="_orig"
+        )
+
+        gwas_data.drop(
+            [c for c in gwas_data.columns if c.endswith("_orig")], axis=1, inplace=True
+        )
+
+        gwas_data = gwas_data.loc[gwas_data["CHROM"] != "."]
+
         return gwas_data
 
     def _validate_gwas_file(
