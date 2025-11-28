@@ -21,7 +21,8 @@ RUN apt-get update && \
   r-base-dev \
   xauth \
   vim \
-  wget
+  wget \
+  zip
 
 # install plink
 RUN wget -O /tmp/plink.zip https://s3.amazonaws.com/plink1-assets/plink_linux_x86_64_20241022.zip \
@@ -37,6 +38,13 @@ RUN curl -f -L -O https://hgdownload.cse.ucsc.edu/admin/exe/linux.x86_64/liftOve
   mv liftOver /usr/local/bin/liftOver && \
   mkdir /usr/local/share/liftOver && \
   mv hg38ToHg19.over.chain.gz hg19ToHg38.over.chain.gz /usr/local/share/liftOver/
+
+# install smr for mqtl querying
+RUN wget https://yanglab.westlake.edu.cn/software/smr/download/smr-1.3.2-linux-x86_64.zip \
+  && unzip smr-1.3.2-linux-x86_64.zip \
+  && mv smr-1.3.2-linux-x86_64/smr /usr/local/bin/ \
+  && rm smr-1.3.2-linux-x86_64.zip
+
 
 # Install Poetry
 # https://github.com/python-poetry/poetry/issues/6397#issuecomment-1236327500
