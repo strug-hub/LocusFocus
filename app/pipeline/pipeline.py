@@ -90,11 +90,13 @@ class Pipeline:
         n = len(self.stages)
         for i, stage in enumerate(self.stages):
             if self.bound_task:
+                stage_name = stage.name()
+                stage_description = stage.description()
                 self.bound_task.update_state(
                     state="RUNNING",
                     meta={
-                        "stage": stage.name(),
-                        "stage_description": stage.description(),
+                        "stage_name": stage_name,
+                        "stage_description": stage_description,
                         "stage_index": i + 1,
                         "stage_count": n,
                     },

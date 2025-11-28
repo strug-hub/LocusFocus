@@ -22,7 +22,7 @@ class SimpleSumSubsetGWASStage(PipelineStage):
         return "simple-sum-subset-gwas"
 
     def description(self) -> str:
-        return "Prepare GWAS data for Simple Sum colocalization"
+        return "Preparing GWAS data for colocalization tests"
 
     def invoke(self, payload: SessionPayload) -> SessionPayload:
         if payload.gwas_data is None:

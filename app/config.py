@@ -30,6 +30,7 @@ class BaseConfig:
             "https://*.googletagmanager.com",
             "cdnjs.cloudflare.com",
             "cdn.plot.ly",
+            "code.jquery.com",
         ],
         "style-src": [
             "'self'",
@@ -79,9 +80,7 @@ class BaseConfig:
 
     CELERY = {
         "timezone": "America/Toronto",
-        "broker_url": "redis://localhost:6379/0"
-        if REDIS_PASSWORD is None
-        else f"redis://:{os.environ['REDIS_PASSWORD']}@localhost:6379/0",
+        "broker_url": (lambda url, pw: url if not pw else url.replace("redis://", f"redis://{pw}@"))(os.environ.get("CELERY_BROKER_URL", "redis://localhost:6379/0"), REDIS_PASSWORD),  # pylint: disable=C3002
         "result_backend": f"file://{os.path.join(SESSION_FOLDER, 'celery_results')}",
         "broker_connection_retry_on_startup": True,
     }

@@ -22,7 +22,7 @@ class CollectUserInputStage(PipelineStage):
         return "collect-user-input"
 
     def description(self) -> str:
-        return "Collect user form inputs"
+        return "Parsing user form inputs"
 
     def invoke(self, payload: SessionPayload) -> SessionPayload:
         new_payload = self._read_form_inputs(payload)

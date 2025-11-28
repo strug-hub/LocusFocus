@@ -1,5 +1,6 @@
 services:
   flask:
+    image: locusfocus-flask
     build:
       context: .
       target: dev
@@ -17,8 +18,6 @@ services:
     restart: unless-stopped
     depends_on:
       - mongo
-    networks:
-      - lf-net
     environment:
       - APP_ENV
       # for vscode debugger
@@ -27,9 +26,30 @@ services:
       - FLASK_DEBUG=1
       - FLASK_SECRET_KEY
       - MONGO_CONNECTION_STRING
-      - DISABLE_CELERY=true
+      - DISABLE_CELERY={DISABLE_CELERY:-true}
       - DISABLE_CACHE=${DISABLE_CACHE:-true}
+      - CELERY_BROKER_URL=redis://redis:6379
     entrypoint: ["python3", "-m", "app.wsgi"]
+    networks:
+      - lf-net
+  celery:
+    image: locusfocus-flask
+    volumes:
+      - ./app:/code/app
+      - ./misc:/code/misc
+      - ./data:/code/data
+      - ./pyproject.toml:/code/pyproject.toml
+      - ./poetry.lock:/code/poetry.lock
+    restart: unless-stopped
+    environment:
+      - APP_ENV
+      - FLASK_SECRET_KEY
+      - MONGO_CONNECTION_STRING
+      - CELERY_BROKER_URL=redis://redis:6379
+      - DISABLE_CACHE=false
+    entrypoint: ["celery", "-A", "app.make_celery.celery_app", "worker", "--loglevel=INFO"]
+    networks:
+      - lf-net
   mongo:
     image:  mongo:6
     restart: unless-stopped
@@ -39,6 +59,13 @@ services:
       - MONGO_INITDB_ROOT_USERNAME=${MONGO_USERNAME}
       - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
       - MONGO_INITDB_DATABASE=${MONGO_DATABASE}
+    networks:
+      - lf-net
+  redis:
+    image: redis:7.4.2-alpine
+    restart: unless-stopped
+    # bind to 0.0.0.0
+    command: ["redis-server", "--bind", "0.0.0.0"]
     networks:
       - lf-net
 

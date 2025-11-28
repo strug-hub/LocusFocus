@@ -73,7 +73,7 @@ class ReadGWASFileStage(PipelineStage):
         return "read-gwas-file"
 
     def description(self) -> str:
-        return "Read GWAS data from file"
+        return "Reading GWAS data from file"
 
     def __init__(self, enforce_one_chrom=True):
         self.enforce_one_chrom = enforce_one_chrom
@@ -186,7 +186,7 @@ class ReadGWASFileStage(PipelineStage):
             for column in ["CHROM", "POS", "REF", "ALT", "SNP"]:
                 if column not in gwas_data.columns:
                     raise InvalidUsage(
-                        f"'{column}' column missing where required. '{column_inputs[column]}' not in columns '{', '.join(old_gwas_columns)}'. Please update your GWAS columns to match, or type a different column name that is found in your dataset."
+                        f"'{column}' column missing where required. '{column_inputs[column]}' not in columns '{', '.join(old_gwas_columns)}'. Please update your GWAS columns to match, or type a different column name that is found in your GWAS file."
                     )
 
         # Get coloc2 if applicable

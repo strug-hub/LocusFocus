@@ -23,7 +23,9 @@
   <!-- JQuery-UI -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/jquery-ui.css') }}" />
   <!-- JQuery -->
-  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+  <script type="text/javascript" src="https://code.jquery.com/jquery-3.7.1.min.js"
+    integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo="
+    crossorigin="anonymous"></script>
   <!-- JQuery-UI -->
   <script type="text/javascript" src="{{ url_for('static', filename='js/lib/jquery-ui.js') }}"></script>
   <!-- Bootstrap core CSS -->
@@ -206,7 +208,7 @@
                 <select id="LD-populations" name="LD-populations">
                 </select>
                 <div id="chrX-warning" class="alert alert-dismissible alert-warning fade show" hidden role="alert">
-                  <strong>Warning:</strong> For chrX datasets with GRCh38 assembly selected, 
+                  <strong>Warning:</strong> For chrX datasets with GRCh38 assembly selected,
                   <i>only female samples</i> will be taken from the selected 1000 Genomes population for LD calculation.
                   <button type="button" class="close" data-dismiss="alert" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
@@ -363,7 +365,9 @@
         </div> <!-- row closing div -->
 
         <div class="row">
-          <div class="col-md-12"><input id="submit-btn" type="submit" class="btn btn-default" value="Submit"></div>
+          <div class="col-md-12">
+            <input id="submit-btn" type="submit" class="btn btn-default" value="Submit" />
+          </div>
         </div> <!-- row closing div -->
 
         <div class="row">
@@ -379,6 +383,93 @@
         </div>
       </div>
     </div> <!-- inputs-and-upload-form closing div -->
+    <!-- modal -->
+    <div id="loading-modal" class="modal fade" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Loading...</h5>
+          </div>
+          <div class="modal-body">
+            <div class="d-flex justify-content-center align-items-center mb-2">
+              <div class="spinner-border" role="status">
+                <span class="sr-only">Loading...</span>
+              </div>
+            </div>
+            <p>Please wait while LocusFocus is processing your submission...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="error-modal" class="modal fade" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Unexpected Error</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <p>Something went wrong!</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="job-modal" class="modal fade" data-backdrop="static" data-keyboard="false" tabindex="-1">
+      <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <div class="col-md-12 mb-2">
+              <div class="row">
+                <h4 class="modal-title">Session ID</h4>
+              </div>
+              <div class="row">
+                <a class="modal-title h5" id="sessionid-header-link" href="#"></a>
+              </div>
+            </div>
+            <!-- <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button> -->
+          </div>
+          <div class="modal-body">
+            <p>
+              Save the above string for your records to load or share your
+              plot once it is ready.
+            </p>
+            <p id="job-status-explainer-text">
+              This page will automatically check the status of your job.
+            </p>
+            <p id="job-status-text">
+              <i>Your job is currently running.</i>
+            </p>
+            <div class="progress">
+              <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" width="0%"></div>
+            </div>
+            <div class="justify-content-center align-items-center collapse mt-3" id="error-section">
+              <div class="card border-danger mb-6">
+                <div class="card-header">Error</div>
+                <div class="card-body">
+                  <h4 class="card-title" id="error-title"></h4>
+                  <h6 class="card-subtitle mb-2 text-muted" id="error-subtitle"></h6>
+                  <p class="card-text" id="error-message"></p>
+                  <br />
+                  <p class="card-text" id="error-payload"></p>
+                </div>
+                <div id="error-contact-section" class="card-footer collapse">
+                  <a class="card-link" id="error-contact-link" href="#" target="_blank">
+                    Email Us with Error Details
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer collapse">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal" disabled>Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div> <!-- container closing div -->
 
   <!-- JS -->
@@ -398,9 +489,6 @@
   <script type="text/javascript" src="{{ url_for('static', filename='js/lib/jquery.dataTables.min.js') }}"></script>
   <!-- Multiselect -->
   <script src="{{ url_for('static', filename='js/lib/bootstrap-multiselect.js') }}"></script>
-  <script>
-    
-  </script>
 </body>
 
 </html>

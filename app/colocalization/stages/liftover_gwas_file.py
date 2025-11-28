@@ -21,7 +21,7 @@ class LiftoverGWASFile(PipelineStage):
         return "liftover-gwas-file"
 
     def description(self) -> str:
-        return "LiftOver GWAS file (if needed, may be skipped)"
+        return "Checking if GWAS file needs to be lifted over"
 
     def invoke(self, payload: SessionPayload) -> object:
         needs_liftover = False

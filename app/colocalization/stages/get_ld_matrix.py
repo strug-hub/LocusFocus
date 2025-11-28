@@ -34,7 +34,7 @@ class GetLDMatrixStage(PipelineStage):
         return "get-ld-matrix"
 
     def description(self) -> str:
-        return "Get LD matrix, from user or from PLINK"
+        return "Getting LD matrix"
 
     def invoke(self, payload: SessionPayload) -> SessionPayload:
         # Enforce prerequisites
