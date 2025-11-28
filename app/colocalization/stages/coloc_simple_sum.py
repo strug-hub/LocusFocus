@@ -41,7 +41,7 @@ class ColocSimpleSumStage(PipelineStage):
         return "simple-sum"
 
     def description(self) -> str:
-        return "Performing colocalization tests"
+        return "Running colocalization methods (this may take a while)"
 
     def invoke(self, payload: SessionPayload) -> SessionPayload:
         # Check prerequisites
