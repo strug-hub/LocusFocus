@@ -1,6 +1,7 @@
 """
 Common utility functions and classes shared by multiple routes in LocusFocus.
 """
+
 import os
 import re
 from typing import List, Optional
@@ -59,9 +60,11 @@ def download_file(file: FileStorage, check_only: bool = False) -> Optional[os.Pa
     return filepath
 
 
-def get_file_with_ext(filepaths: List[os.PathLike], extensions: List[str]) -> Optional[os.PathLike]:
+def get_file_with_ext(
+    filepaths: List[os.PathLike], extensions: List[str]
+) -> Optional[os.PathLike]:
     """
-    Grab the first file in the list that matches the given extensions. This assumes that the 
+    Grab the first file in the list that matches the given extensions. This assumes that the
     files are already uploaded and stored in the upload folder.
 
     Return None if no such file exists.
@@ -94,7 +97,12 @@ def decompose_variant_list(variant_list):
     reflist = [x.split("_")[2] if len(x.split("_")) == 5 else x for x in variant_list]
     altlist = [x.split("_")[3] if len(x.split("_")) == 5 else x for x in variant_list]
     df = pd.DataFrame(
-        {"CHROM": chromlist, "POS": poslist, "REF": reflist, "ALT": altlist,}
+        {
+            "CHROM": chromlist,
+            "POS": poslist,
+            "REF": reflist,
+            "ALT": altlist,
+        }
     )
     return df
 
@@ -120,7 +128,9 @@ def standardize_snps(variantlist, regiontxt, build):
     chrom, startbp, endbp = parse_region_text(regiontxt, build)
     chrom = str(chrom).replace("23", "X")
     if build.lower() in ["hg19", "grch37"]:
-        raise InvalidUsage("Cannot standardize SNPs to hg19; GTEx V7 is no longer available.")
+        raise InvalidUsage(
+            "Cannot standardize SNPs to hg19; GTEx V7 is no longer available."
+        )
 
     # Lookup variants in GTEx V10 db
     variants_df = get_variants_by_region(int(startbp), int(endbp), str(chrom), "V10")
@@ -129,11 +139,13 @@ def standardize_snps(variantlist, regiontxt, build):
     dbsnp_filepath = ""
     suffix = "b37"
     if build.lower() in ["hg38", "grch38"]:
+        rsid_colname = "rs_id_dbSNP151_GRCh38p7"
         suffix = "b38"
         dbsnp_filepath = os.path.join(
             app.config["LF_DATA_FOLDER"], "dbSNP151", "GRCh38p7", "All_20180418.vcf.gz"
         )
     else:
+        rsid_colname = "rs_id_dbSNP147_GRCh37p13"
         suffix = "b37"
         dbsnp_filepath = os.path.join(
             app.config["LF_DATA_FOLDER"], "dbSNP151", "GRCh37p13", "All_20180423.vcf.gz"
@@ -142,6 +154,7 @@ def standardize_snps(variantlist, regiontxt, build):
     # Load dbSNP file
     # delayeddf = delayed(pd.read_csv)(dbsnp_filepath,skiprows=getNumHeaderLines(dbsnp_filepath),sep='\t')
     # dbsnp = dd.from_delayed(delayeddf)
+
     tbx = pysam.TabixFile(dbsnp_filepath)  # type: ignore
     #    print('Compiling list of known variants in the region from dbSNP151')
     chromcol = []
@@ -202,7 +215,7 @@ def standardize_snps(variantlist, regiontxt, build):
                     stdvariantlist.append(stdvar)
                 else:
                     stdvariantlist.append(rsids[variantstr][0])
-            except:
+            except Exception:
                 stdvariantlist.append(".")
         elif re.search(
             r"^\d+_\d+_[A,T,G,C]+_[A,T,C,G]+,*", variantstr.replace("X", "23")
@@ -228,7 +241,7 @@ def standardize_snps(variantlist, regiontxt, build):
                         )
                 else:
                     stdvariantlist.append(".")
-            except:
+            except Exception:
                 raise InvalidUsage(f"Problem with variant {variant}", status_code=410)
         elif re.search(r"^\d+_\d+_*[A,T,G,C]*", variantstr.replace("X", "23")):
             strlist = variantstr.split("_")
@@ -247,7 +260,7 @@ def standardize_snps(variantlist, regiontxt, build):
                     stdvariantlist.append(fetch_snv(achr, astart, aref, build))
                 else:
                     stdvariantlist.append(".")
-            except:
+            except Exception:
                 raise InvalidUsage(f"Problem with variant {variant}", status_code=410)
         else:
             raise InvalidUsage(
@@ -283,7 +296,7 @@ def parse_region_text(regiontext, build):
         try:
             startbp = int(startbp)
             endbp = int(endbp)
-        except:
+        except Exception:
             raise InvalidUsage(
                 f"Invalid coordinates input: '{regiontext}'", status_code=410
             )
@@ -296,7 +309,7 @@ def parse_region_text(regiontext, build):
                 maxChromLength = chromLengths.loc["chr" + str(chrom), "length"]
             startbp = int(startbp)
             endbp = int(endbp)
-        except:
+        except Exception:
             raise InvalidUsage(
                 f"Invalid coordinates input '{regiontext}'", status_code=410
             )
@@ -311,7 +324,7 @@ def parse_region_text(regiontext, build):
         raise InvalidUsage("Start or end coordinates are out of range", status_code=410)
     elif (endbp - startbp) > GENOMIC_WINDOW_LIMIT:
         raise InvalidUsage(
-            f"Entered region size is larger than {GENOMIC_WINDOW_LIMIT/1e6} Mbp",
+            f"Entered region size is larger than {GENOMIC_WINDOW_LIMIT / 1e6} Mbp",
             status_code=410,
         )
     else:
@@ -327,7 +340,7 @@ def fetch_snv(chrom, bp, ref, build):
     # Ensure valid region:
     try:
         regiontxt = str(chrom) + ":" + str(bp) + "-" + str(int(bp) + 1)
-    except:
+    except Exception:
         raise InvalidUsage(f"Invalid input for {str(chrom):str(bp)}")
     chrom, startbp, endbp = parse_region_text(regiontxt, build)
     chrom = str(chrom).replace("chr", "").replace("23", "X")
@@ -352,7 +365,6 @@ def fetch_snv(chrom, bp, ref, build):
         rowlist = str(row).split("\t")
         chromi = rowlist[0].replace("chr", "")
         posi = rowlist[1]
-        idi = rowlist[2]
         refi = rowlist[3]
         alti = rowlist[4]
         varstr = "_".join([chromi, posi, refi, alti, suffix])
@@ -369,7 +381,7 @@ def fetch_snv(chrom, bp, ref, build):
     return variantid
 
 
-def x_to_23(l):
+def x_to_23(ls):
     """
     Given a list of chromosome strings,
     return list where all variations of string 'X' are converted to integer 23.
@@ -378,7 +390,7 @@ def x_to_23(l):
     newl = []
     validchroms = [str(i) for i in list(np.arange(1, 24))]
     validchroms.append(".")
-    for x in l:
+    for x in ls:
         if str(str(x).strip().lower().replace("chr", "").upper()) == "X":
             newl.append(23)
         elif str(str(x).strip().lower().replace("chr", "")) in validchroms:

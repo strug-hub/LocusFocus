@@ -29,7 +29,7 @@ async function handleJobStatus(jobStatusURL, sessionId) {
     jobStatus = data.status;
     redirectUrl = data.redirect_url ? data.redirect_url : "";
     if (jobStatus == "RUNNING") {
-      let stage_index = data.stage_index + 1;
+      let stage_index = data.stage_index;
       let stage_count = data.stage_count;
       let gap = (1 / stage_count) * 100;
       if (stage_index !== last_stage_index) {
