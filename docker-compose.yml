@@ -15,8 +15,8 @@ services:
       - APP_ENV=production
       - FLASK_SECRET_KEY
       - MONGO_CONNECTION_STRING
-      - DISABLE_CELERY=false
-      - DISABLE_CACHE=false
+      - DISABLE_CELERY=${DISABLE_CELERY:-false}
+      - DISABLE_CACHE=${DISABLE_CACHE:-false}
       - REDIS_PASSWORD=${REDIS_PASSWORD}
     entrypoint: ["python", "-m", "gunicorn", "--timeout", "6000", "--chdir", "app", "wsgi:app", "--bind=127.0.0.1:8000", "--name", "locusfocus", "--workers=3"]
     healthcheck:
@@ -40,9 +40,9 @@ services:
       - APP_ENV=production
       - FLASK_SECRET_KEY
       - MONGO_CONNECTION_STRING
-      - DISABLE_CELERY=false
+      - DISABLE_CELERY=${DISABLE_CELERY:-false}
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@localhost:6379/0
-      - DISABLE_CACHE=false
+      - DISABLE_CACHE=${DISABLE_CACHE:-false}
       - REDIS_PASSWORD=${REDIS_PASSWORD}
     entrypoint: ["celery", "-A", "app.make_celery.celery_app", "worker", "--loglevel=INFO"]
   redis:
