@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  {% include "lib/google-analytics.html" %}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>LocusFocus: A Colocalization Tool to Prioritize Genes and Tissues from GWAS and eQTL Integration</title>
+  <link rel="shortcut icon" href="#" />
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.0/css/all.css">
+  <!-- JQuery-UI -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/jquery-ui.css') }}" />
+  <!-- JQuery -->
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+  <!-- JQuery-UI -->
+  <script type="text/javascript" src="{{ url_for('static', filename='js/lib/jquery-ui.js') }}"></script>
+  <!-- Bootstrap core CSS -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+    integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+  <!-- Material Design Bootstrap -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/mdbootstrap/4.7.4/css/mdb.min.css" rel="stylesheet">
+  <!-- DataTables -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/jquery.dataTables.min.css') }}" />
+  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/bootstrap-multiselect.css') }}" />
+  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/d3Style.css') }}">
+</head>
+
+<body>
+  {% include "components/navigation-bar.html" %}
+  <div class="container">
+    <div class="row">
+      <div class="col-md-12 borderit">
+        <div class="col-md-8">
+          <form method=post>
+            <label for="session" id="session">Enter Previous Session ID:</label>
+            <input class="form-control" id="session-id" name="session-id" type="text">
+            <p>
+              For example:
+            <ul>
+              <li>example-output (SLC26A9)</li>
+              <li>447742a9-dc16-42cd-86dc-db388ec37283 (ATP12A)</li>
+            </ul>
+            </p>
+            <div class="row">
+              <div class="col-md-12"><input id="submit-btn" type="submit" class="btn btn-default" value="Submit"></div>
+            </div> <!-- row closing div -->
+          </form>
+        </div>
+      </div>
+    </div>
+  </div> <!-- container closing div -->
+
+  <!-- JS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/5.9.1/d3.js"></script>
+  <!-- <script src="{{ url_for('static', filename='js/app.js') }}"></script> -->
+  <!-- Bootstrap tooltips -->
+  <script type="text/javascript"
+    src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.4/umd/popper.min.js"></script>
+  <!-- Bootstrap core JavaScript -->
+  <script type="text/javascript"
+    src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.3.1/js/bootstrap.min.js"></script>
+  <!-- MDB core JavaScript -->
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mdbootstrap/4.7.4/js/mdb.min.js"></script>
+  <!-- DataTables -->
+  <script type="text/javascript" src="{{ url_for('static', filename='js/lib/jquery.dataTables.min.js') }}"></script>
+  <!-- Multiselect -->
+  <script src="{{ url_for('static', filename='js/lib/bootstrap-multiselect.js') }}"></script>
+</body>
+
+</html>

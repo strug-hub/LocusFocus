@@ -1,0 +1,117 @@
+.iframeContainer {
+  padding: 20px;
+  border: 1px solid #e3e3e3;
+}
+
+
+html {
+  position: relative;
+  min-height: 100%;
+}
+
+body {
+  /* Padding bottom by footer height */
+  padding-bottom: 80px;
+}
+
+h5 {
+  font-weight: bold;
+}
+
+.borderit {
+  margin-top:10px;
+  padding: 20px;
+  outline: 2px solid #ccc;
+  outline-offset: -10px;
+  -moz-outline-radius: 10px;
+  -webkit-outline-radius: 10px;
+}
+
+.error-text {
+  color: red;
+  font-size: 2vw;
+  font-weight: bold;
+}
+
+.input-error {
+  color: red;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.tooltip-inner {
+  text-align: left;
+}
+
+.isa_info, .isa_success, .isa_warning, .isa_error {
+  margin: 10px 0px;
+  padding:12px;
+   
+  }
+  .isa_info {
+      color: #00529B;
+      background-color: #BDE5F8;
+  }
+  .isa_success {
+      color: #4F8A10;
+      background-color: #DFF2BF;
+  }
+  .isa_warning {
+      color: #9F6000;
+      background-color: #FEEFB3;
+  }
+  .isa_error {
+      color: #D8000C;
+      background-color: #FFD2D2;
+  }
+  .isa_info i, .isa_success i, .isa_warning i, .isa_error i {
+      margin:10px 22px;
+      font-size:1em;
+      vertical-align:middle;
+  }
+
+/* Sticky Footer rules (https://getbootstrap.com/examples/sticky-footer/) */
+#footer {
+  position: absolute;
+  bottom: 0;
+  width: 100%; /* Set the fixed height of the footer here */
+  height: 10px;
+  padding-top: 20px;
+  padding-bottom: 40px;
+  text-align: center;
+  background-color: #f5f5f5;
+}
+
+#footer p {
+  margin: 0;
+  font-size: 16px;
+}
+
+table, th, td {
+  border: 1px solid black;
+  border-collapse: collapse;
+}
+
+table.dataTable thead .sorting:after,
+table.dataTable thead .sorting:before,
+table.dataTable thead .sorting_asc:after,
+table.dataTable thead .sorting_asc:before,
+table.dataTable thead .sorting_asc_disabled:after,
+table.dataTable thead .sorting_asc_disabled:before,
+table.dataTable thead .sorting_desc:after,
+table.dataTable thead .sorting_desc:before,
+table.dataTable thead .sorting_desc_disabled:after,
+table.dataTable thead .sorting_desc_disabled:before {
+bottom: .5em;
+}
+
+.snp_modal_button {
+  cursor: pointer;
+  text-decoration: underline;
+  color: blue;
+}
+
+.progress-bar {
+  transition: all 0.5s ease;
+  transition: width 4s ease;
+}
