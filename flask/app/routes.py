@@ -1417,11 +1417,12 @@ def prev_session_input(old_session_id):
     # print(f'SSPvalues filepath: {SSPvalues_filepath} is {str(os.path.isfile(SSPvalues_filepath))}')
     if os.path.isfile(SBTsessionfilepath):
         # set based test results
-        return render_template(
-            "plot.html",
-            sessionfile=SBTsessionfile,
-            sessionid=old_session_id,
-            metadata_file=metadatafile,
+        return jsonify(
+            dict(
+                sessionfile=SBTsessionfile,
+                sessionid=old_session_id,
+                metadata_file=metadatafile,
+            )
         )
     if (
         os.path.isfile(sessionfilepath)
@@ -1430,14 +1431,15 @@ def prev_session_input(old_session_id):
         and os.path.isfile(coloc2_filepath)
     ):
         # regular results
-        return render_template(
-            "plot.html",
-            sessionfile=sessionfile,
-            genesfile=genes_sessionfile,
-            SSPvalues_file=SSPvalues_file,
-            coloc2_file=coloc2_file,
-            sessionid=old_session_id,
-            metadata_file=metadatafile,
+        return jsonify(
+            dict(
+                sessionfile=sessionfile,
+                genesfile=genes_sessionfile,
+                SSPvalues_file=SSPvalues_file,
+                coloc2_file=coloc2_file,
+                sessionid=old_session_id,
+                metadata_file=metadatafile,
+            )
         )
 
     raise InvalidUsage(f"Could not locate session {old_session_id}")
@@ -1569,20 +1571,14 @@ def index():
         from app.colocalization.pipeline import ColocalizationPipeline
 
         pipeline = ColocalizationPipeline(id=session_id)
-        result = pipeline.process(request_form, filepaths)
+        pipeline.process(request_form, filepaths)
 
-        return render_template(
-            "plot.html",
-            **result.file.get_plot_template_paths(session_id=str(result.session_id)),
-        )
+        return jsonify({"session_id": session_id, "queued": False})
 
     job_result = run_pipeline_async("colocalization", request_form, filepaths)
     session_id = job_result.id
 
-    return render_template(
-        "waiting_page.html",
-        session_id=session_id,
-    )
+    return jsonify({"session_id": session_id, "queued": True})
 
 
 ALLOWED_SBT_EXTENSIONS = set(["txt", "tsv", "ld"])
@@ -1729,7 +1725,9 @@ def setbasedtest():
 
     combine_lds = False
 
-    snps_used_in_test = []  # List of list of positions, one list per test; position is (chrom, bp) tuple
+    snps_used_in_test = (
+        []
+    )  # List of list of positions, one list per test; position is (chrom, bp) tuple
 
     # TODO: need to determine used SNPs AFTER tests are performed
 

@@ -8,6 +8,7 @@ from flask import Flask
 from flask_pymongo import PyMongo
 from flask_sitemap import Sitemap
 from flask_talisman import Talisman
+from flask_cors import CORS
 
 from app.config import BaseConfig, DevConfig, ProdConfig
 from app.cache import cache
@@ -60,9 +61,16 @@ def create_app(config_class=ConfigClass):
     app.config.from_object(config_class())
     if app.config["SECRET_KEY"] is None or app.config["SECRET_KEY"] == "":
         raise Exception("SECRET_KEY is not set! Add FLASK_SECRET_KEY to environment!")
-
+    cors = {}
+    # Allow CORS locally, since we'll be using different ports
+    if app.config["APP_ENV"] == "local":
+        cors = {"origins": ["*"]}
+    CORS(app, **cors)
     ext.init_app(app)
-    talisman.init_app(app, content_security_policy=app.config["CSP_POLICY"])
+    talisman.init_app(
+        app,
+        content_security_policy=app.config["CSP_POLICY"],
+    )
     mongo.init_app(app)
     celery_init_app(app)
     cache.init_app(app)

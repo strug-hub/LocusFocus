@@ -62,7 +62,7 @@ def get_job_status(job_id):
         return jsonify(
             {
                 "status": "SUCCESS",
-                "redirect_url": url_for("prev_session_input", old_session_id=result.id),
+                "session_id": result.id,
             }
         )
 
