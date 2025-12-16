@@ -1,7 +1,7 @@
 services:
   flask:
     build:
-      context: .
+      context: ./flask
       target: prod
     volumes:
       - ./app:/code/app
@@ -26,7 +26,7 @@ services:
       retries: 3
   celery:
     build:
-      context: .
+      context: ./flask
       target: prod
     volumes:
       - ./app:/code/app
@@ -45,6 +45,17 @@ services:
       - DISABLE_CACHE=false
       - REDIS_PASSWORD=${REDIS_PASSWORD}
     entrypoint: ["celery", "-A", "app.make_celery.celery_app", "worker", "--loglevel=INFO"]
+  next:
+    restart: unless-stopped
+    build:
+      context: ./next
+      target: runner
+      args:
+        - NEXT_PUBLIC_BROWSER_API_HOST
+        - NEXT_PUBLIC_APP_ENV=production
+    environment:
+      - NEXT_PUBLIC_BROWSER_API_HOST
+      - NEXT_PUBLIC_APP_ENV=production
   redis:
     image: redis:8.2.2-alpine
     restart: unless-stopped

@@ -1,8 +1,8 @@
 # Load these as volumes, not at build time
-app/static/session_data
-!app/static/session_data/*example-output*
-app/static/upload
-app/static/archive
-data/1000Genomes*
-data/dbSNP*
-data/cache
+flask/app/static/session_data
+!flask/app/static/session_data/*example-output*
+flask/app/static/upload
+flask/app/static/archive
+flask/data/1000Genomes*
+flask/data/dbSNP*
+flask/data/cache

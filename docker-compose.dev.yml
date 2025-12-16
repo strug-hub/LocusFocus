@@ -1,19 +1,38 @@
 services:
+  celery:
+    image: locusfocus-flask
+    volumes:
+      - ./flask/app:/code/app
+      - ./flask/misc:/code/misc
+      - ./flask/data:/code/data
+      - ./flask/pyproject.toml:/code/pyproject.toml
+      - ./flask/poetry.lock:/code/poetry.lock
+    restart: unless-stopped
+    environment:
+      - APP_ENV
+      - FLASK_SECRET_KEY
+      - MONGO_CONNECTION_STRING
+      - CELERY_BROKER_URL=redis://redis:6379
+      - DISABLE_CACHE=false
+    entrypoint: ["celery", "-A", "app.make_celery.celery_app", "worker", "--loglevel=INFO"]
+    networks:
+      - lf-net
   flask:
+    image: locusfocus-flask
     build:
-      context: .
+      context: ./flask
       target: dev
       args:
         - USER_UID=${USER_UID}
     volumes:
-      - ./app:/code/app
-      - ./misc:/code/misc
-      - ./data:/code/data
-      - ./tests:/code/tests
-      - ./pyproject.toml:/code/pyproject.toml
-      - ./poetry.lock:/code/poetry.lock
+      - ./flask/app:/code/app
+      - ./flask/misc:/code/misc
+      - ./flask/data:/code/data
+      - ./flask/tests:/code/tests
+      - ./flask/pyproject.toml:/code/pyproject.toml
+      - ./flask/poetry.lock:/code/poetry.lock
     ports:
-      - "${FLASK_PORT}:${FLASK_PORT}"
+      - "${FLASK_PORT}:5000"
     restart: unless-stopped
     depends_on:
       - mongo
@@ -27,9 +46,25 @@ services:
       - FLASK_DEBUG=1
       - FLASK_SECRET_KEY
       - MONGO_CONNECTION_STRING
-      - DISABLE_CELERY=true
+      - DISABLE_CELERY=${DISABLE_CELERY:-true}
       - DISABLE_CACHE=${DISABLE_CACHE:-true}
+      - CELERY_BROKER_URL=redis://redis:6379/0
     entrypoint: ["python3", "-m", "app.wsgi"]
+  next:
+    image: node:22-slim
+    working_dir: /app/locus-focus
+    entrypoint: npm run dev
+    environment:
+      - NEXT_TELEMETRY_DISABLED=1
+      - NEXT_PUBLIC_BROWSER_API_HOST
+      - NEXT_PUBLIC_APP_ENV=${APP_ENV}
+    volumes:
+      - "./next:/app"
+    ports:
+      - "${NEXT_PORT}:3000"
+    user: ${USER_UID}
+    networks:
+      - lf-net
   mongo:
     image:  mongo:6
     restart: unless-stopped
@@ -39,6 +74,13 @@ services:
       - MONGO_INITDB_ROOT_USERNAME=${MONGO_USERNAME}
       - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
       - MONGO_INITDB_DATABASE=${MONGO_DATABASE}
+    networks:
+      - lf-net
+  redis:
+    image: redis:7.4.2-alpine
+    restart: unless-stopped
+    # bind to 0.0.0.0
+    command: ["redis-server", "--bind", "0.0.0.0"]
     networks:
       - lf-net
 

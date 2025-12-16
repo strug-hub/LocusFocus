@@ -122,7 +122,6 @@ GWAS-QTL-app/
 *ld
 *nosex
 *hh
-static/session_data/
 static/upload/
 data/test_chr3_foxp1_afglobal.TSV
 misc/data/*.txt.gz
@@ -148,7 +147,7 @@ locusfocus_env
 locusfocusR.tar.gz
 !templates/lib/
 !*set_based_test*
-app/static/session_data/
+app/static/session_data/*
 !app/static/session_data/celery_results/.gitkeep
 app/static/upload/*
 !app/static/upload/.gitkeep
