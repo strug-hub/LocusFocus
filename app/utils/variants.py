@@ -61,7 +61,7 @@ def get_variants_by_region(
         if len(variants_df) == 0:
             return variants_df
         variants_df = variants_df.drop(["_id"], axis=1).rename(
-            columns={"rs_id_dbSNP151_GRCh38p7": "rs_id"}
+            columns={"rs_id_dbSNP151_GRCh38p7": "rs_id"} # rs_id_dbSNP155_GRCh38p13 in V10
         )
         return variants_df
     elif gtex_version.upper() == "V10":
