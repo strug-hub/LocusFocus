@@ -51,7 +51,7 @@ class ReportGTExDataStage(PipelineStage):
         elif gtex_version == "V10":
             gene = "ENSG00000174502.18"
 
-        snp_list = [asnp.split(";")[0] for asnp in payload.gwas_data_kept["SNP"]]
+        snp_list = payload.std_snp_list[payload.gwas_indices_kept]
 
         if len(gtex_tissues) > 0:
             for tissue in tqdm(gtex_tissues):

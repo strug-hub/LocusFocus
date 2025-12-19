@@ -9,7 +9,6 @@ import uuid
 import subprocess
 from datetime import datetime
 import re
-import pysam
 import glob
 import tarfile
 from typing import Dict, Optional, Tuple, List, Union
@@ -34,6 +33,7 @@ from app.utils.gencode import get_genes_by_location
 from app.utils.gtex import get_gtex, get_gtex_data
 from app.utils.errors import InvalidUsage, ServerError
 from app.utils.numpy_encoder import NumpyEncoder
+from app.utils.helpers import parse_region_text
 
 from app import ext, mongo
 from app.cache import cache
@@ -146,71 +146,6 @@ LD_MAT_DIAG_CONSTANT = 1e-6
 
 available_gtex_versions = ["V8", "V10"]
 valid_populations = ["EUR", "AFR", "EAS", "SAS", "AMR", "ASN", "NFE"]
-
-
-####################################
-# Helper functions
-####################################
-def parseRegionText(regiontext, build):
-    if build not in ["hg19", "hg38"]:
-        raise InvalidUsage(f"Unrecognized build: {build}", status_code=410)
-    regiontext = regiontext.strip().replace(" ", "").replace(",", "").replace("chr", "")
-    if not re.search(
-        r"^\d+:\d+-\d+$", regiontext.replace("X", "23").replace("x", "23")
-    ):
-        raise InvalidUsage(
-            f"Invalid coordinate format. {regiontext} e.g. 1:205,000,000-206,000,000",
-            status_code=410,
-        )
-    chrom = regiontext.split(":")[0].lower().replace("chr", "").upper()
-    pos = regiontext.split(":")[1]
-    startbp = pos.split("-")[0].replace(",", "")
-    endbp = pos.split("-")[1].replace(",", "")
-    chromLengths = pd.read_csv(
-        os.path.join(app.config["LF_DATA_FOLDER"], build + "_chrom_lengths.txt"),
-        sep="\t",
-        encoding="utf-8",
-    )
-    chromLengths.set_index("sequence", inplace=True)
-    if chrom in ["X", "x"] or chrom == "23":
-        chrom = 23
-        maxChromLength = chromLengths.loc["chrX", "length"]
-        try:
-            startbp = int(startbp)
-            endbp = int(endbp)
-        except Exception:
-            raise InvalidUsage(
-                f"Invalid coordinates input: {regiontext}", status_code=410
-            )
-    else:
-        try:
-            chrom = int(chrom)
-            if chrom == 23:
-                maxChromLength = chromLengths.loc["chrX", "length"]
-            else:
-                maxChromLength = chromLengths.loc["chr" + str(chrom), "length"]
-            startbp = int(startbp)
-            endbp = int(endbp)
-        except Exception:
-            raise InvalidUsage(
-                f"Invalid coordinates input {regiontext}", status_code=410
-            )
-    if chrom < 1 or chrom > 23:
-        raise InvalidUsage("Chromosome input must be between 1 and 23", status_code=410)
-    elif startbp > endbp:
-        raise InvalidUsage(
-            "Starting chromosome basepair position is greater than ending basepair position",
-            status_code=410,
-        )
-    elif startbp > maxChromLength or endbp > maxChromLength:
-        raise InvalidUsage("Start or end coordinates are out of range", status_code=410)
-    elif (endbp - startbp) > genomicWindowLimit:
-        raise InvalidUsage(
-            f"Entered region size is larger than {genomicWindowLimit / 10**6} Mbp",
-            status_code=410,
-        )
-    else:
-        return chrom, startbp, endbp
 
 
 def parseSNP(snp_text):
@@ -385,85 +320,6 @@ def buildSNPlist(df, chromcol, poscol, refcol, altcol, build):
     return snplist
 
 
-def fetchSNV(chrom, bp, ref, build):
-    variantid = "."
-
-    if ref is None or ref == ".":
-        ref = ""
-
-    # Ensure valid region:
-    try:
-        regiontxt = str(chrom) + ":" + str(bp) + "-" + str(int(bp) + 1)
-    except Exception:
-        raise InvalidUsage(f"Invalid input for {str(chrom):str(bp)}")
-    chrom, startbp, endbp = parseRegionText(regiontxt, build)
-    chrom = str(chrom).replace("chr", "").replace("23", "X")
-
-    # Load dbSNP151 SNP names from region indicated
-    dbsnp_filepath = ""
-    if build.lower() in ["hg38", "grch38"]:
-        suffix = "b38"
-        dbsnp_filepath = os.path.join(
-            app.config["LF_DATA_FOLDER"], "dbSNP151", "GRCh38p7", "All_20180418.vcf.gz"
-        )
-    else:
-        suffix = "b37"
-        dbsnp_filepath = os.path.join(
-            app.config["LF_DATA_FOLDER"], "dbSNP151", "GRCh37p13", "All_20180423.vcf.gz"
-        )
-
-    # Load variant info from dbSNP151
-    tbx = pysam.TabixFile(dbsnp_filepath)
-    varlist = []
-    for row in tbx.fetch(str(chrom), bp - 1, bp):
-        rowlist = str(row).split("\t")
-        chromi = rowlist[0].replace("chr", "")
-        posi = rowlist[1]
-        refi = rowlist[3]
-        alti = rowlist[4]
-        varstr = "_".join([chromi, posi, refi, alti, suffix])
-        varlist.append(varstr)
-
-    # Check if there is a match to an SNV with the provided info
-    if len(varlist) == 1:
-        variantid = varstr
-    elif len(varlist) > 1 and ref != "":
-        for v in varlist:
-            if v.split("_")[2] == ref:
-                variantid = v
-                break
-    return variantid
-
-
-def decomposeVariant(variant_list):
-    """
-    Parameters
-    ----------
-    variantid_list : list
-        list of str standardized variants in chr_pos_ref_alt_build format
-
-    Returns
-    -------
-    A pandas.dataframe with chromosome, pos, reference and alternate alleles columns
-    """
-    chromlist = [x.split("_")[0] if len(x.split("_")) == 5 else x for x in variant_list]
-    chromlist = [int(x) if x not in ["X", "."] else x for x in chromlist]
-    poslist = [
-        int(x.split("_")[1]) if len(x.split("_")) == 5 else x for x in variant_list
-    ]
-    reflist = [x.split("_")[2] if len(x.split("_")) == 5 else x for x in variant_list]
-    altlist = [x.split("_")[3] if len(x.split("_")) == 5 else x for x in variant_list]
-    df = pd.DataFrame(
-        {
-            DEFAULT_FORM_VALUE_DICT[FormID.CHROM_COL]: chromlist,
-            DEFAULT_FORM_VALUE_DICT[FormID.POS_COL]: poslist,
-            DEFAULT_FORM_VALUE_DICT[FormID.REF_COL]: reflist,
-            DEFAULT_FORM_VALUE_DICT[FormID.ALT_COL]: altlist,
-        }
-    )
-    return df
-
-
 def addVariantID(gwas_data, chromcol, poscol, refcol, altcol, build="hg19"):
     """
 
@@ -508,7 +364,7 @@ def subsetLocus(build, summaryStats, regiontext, chromcol, poscol, pcol):
     if regiontext == "":
         regiontext = DEFAULT_FORM_VALUE_DICT[FormID.LOCUS]
     #    print('Parsing region text')
-    chrom, startbp, endbp = parseRegionText(regiontext, build)
+    chrom, startbp, endbp = parse_region_text(regiontext, build)
     summaryStats = summaryStats.loc[
         [str(x) != "." for x in list(summaryStats[chromcol])]
     ].copy()
@@ -1147,7 +1003,7 @@ def get_multiple_regions(regionstext: str, build: str) -> List[Tuple[int, int, i
     regionstext = regionstext.splitlines()
     regions = []
     for regiontext in regionstext:
-        chrom, start, end = parseRegionText(regiontext, build)
+        chrom, start, end = parse_region_text(regiontext, build)
         regions.append((chrom, start, end))
     return regions
 
@@ -1722,7 +1578,9 @@ def setbasedtest():
 
     combine_lds = False
 
-    snps_used_in_test = []  # List of list of positions, one list per test; position is (chrom, bp) tuple
+    snps_used_in_test = (
+        []
+    )  # List of list of positions, one list per test; position is (chrom, bp) tuple
 
     # TODO: need to determine used SNPs AFTER tests are performed
 

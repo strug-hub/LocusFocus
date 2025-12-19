@@ -15,8 +15,8 @@ from app.utils.errors import InvalidUsage
 from app.utils.gtex import get_gtex_snp_matches, gene_names
 from app.utils import (
     get_session_filepath,
-    parse_region_text,
 )
+from app.utils.helpers import parse_region_text
 
 
 class SessionFiles:
