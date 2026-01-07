@@ -1,6 +1,3 @@
-const startingChr = "1";
-const startingPos = "205,500,000";
-const endingPos = "206,000,000";
 const genomicWindowLimit = 2e6;
 var submitButton = d3.select("#submit-btn");
 var errorDiv = d3.select("#error-messages");
@@ -297,7 +294,6 @@ var locText = d3.select("#locusText").empty()
 d3.select("#locusText").text(
   `${locText} (max: ${genomicWindowLimit / 1e6} Mbp):`
 );
-d3.select("#locus").attr("value", `${startingChr}:${startingPos}-${endingPos}`);
 
 // FUNCTIONS
 
@@ -342,10 +338,6 @@ function gtexVersionChange(newVersion) {
 // Coordinate system selection change
 function coordinateChange(newCoordinate) {
   $("#LD-populations").multiselect("destroy");
-  d3.select("#locus").property(
-    "value",
-    `${startingChr}:${startingPos}-${endingPos}`
-  );
   if (!["hg38", "hg19"].includes(newCoordinate)) {
     alert("Invalid coordinate system. Please select hg38 or hg19 coordinates.");
     return;
@@ -738,12 +730,6 @@ function init() {
   checkDB();
   setInterval(checkDB, 5 * 60_000);
 
-  // // askSNPInput(markerColDiv);
-  // askChromInput(chromColDiv);
-  // askPosInput(posColDiv);
-  // askRefInput(refColDiv);
-  // askAltInput(altColDiv);
-
   statsDiv.html("");
   var pvalueColDiv = statsDiv
     .append("div")
@@ -753,15 +739,6 @@ function init() {
 
   // Build LD population selections depending on coordinate build chosen:
   handleLDPopulations();
-
-  // Auto-complete for genes field:
-  // d3.json(`/genenames/${coordinate}`).then(response => {
-  //     $( "#gencodeID" ).autocomplete({
-  //         source: response
-  //     });
-  // });
-
-  loadGenes(coordinate, "1:205,500,000-206,000,000");
 
   d3.json(gtexurl).then((response) => {
     var gtex_tissues = response.map((k) => k);
@@ -855,6 +832,8 @@ function init() {
           }
         });
       }
+      let regionValue = $("#locus").val();
+      loadGenes(coordinate, regionValue);
     });
   });
 
