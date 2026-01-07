@@ -47,19 +47,14 @@ def get_variants_by_region(
     if gtex_version.upper() == "V8":
         db = client.GTEx_V8
         rsid_column = "rs_id_dbSNP151_GRCh38p7"
+        find_query = {"chr": int(chrom), "variant_pos": {"$gte": start, "$lte": end}}
     else: # V10
         db = client.GTEx_V10
         rsid_column = "rs_id_dbSNP155_GRCh38p13"
+        find_query = {"chr": int(chrom), "pos": {"$gte": start, "$lte": end}}
     
     collection = db["variant_table"]
-    variants_query = collection.find(
-        {
-            "$and": [
-                {"chr": int(chrom)},
-                {"variant_pos": {"$gte": start, "$lte": end}},
-            ]
-        }
-    )
+    variants_query = collection.find(find_query)
     variants_list = list(variants_query)
     variants_df = pd.DataFrame(variants_list)
     if len(variants_df) == 0:
