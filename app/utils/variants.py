@@ -8,7 +8,6 @@ import pandas as pd
 
 from app import mongo
 from app.utils.helpers import validate_chromosome
-from app.utils.apis.gtex import get_variants
 
 
 client = None  # type: ignore
@@ -47,51 +46,20 @@ def get_variants_by_region(
 
     if gtex_version.upper() == "V8":
         db = client.GTEx_V8
-        collection = db["variant_table"]
-        variants_query = collection.find(
-            {
-                "$and": [
-                    {"chr": int(chrom)},
-                    {"variant_pos": {"$gte": start, "$lte": end}},
-                ]
-            }
-        )
-        variants_list = list(variants_query)
-        variants_df = pd.DataFrame(variants_list)
-        if len(variants_df) == 0:
-            return variants_df
-        variants_df = variants_df.drop(["_id"], axis=1).rename(
-            columns={"rs_id_dbSNP151_GRCh38p7": "rs_id"}
-        )
+        rsid_column = "rs_id_dbSNP151_GRCh38p7"
+        find_query = {"chr": int(chrom), "variant_pos": {"$gte": start, "$lte": end}}
+    else: # V10
+        db = client.GTEx_V10
+        rsid_column = "rs_id_dbSNP155_GRCh38p13"
+        find_query = {"chr": int(chrom), "pos": {"$gte": start, "$lte": end}}
+    
+    collection = db["variant_table"]
+    variants_query = collection.find(find_query)
+    variants_list = list(variants_query)
+    variants_df = pd.DataFrame(variants_list)
+    if len(variants_df) == 0:
         return variants_df
-    elif gtex_version.upper() == "V10":
-        # We use the API, but convert the dataframe so that the format is the same as V8 db
-        chrom = "chr" + chrom
-        variant_response = get_variants(
-            dataset_id="gtex_v10", start=start, end=end, chromosome=chrom
-        )
-        variants_df = pd.DataFrame([v.to_dict() for v in variant_response.data])
-        if len(variants_df) == 0:
-            return variants_df
-
-        variants_df = (
-            variants_df.rename(
-                columns={
-                    "snpId": "rs_id",
-                    "b37VariantId": "variant_id_b37",
-                    "pos": "variant_pos",
-                    "maf01": "num_alt_per_site",
-                    "variantId": "variant_id",
-                    "chromosome": "chr",
-                }
-            )
-            .drop(columns=["snpIdUpper", "datasetId", "shorthand"])
-            .astype({"num_alt_per_site": int})
-        )
-
-        variants_df["chr"] = [
-            int(x.value.replace("chr", "")) for x in variants_df["chr"]
-        ]
-        variants_df["variant_id"] = variants_df["variant_id"].str.replace("chr", "")
-
-        return variants_df
+    variants_df = variants_df.drop(["_id"], axis=1).rename(
+        columns={rsid_column: "rs_id"} # rs_id_dbSNP155_GRCh38p13 in V10
+    )
+    return variants_df

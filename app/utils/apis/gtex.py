@@ -252,6 +252,10 @@ def get_variants(
     :return: The paginated variant list
     :rtype: PaginatedResponseVariant
     """
+    raise NotImplementedError("""
+                              Get variant by location endpoint is no longer available.
+                              Please use the reference tables provided by GTEx here: https://gtexportal.org/home/downloads/adult-gtex/reference
+                              """)
 
     validate_chromosome(chromosome, prefix="chr", x_y_numeric=False)
 
