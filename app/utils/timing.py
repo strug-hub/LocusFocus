@@ -7,6 +7,7 @@ def timeit(func):
     Log to flask logger the time it takes to run a function.
     Timing is logged at debug level.
     """
+
     def wrapper(*args, **kwargs):
         t1 = perf_counter()
         result = func(*args, **kwargs)

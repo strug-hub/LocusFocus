@@ -29,7 +29,7 @@ async function handleJobStatus(jobStatusURL, sessionId) {
     jobStatus = data.status;
     redirectUrl = data.redirect_url ? data.redirect_url : "";
     if (jobStatus == "RUNNING") {
-      let stage_index = data.stage_index + 1;
+      let stage_index = data.stage_index;
       let stage_count = data.stage_count;
       let gap = (1 / stage_count) * 100;
       if (stage_index !== last_stage_index) {
@@ -40,7 +40,7 @@ async function handleJobStatus(jobStatusURL, sessionId) {
       document.getElementById("progress-bar").style.width = percent + "%";
       document.getElementById("progress-bar").ariaValueNow = percent;
 
-      document.getElementById("job-status-text").innerHTML = `<i>Your job is currently running. Stage ${stage_index} of ${stage_count}: <b>"${data.stage_description}..."</b></i>`;
+      document.getElementById("job-status-text").innerHTML = `<i>Your job is currently running. Stage ${stage_index} of ${stage_count}...</i>`;
       // wait 10 seconds
       await new Promise((resolve) => setTimeout(resolve, 10000));
     }

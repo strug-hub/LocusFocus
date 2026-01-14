@@ -178,13 +178,16 @@ simple_sum_p <- function(P_gwas, P_eqtl, ld.mat, cut, m, meth = "davies") {
 drop_NA_from_LD <- function(P_mat, ld_mat) {
   if (!all(is.na(ld_mat))) {
     i <- 1
+    todrop <- c()
     while (any(is.na(ld_mat)) & i <= nrow(ld_mat)) {
-      ldNA <- which(is.na(ld_mat[i, ]))
-      if (!all(is.na(ldNA))) {
-        ld_mat <- ld_mat[-ldNA, -ldNA]
-        P_mat <- P_mat[, -ldNA, drop = FALSE]
+      if (all(is.na(ld_mat[i, ]))) {
+        todrop <- c(todrop, i)
       }
       i <- i + 1
+    }
+    if(length(todrop) > 0){
+      P_mat <- P_mat[, -todrop, drop = FALSE]
+      ld_mat <- ld_mat[-todrop, -todrop, drop=FALSE]
     }
     return(list(P_mat=P_mat, ld_mat=ld_mat))
   } else {
@@ -317,12 +320,9 @@ if (first_stage_only) {
     # Remove NA rows
     NArows <- which(is.na(tempmat[, 1]) | is.na(tempmat[, 2]))
     if (length(NArows) >= 1) {
-      tempmat <- tempmat[-NArows, ]
-      ld_mat_i <- ld_mat_i[-NArows, -NArows]
+      tempmat <- tempmat[-NArows, , drop=FALSE]
+      ld_mat_i <- ld_mat_i[-NArows, -NArows, drop=FALSE]
     }
-
-    P_gwas_i <- as.numeric(tempmat[, 1])
-    P_eqtl_i <- as.numeric(tempmat[, 2])
 
     # Count SNPs
     snp_count <- nrow(tempmat)
@@ -335,6 +335,9 @@ if (first_stage_only) {
       first_stage_p <- c(first_stage_p, set_based_test_p)
       next
     }
+
+    P_gwas_i <- as.numeric(tempmat[, 1])
+    P_eqtl_i <- as.numeric(tempmat[, 2])
 
     # do pretest (set_based_test)
     t <- try({

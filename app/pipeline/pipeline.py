@@ -90,9 +90,16 @@ class Pipeline:
         n = len(self.stages)
         for i, stage in enumerate(self.stages):
             if self.bound_task:
+                stage_name = stage.name()
+                stage_description = stage.description()
                 self.bound_task.update_state(
                     state="RUNNING",
-                    meta={"stage": stage.name(), "stage_description": stage.description(), "stage_index": i + 1, "stage_count": n},
+                    meta={
+                        "stage_name": stage_name,
+                        "stage_description": stage_description,
+                        "stage_index": i + 1,
+                        "stage_count": n,
+                    },
                 )
             try:
                 payload = self.invoke_stage(stage, payload)
@@ -124,4 +131,4 @@ class Pipeline:
             app.logger.error(
                 "[session_id=%s] %s", self.id, error.__repr__(), exc_info=True
             )
-            return ServerError(f"An unexpected error occurred.")
+            return ServerError("An unexpected error occurred.")

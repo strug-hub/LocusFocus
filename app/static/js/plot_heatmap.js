@@ -105,6 +105,7 @@ function plot_heatmap(
   color_cutoffs = color_cutoffs.map(
     ([threshold, color]) => Math.round((threshold + Number.EPSILON) * 1e3) / 1e3
   );
+
   let data = [
     {
       z: newSSPvalues,

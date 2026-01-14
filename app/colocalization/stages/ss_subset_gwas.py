@@ -20,12 +20,11 @@ class SimpleSumSubsetGWASStage(PipelineStage):
 
     def name(self) -> str:
         return "simple-sum-subset-gwas"
-    
+
     def description(self) -> str:
-        return "Prepare GWAS data for Simple Sum colocalization"
+        return "Preparing GWAS data for colocalization tests"
 
     def invoke(self, payload: SessionPayload) -> SessionPayload:
-
         if payload.gwas_data is None:
             raise Exception("GWAS dataset not found")
 
@@ -56,9 +55,7 @@ class SimpleSumSubsetGWASStage(PipelineStage):
             chromList.extend(["chr23", "23"])
         gwas_chrom_col = pd.Series([str(x) for x in list(gwas_data["CHROM"])])
         SS_chrom_bool = [
-            str(x).replace("23", "X")
-            for x in gwas_chrom_col.isin(chromList)
-            if x == True
+            str(x).replace("23", "X") for x in gwas_chrom_col.isin(chromList) if x
         ]
         SS_indices = (
             SS_chrom_bool
@@ -120,6 +117,6 @@ class SimpleSumSubsetGWASStage(PipelineStage):
             dups = set([x for x in positions if positions.count(x) > 1])
             dup_counts = [(x, positions.count(x)) for x in dups]
             raise InvalidUsage(
-                f'Duplicate chromosome basepair positions detected: {[f"bp: {dup[0]}, num. duplicates: {dup[1]}" for dup in dup_counts]}'
+                f"Duplicate chromosome basepair positions detected: {[f'bp: {dup[0]}, num. duplicates: {dup[1]}' for dup in dup_counts]}"
             )
         return None

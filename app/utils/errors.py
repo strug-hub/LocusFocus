@@ -10,11 +10,13 @@ class LocusFocusError(Exception):
         if status_code is not None:
             self.status_code = status_code
         self.payload = payload
-        super().__init__({
-            "message": self.message,
-            "status_code": self.status_code,
-            "payload": self.payload,
-        })
+        super().__init__(
+            {
+                "message": self.message,
+                "status_code": self.status_code,
+                "payload": self.payload,
+            }
+        )
 
     def to_dict(self):
         rv = dict(self.payload or ())
@@ -35,7 +37,7 @@ class InvalidUsage(LocusFocusError):
 
 class ServerError(LocusFocusError):
     """
-    Exceptions raised due to server errors 
+    Exceptions raised due to server errors
     (eg. database connection issues, missing files, etc.).
     """
 

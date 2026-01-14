@@ -46,7 +46,7 @@ h5 {
 .isa_info, .isa_success, .isa_warning, .isa_error {
   margin: 10px 0px;
   padding:12px;
-   
+
   }
   .isa_info {
       color: #00529B;
@@ -115,3 +115,21 @@ bottom: .5em;
   transition: all 0.5s ease;
   transition: width 4s ease;
 }
+
+/* .modal {
+  height: auto;
+} */
+/* 
+#error-modal a[href$="#close-modal"] {
+    top: 3px;
+    right: 3px;
+}
+
+#loading-modal, #error-modal, #job-running-modal, #job-pending-modal {
+  text-align: center;
+}
+
+#loading-modal .icon-remove, #job-running-modal .icon-remove, #job-pending-modal .icon-remove {
+  display: none
+} */
+
