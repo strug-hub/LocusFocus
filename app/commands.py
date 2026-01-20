@@ -27,7 +27,7 @@ def register_cli(app: Flask):
             "https://yanglab.westlake.edu.cn/data/SMR/Hannon_Blood_dataset1.zip",
             # 25MB
             "https://yanglab.westlake.edu.cn/data/SMR/Hannon_Blood_dataset2.zip",
-            # https://yanglab.westlake.edu.cn/data/SMR/Hannon_FetalBrain.zip (4.8MB)
+            # 4.8MB
             "https://yanglab.westlake.edu.cn/data/SMR/Hannon_FetalBrain.zip",
             # mQTL summary data from a meta-analysis of samples of East Asian ancestry. (2.5GB)
             # no particular tissue? saved as EAS
