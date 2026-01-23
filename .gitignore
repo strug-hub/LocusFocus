@@ -160,3 +160,5 @@ data/cache/*
 !setup-locusfocus-user.sh
 !create-redis-conf.sh
 redis/redis.conf
+data/smr_mqtl/
+misc/smr
