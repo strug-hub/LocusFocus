@@ -14,6 +14,7 @@ class SMRDataset(TypedDict):
     assembly: Literal["hg19", "hg38"]
     base_filename: str
     by_chr: bool
+    description: str
 
 
 smr_datasets: dict[str, SMRDataset] = {
@@ -21,46 +22,55 @@ smr_datasets: dict[str, SMRDataset] = {
         "assembly": "hg38",
         "by_chr": False,
         "base_filename": "Brain-mMeta",
+        "description": "(estimated effective n = 1160) Qi et al. Brain-mMeta mQTL summary data",
     },
     "EAS": {
         "assembly": "hg38",
         "by_chr": True,
         "base_filename": "EAS",
+        "description": "(n=2,099) mQTL summary data from a meta-analysis of samples of East Asian ancestry.",
     },
     "EUR": {
         "assembly": "hg38",
         "by_chr": True,
         "base_filename": "EUR",
+        "description": "(n=3,701) mQTL summary data from a meta-analysis of samples of European ancestry.",
     },
     "Hannon et al. Blood dataset1": {
         "assembly": "hg19",
         "by_chr": False,
         "base_filename": "Aberdeen_Blood",
+        "description": "(n=639)",
     },
     "Hannon et al. Blood dataset2": {
         "assembly": "hg19",
         "by_chr": False,
         "base_filename": "UCL_Blood",
+        "description": "(n=665)",
     },
     "Hannon et al. FetalBrain": {
         "assembly": "hg19",
         "by_chr": False,
         "base_filename": "FB_Brain",
+        "description": "(n=166)",
     },
     "LBC_BSGS_meta": {
         "assembly": "hg19",
         "by_chr": True,
         "base_filename": "bl_mqtl",
+        "description": "(n=1,980) McRae et al. mQTL summary data.",
     },
     "LBC_BSGS_meta_lite": {
         "assembly": "hg19",
         "by_chr": True,
         "base_filename": "bl_mqtl_lite",
+        "description": "(n=1,980) McRae et al. mQTL summary data, only SNPs with P < 1e-5 are included",
     },
     "US_mQTLS_SMR_format": {
         "assembly": "hg19",
         "by_chr": False,
         "base_filename": "US_Blood",
+        "description": "(n=1,175) Whole blood mQTL data set used in Hannon et al.",
     },
 }
 

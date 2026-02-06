@@ -299,6 +299,28 @@
             <hr />
             <div class="row">
               <div class="col-md-12">
+                <h5>Select SMR Datasets</h5>
+              </div>
+              <div class="col-md-4">
+                <div id="smr-select-label" data-toggle="tooltip"
+                  title="Select the SMR datasets you would like to use. Note that datasets on different assemblies will be lifted over."></div>
+                  Select SMR Version
+                </div>
+                <select id="smr-select" name="smr-select" multiple>
+                  <option id="smr-Brain-mMeta" name="smr-Brain-mMeta" value="Brain-mMeta">(n=1,160) Qi et al. Brain-mMeta mQTL summary data</option>
+                  <option id="smr-EAS" name="smr-EAS" value="EAS">(n=2,099) Hatton et al. mQTL summary data from a meta-analysis of samples of East Asian ancestry.</option>
+                  <option id="smr-EUR" name="smr-EUR" value="EUR">(n=3,701) Hatton et al. mQTL summary data from a meta-analysis of samples of European ancestry.</option>
+                  <option id="smr-Aberdeen_Blood" name="smr-Aberdeen_Blood" value="Hannon et al. Blood dataset1">(n=639) Blood dataset 1, Hannon et al. 2016 Genome Biology</option>
+                  <option id="smr-UCL_Blood" name="smr-UCL_Blood" value="Hannon et al. Blood dataset2">(n=665) Blood dataset 2, Hannon et al. 2016 Genome Biology</option>
+                  <option id="smr-FB_Brain" name="smr-FB_Brain" value="Hannon et al. FetalBrain">(n=166) Fetal brain mQTL data (Hannon et al. 2015 Nat Neurosci)</option>
+                  <option id="smr-bl_mqtl" name="smr-bl_mqtl" value="LBC_BSGS_meta">(n=1,980) McRae et al. mQTL summary data.</option>
+                  <option id="smr-US_Blood" name="smr-US_Blood" value="US_mQTLS_SMR_format">(n=1,175) Whole blood mQTL data set used in Hannon et al.</option>
+                </select>
+              </div>
+            </div>
+            <hr />
+            <div class="row">
+              <div class="col-md-12">
                 <h5>Upload Secondary Datasets</h5>
               </div>
               <div class="col-md-4">
