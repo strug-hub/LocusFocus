@@ -1,6 +1,9 @@
+from functools import reduce
+
 from app.colocalization.payload import SessionPayload
 from app.pipeline import PipelineStage
 from app.utils.errors import InvalidUsage
+from app.utils.smr import smr_datasets
 
 
 class CollectUserInputStage(PipelineStage):
@@ -67,6 +70,14 @@ class CollectUserInputStage(PipelineStage):
                 "Please select one or more tissues to complement your GTEx gene(s) selection"
             )
 
+        # SMR
+        payload.smr_selected = payload.request_form.get("smr-select", [])
+        _invalid_smr_datasets = [x for x in (payload.smr_selected or []) if x not in smr_datasets]
+        if len(_invalid_smr_datasets) > 0:
+            errors.append(
+                f"Invalid SMR datasets selected: {_invalid_smr_datasets}"
+            ) 
+
         # First stage set-based test P value threshold
         p_threshold = payload.request_form.get("setbasedP", "")
         if p_threshold == "":
@@ -92,5 +103,6 @@ class CollectUserInputStage(PipelineStage):
                 message=f"Error(s) found in uploaded form: {'; '.join(errors)}",
                 payload={f"error_{i + 1}": error for i, error in enumerate(errors)},
             )
+        
 
         return payload

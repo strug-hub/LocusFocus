@@ -103,6 +103,8 @@ class ColocSimpleSumStage(PipelineStage):
         The order is determined by what the user selects in the form. Ordering
         is not important but the grouping is.
 
+        Next are SMR rows. Some datasets are lifted over to hg38. Alphabetical order by dataset name.
+
         Rows after this are the P values for the
         secondary datasets provided by the user, if any.
 
@@ -111,15 +113,18 @@ class ColocSimpleSumStage(PipelineStage):
             - tissues "Blood" and "Liver"
             - genes "NUCKS1" and "CDK18"
             - uploads secondary datasets Alpha, Bravo, Charlie
-        - We expect 8 rows in the matrix that could be labelled as:
-            - GWAS
-            - Blood, NUCKS1
-            - Blood, CDK18
-            - Liver, NUCKS1
-            - Liver, CDK18
-            - Alpha
-            - Bravo
-            - Charlie
+            - Selects SMR datasets "Hannon et al. Blood dataset1" and "Brain-mMeta"
+        - We expect 10 rows in the matrix that could be labelled as:
+            - GWAS                          (User provided)
+            - Blood, NUCKS1                 (GTEx)
+            - Blood, CDK18                  (GTEx)
+            - Liver, NUCKS1                 (GTEx)
+            - Liver, CDK18                  (GTEx)
+            - Brain-mMeta                   (SMR)
+            - Hannon et al. Blood dataset1  (SMR)
+            - Alpha                         (User provided)
+            - Bravo                         (User provided)
+            - Charlie                       (User provided)
         """
         assert payload.gwas_data is not None
 
@@ -193,7 +198,12 @@ class ColocSimpleSumStage(PipelineStage):
                         pvalues = np.repeat(np.nan, len(ss_std_snp_list))
                     p_value_matrix.append(pvalues)
 
-        # 3. Uploaded secondary datasets
+        # 3. SMR secondary datasets
+        if payload.smr_selected is not None and len(payload.smr_selected) > 0:
+            for smr_name in payload.smr_selected:
+                smr_dataset = None # TODO: finish this
+
+        # 4. Uploaded secondary datasets
         if (
             payload.secondary_datasets is not None
             and len(payload.secondary_datasets) > 0

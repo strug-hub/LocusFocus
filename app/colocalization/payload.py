@@ -113,6 +113,8 @@ class SessionPayload:
     plot_locus: Optional[str] = None  # regionstr
     simple_sum_locus: Optional[str] = None
     lead_snp_name: Optional[str] = None
+    # smr
+    smr_selected: Optional[List[str]] = None
 
     # File data
     # GWAS data is user-uploaded, and we update gwas_indices_kept in each stage to "keep" or "discard" SNPs
@@ -401,6 +403,15 @@ class SessionPayload:
                 status_code=410,
             )
         return version
+
+    def get_smr_selection(self) -> List[str]:
+        """
+        Get the selected SMR datasets from the form.
+        """
+        if self.smr_selected is None:
+            self.smr_selected = self.request_form.get("smr-select", [])
+
+        return self.smr_selected
 
     def get_p_value_threshold(self) -> Union[float, str]:
         """

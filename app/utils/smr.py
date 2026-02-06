@@ -40,19 +40,19 @@ smr_datasets: dict[str, SMRDataset] = {
         "assembly": "hg19",
         "by_chr": False,
         "base_filename": "Aberdeen_Blood",
-        "description": "(n=639)",
+        "description": "(n=639) Blood dataset 1, Hannon et al. 2016 Genome Biology",
     },
     "Hannon et al. Blood dataset2": {
         "assembly": "hg19",
         "by_chr": False,
         "base_filename": "UCL_Blood",
-        "description": "(n=665)",
+        "description": "(n=665) Blood dataset 2, Hannon et al. 2016 Genome Biology",
     },
     "Hannon et al. FetalBrain": {
         "assembly": "hg19",
         "by_chr": False,
         "base_filename": "FB_Brain",
-        "description": "(n=166)",
+        "description": "(n=166) Fetal brain mQTL data (Hannon et al. 2015 Nat Neurosci)",
     },
     "LBC_BSGS_meta": {
         "assembly": "hg19",
@@ -145,11 +145,6 @@ def query_smr(
     if dataset not in smr_datasets.keys():
         raise FileNotFoundError(f"Dataset {dataset} does not exist!")
 
-    if smr_datasets[dataset]["assembly"] != assembly:
-        raise ValueError(
-            f"Dataset {dataset} uses {smr_datasets[dataset]['assembly']} but {assembly} was requested!"
-        )
-
     dataset_dir = os.path.join(data_dir, dataset)
     base_filepath = os.path.join(dataset_dir, dataset)
     if smr_datasets[dataset]["by_chr"]:
@@ -182,5 +177,10 @@ def query_smr(
     )
 
     filtered = query_result[query_result["full_snp"].isin(snps)]
+    
+    if smr_datasets[dataset]["assembly"] != assembly:
+        raise ValueError(
+            f"Dataset {dataset} uses {smr_datasets[dataset]['assembly']} but {assembly} was requested!"
+        )
 
     return filtered
