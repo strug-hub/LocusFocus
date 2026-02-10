@@ -265,7 +265,7 @@ function plot_gwas(data, genesdata,
     gtex_snps[gtex_tissues[i]] = [];
     data[gtex_tissues[i]].forEach(eqtl => {
       Object.keys(eqtl).forEach(k => {
-        if (k === 'variant_pos') {
+        if (k === 'variant_pos' || k === 'pos') {
           gtex_positions[gtex_tissues[i]].push(+eqtl[k]);
         }
         else if (k === 'pval') {

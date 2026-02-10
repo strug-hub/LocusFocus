@@ -158,6 +158,7 @@ class ColocSimpleSumStage(PipelineStage):
                                     "sample_maf": "MAF",
                                     "chr": "CHR",
                                     "variant_pos": "POS",
+                                    "pos": "POS",
                                     "ref": "A2",
                                     "alt": "A1",
                                 }
