@@ -383,8 +383,9 @@ class ReadGWASFileStage(PipelineStage):
                 gwas_data["SNP"]
                 .str.extract(VCF_FORMAT_PATTERN)
                 .rename(columns={0: "CHROM", 1: "POS", 2: "REF", 3: "ALT"})
-                .astype({"CHROM": int, "POS": int, "REF": str, "ALT": str})
+                .astype({"CHROM": str, "POS": int, "REF": str, "ALT": str})
             )
+            vcf_snps.astype({"CHROM": str, "POS": int, "REF": str, "ALT": str})
 
             merged_vcf_snps = expanded.merge(
                 vcf_snps, how="inner", on=["CHROM", "POS", "REF", "ALT"]

@@ -74,6 +74,7 @@ def test_fetch_all():
     assert result.paging_info.page == 0
 
 
+@pytest.mark.xfail(reason="Endpoint no longer available")
 def test_can_fetch_v10_variants_from_region_string():
     """Sanity check for v10 variant fetch"""
     region_string = "chr11:0-200000"
@@ -87,6 +88,7 @@ def test_can_fetch_v10_variants_from_region_string():
     assert results.data[0].snp_id.startswith("rs")
 
 
+@pytest.mark.xfail(reason="Endpoint no longer available")
 def test_can_fetch_v8_variants_from_region_string():
     """Sanity check for v8 variant fetch"""
     region_string = "chr11:0-200000"

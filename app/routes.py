@@ -1292,6 +1292,7 @@ def list_tissues(version):
     elif version == "V10":
         db = client.GTEx_V10
         tissues = list(db.list_collection_names())
+        tissues.remove("variant_table")
 
     return jsonify(sorted(tissues))
 

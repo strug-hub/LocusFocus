@@ -64,6 +64,13 @@ def create_app(config_class=ConfigClass):
     ext.init_app(app)
     talisman.init_app(app, content_security_policy=app.config["CSP_POLICY"])
     mongo.init_app(app)
+    # check if mongo is reachable
+    try:
+        app.logger.debug("MongoDB connection test")
+        _version = mongo.cx.server_info().get("version")
+        app.logger.debug(f"Connected to MongoDB {_version}")
+    except Exception as e:
+        app.logger.error(f"MongoDB connection failed: {e}")
     celery_init_app(app)
     cache.init_app(app)
 
