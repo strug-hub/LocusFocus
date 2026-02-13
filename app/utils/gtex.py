@@ -94,14 +94,14 @@ def get_gtex_data(version, tissue, gene, snp_list, raiseErrors=False) -> pd.Data
             gtex_data = (
                 snp_df.reset_index()
                 .merge(eqtl, on="rs_id", how="left", sort=False)
-                .sort_values("index")
+                .sort_values("index")  # TODO: overlap threshold goes here
             )
         else:
             snp_df = pd.DataFrame(snp_list, columns=["variant_id"])
             gtex_data = (
                 snp_df.reset_index()
                 .merge(eqtl, on="variant_id", how="left", sort=False)
-                .sort_values("index")
+                .sort_values("index")  # TODO: overlap threshold goes here
             )
     else:
         try:
