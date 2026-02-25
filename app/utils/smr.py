@@ -145,6 +145,11 @@ def query_smr(
     if dataset not in smr_datasets.keys():
         raise FileNotFoundError(f"Dataset {dataset} does not exist!")
 
+    try:
+        assert all(snp[:3] == "chr" for snp in snps)
+    except AssertionError as e:
+        raise ValueError("Some SNPs provided are in the wrong format. Please ensure that 'chr{chr}_{bp}_ref_alt' format is used") from e
+
     dataset_dir = os.path.join(data_dir, dataset)
     base_filepath = os.path.join(dataset_dir, dataset)
     if smr_datasets[dataset]["by_chr"]:
@@ -176,7 +181,7 @@ def query_smr(
         axis=1,
     )
 
-    filtered = query_result[query_result["full_snp"].isin(snps)]
+    filtered = query_result[query_result["full_snp"].isin(snps)].drop_duplicates(["SNP"])
     
     if smr_datasets[dataset]["assembly"] != assembly:
         raise ValueError(
