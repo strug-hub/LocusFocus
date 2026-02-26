@@ -1,15 +1,21 @@
 import os
 import subprocess
 import tempfile
-from typing import List, Tuple
+from typing import List, Tuple, Literal
 
 import pandas as pd
+
+
+class LiftoverError(RuntimeError):
+    """
+    An error related to Liftover.
+    """
 
 
 # inspired by https://github.com/broadinstitute/liftover/blob/main/service/server.py
 def run_liftover(
     original_df: pd.DataFrame,
-    source_coords: str,
+    source_coords: Literal["hg19", "hg38"],
     chrom_col: str = "CHROM",
     pos_col: str = "POS",
 ) -> Tuple[pd.DataFrame, List[int]]:

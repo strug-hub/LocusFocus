@@ -23,6 +23,15 @@ def test_smr(flask_app: Flask):
         ]
         # 10 SNPs
 
+        t = query_smr(
+            1,
+            snps,
+            "LBC_BSGS_meta",
+            assembly="hg38"
+        )
+
+        assert t is not None
+
         result = query_smr(
             1,
             snps,
