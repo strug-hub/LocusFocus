@@ -9,6 +9,7 @@ from flask_pymongo import PyMongo
 from flask_sitemap import Sitemap
 from flask_talisman import Talisman
 
+from app.commands import register_cli
 from app.config import BaseConfig, DevConfig, ProdConfig
 from app.cache import cache
 
@@ -73,6 +74,7 @@ def create_app(config_class=ConfigClass):
         app.logger.error(f"MongoDB connection failed: {e}")
     celery_init_app(app)
     cache.init_app(app)
+    register_cli(app)
 
     if app.config["CACHE_TYPE"] == "NullCache":
         app.logger.debug("Cache is disabled")
