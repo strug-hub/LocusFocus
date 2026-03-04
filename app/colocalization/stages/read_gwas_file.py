@@ -223,6 +223,10 @@ class ReadGWASFileStage(PipelineStage):
             ]
         )
 
+        # ensure REF and ALT are uppercase
+        for col in ["REF", "ALT"]:
+            gwas_data[col] = gwas_data[col].str.upper()
+
         return gwas_data
 
     def _infer_gwas_columns(
