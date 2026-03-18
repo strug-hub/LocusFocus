@@ -3,6 +3,8 @@ from typing import Optional, Tuple
 import numpy as np
 import pandas as pd
 
+from flask import current_app as app
+
 from app.colocalization.constants import LD_MAT_DIAG_CONSTANT
 from app.colocalization.payload import SessionPayload
 from app.utils import clean_snps, standardize_snps, write_list, write_matrix
@@ -10,6 +12,7 @@ from app.pipeline.pipeline_stage import PipelineStage
 from app.scripts import ScriptError, coloc2, simple_sum
 from app.utils.errors import InvalidUsage, ServerError
 from app.utils.gtex import get_gtex_data
+from app.utils.smr import query_smr, LiftoverError
 
 
 class ColocSimpleSumStage(PipelineStage):
@@ -200,8 +203,39 @@ class ColocSimpleSumStage(PipelineStage):
 
         # 3. SMR secondary datasets
         if payload.smr_selected is not None and len(payload.smr_selected) > 0:
+
+            # ss_std_snp_format ~= "chr_pos_ref_alt_build", chr can be X,Y
+            # output["full_snp"] ~= "chr{chr}_pos_ref_alt"
+            smr_std_snp_list = []
+            for snp in ss_std_snp_list:
+                chrom, pos, ref, alt, build = snp.split("_")
+                smr_std_snp_list.append(f"chr{chrom}_{pos}_{ref}_{alt}")
             for smr_name in payload.smr_selected:
-                smr_dataset = None # TODO: finish this
+                try:
+                    smr_df = query_smr(
+                        payload.get_locus_tuple()[0],
+                        smr_std_snp_list,
+                        smr_name,
+                        assembly=payload.lifted_over_coordinate  # type: ignore
+                    )
+                    if smr_df is None:
+                        app.logger.warning(f"SMR query failed for {smr_name}")
+                        pvalues = np.repeat(np.nan, len(ss_std_snp_list))
+                        p_value_matrix.append(pvalues)
+                        continue
+                    # left merge with snps
+                    snp_df = pd.DataFrame({
+                        "standard_snp": ss_std_snp_list,
+                        "smr_snp": smr_std_snp_list,
+                    })
+                    snp_df.merge(how="left", right=smr_df, left_on="smr_snp", right_on="full_snp")
+                    pvalues = list(snp_df["p"])
+                    p_value_matrix.append(pvalues)
+
+                except LiftoverError:
+                    # means that there's no data after liftover conversion
+                    pvalues = np.repeat(np.nan, len(ss_std_snp_list))
+                    p_value_matrix.append(pvalues)
 
         # 4. Uploaded secondary datasets
         if (

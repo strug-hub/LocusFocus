@@ -132,13 +132,13 @@ def query_smr(
 
     :param chr: The chromosome to query
     :type chr: int
-    :param snps: A list of SNPS in format chr{chr}_{bp}_ref_alt
+    :param snps: A list of SNPS in format "chr{chrom}_{pos}_{ref}_{alt}"
     :type snps: List[str]
     :param dataset: The dataset to query
     :type dataset: str
     :param thresh: The p-value threshold, defaults to 5e-8
     :type thresh: float
-    :param assembly: The genome assembly to use, defaults to "hg38"
+    :param assembly: The genome assembly that the provided SNPs are in, defaults to "hg38"
     :type assembly: Literal["hg19", "hg38"]
     :raises FileNotFoundError: If the dataset does not exist
     :raises ValueError: If the requested assembly does not match the dataset assembly
@@ -152,42 +152,24 @@ def query_smr(
     if dataset not in smr_datasets.keys():
         raise FileNotFoundError(f"Dataset {dataset} does not exist!")
 
-    try:
-        assert all(snp[:3] == "chr" for snp in snps)
-    except AssertionError as e:
-        raise ValueError("Some SNPs provided are in the wrong format. Please ensure that 'chr{chr}_{bp}_ref_alt' format is used") from e
-
-    needs_liftover = False
-
-    # Lift up smr dataset if it's hg19
-    if smr_datasets[dataset]["assembly"] != assembly:
-        if assembly == "hg19" and smr_datasets[dataset]["assembly"] == "hg38":
-            raise ValueError(
-                f"Dataset {dataset} uses {smr_datasets[dataset]['assembly']} but {assembly} was requested! Provide hg38 snps or use liftover on the provided GWAS data."
-            )
-        else:
-            # LiftOver from hg19 -> hg38
-            needs_liftover = True
+    dataset_assembly = smr_datasets[dataset]["assembly"]
+    needs_liftover = assembly != dataset_assembly
 
     dataset_dir = os.path.join(data_dir, dataset)
     base_filepath = os.path.join(dataset_dir, dataset)
     if smr_datasets[dataset]["by_chr"]:
         base_filepath = f"{base_filepath}_chr{chr}"
 
-    regex = r"_(\d+)_"
+    snp_df = pd.DataFrame(data=snps, columns=["SNP"])
+    snp_df[["CHROM", "POS", "REF", "ALT"]] = \
+        snp_df["SNP"].str.extract(r"(?:chr)?(?P<CHROM>[0-9XY]+)_(?P<POS>\d+)_(?P<REF>[ACTG]+)_(?P<ALT>[ACTG]+)")
+    snp_df["CHROM"] = pd.to_numeric(snp_df["CHROM"].str.replace("X", "23").replace("Y", "24"))
+    snp_df["POS"] = pd.to_numeric(snp_df["POS"])
 
     if needs_liftover:
-        # need to lift "down" input SNPs (hg38) for query to work properly
-        # this is a lossy conversion; we might lose all the snps
-        snp_df = pd.DataFrame(data=snps, columns=["SNP"])
-        snp_df[["CHROM", "POS", "REF", "ALT"]] = \
-            snp_df["SNP"].str.extract(r"chr(?P<CHROM>\d+)_(?P<POS>\d+)_(?P<REF>[ACTG]+)_(?P<ALT>[ACTG]+)")
-        snp_df["CHROM"] = pd.to_numeric(snp_df["CHROM"])
-        snp_df["POS"] = pd.to_numeric(snp_df["POS"])
-
         lifted, lost_snps = run_liftover(
             snp_df,
-            "hg38",
+            assembly,
             chrom_col="CHROM",
             pos_col="POS"
         )
@@ -196,8 +178,8 @@ def query_smr(
             # we lost literally all the snps
             raise LiftoverError(
                 "Could not perform SMR query; "
-                "Unable to liftover hg38 snps prior to query on hg19 SMR dataset. "
-                "Consider deselecting this dataset or using only hg38 SMR datasets."
+                f"Unable to liftover {assembly} snps prior to query on {dataset_assembly} SMR dataset. "
+                f"Consider deselecting this dataset or using only {assembly} SMR datasets."
             )
 
         lifted["SNP"] = \
@@ -208,12 +190,13 @@ def query_smr(
         if not lifted["SNP"].str.contains(r"$chr").any():
             lifted["SNP"] = "chr" + lifted["SNP"]
 
+        snp_df = lifted
         snps = list(lifted["SNP"])
 
-    snp_poses = [int(re.findall(regex, snp)[0]) for snp in snps]
+    snp_poses = snp_df["POS"]
 
-    start = min(snp_poses) // 1000
-    end = max(snp_poses) // 1000 + 1
+    start = snp_poses.min() // 1000
+    end = snp_poses.max() // 1000 + 1
 
     query_result = run_smr_query(
         query_path=base_filepath,

@@ -1,6 +1,4 @@
-import os
 import pytest
-import pandas as pd
 from flask import Flask
 
 
@@ -39,6 +37,7 @@ def test_smr(flask_app: Flask):
             assembly="hg38"
         )
 
+        assert result is not None
         assert len(result) == 10
 
 
