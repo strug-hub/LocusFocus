@@ -452,31 +452,42 @@ class ColocSimpleSumStage(PipelineStage):
         compUsedSecondary = []
 
         gtex_tissues, gtex_genes = payload.get_gtex_selection()
+        smr_datasets = payload.smr_selected if payload.smr_selected is not None else []
 
         table_titles = []
         if payload.secondary_datasets is not None:
             table_titles = list(payload.secondary_datasets.keys())
 
-        if len(gtex_tissues) > 0:
+        # result ranges (GTEx - SMR - user secondary datasets)
+        gtex_range = (0, (len(gtex_tissues) * len(gtex_genes)))
+        smr_range = (gtex_range[1], gtex_range[1] + len(smr_datasets))
+        user_range = (smr_range[1], len(SSPvalues))
+
+        # gtex
+        if (gtex_range[1] - gtex_range[0]) > 0:
             SSPvaluesMatGTEx = np.array(
-                SSPvalues[0 : (len(gtex_tissues) * len(gtex_genes))]
+                SSPvalues[gtex_range[0] : gtex_range[1]]
             ).reshape(len(gtex_tissues), len(gtex_genes))
             num_SNP_used_for_SSMat = np.array(
-                num_SNP_used_for_SS[0 : (len(gtex_tissues) * len(gtex_genes))]
+                num_SNP_used_for_SS[gtex_range[0] : gtex_range[1]]
             ).reshape(len(gtex_tissues), len(gtex_genes))
             comp_usedMat = np.array(
-                comp_used[0 : (len(gtex_tissues) * len(gtex_genes))]
+                comp_used[gtex_range[0] : gtex_range[1]]
             ).reshape(len(gtex_tissues), len(gtex_genes))
-        if len(SSPvalues) > len(gtex_tissues) * len(gtex_genes):
-            SSPvaluesSecondary = SSPvalues[
-                (len(gtex_tissues) * len(gtex_genes)) : (len(SSPvalues))
-            ]
-            numSNPsSSPSecondary = num_SNP_used_for_SS[
-                (len(gtex_tissues) * len(gtex_genes)) : (len(SSPvalues))
-            ]
-            compUsedSecondary = comp_used[
-                (len(gtex_tissues) * len(gtex_genes)) : (len(SSPvalues))
-            ]
+        # smr
+        smr_ssp_values = []
+        smr_num_snp_used = []
+        smr_comp_used = []
+        if (smr_range[1] - smr_range[0]) > 0:
+            smr_ssp_values = SSPvalues[smr_range[0]:smr_range[1]]
+            smr_num_snp_used = SSPvalues[smr_range[0]:smr_range[1]]
+            smr_comp_used = SSPvalues[smr_range[0]:smr_range[1]]
+        # user secondary datasets
+        if (user_range[1] - user_range[0]) > 0:
+            SSPvaluesSecondary = SSPvalues[user_range[0] : user_range[1]]
+            numSNPsSSPSecondary = num_SNP_used_for_SS[user_range[0] : user_range[1]]
+            compUsedSecondary = comp_used[user_range[0] : user_range[1]]
+
         SSPvalues_dict = {
             "Genes": gtex_genes,
             "Tissues": gtex_tissues,
@@ -490,6 +501,12 @@ class ColocSimpleSumStage(PipelineStage):
             "Computation_method_secondary": compUsedSecondary,
             "First_stages": first_stages,
             "First_stage_Pvalues": first_stage_p,
+            "smr": {
+                "datasets": smr_datasets,
+                "ssp_values": smr_ssp_values,
+                "num_snp_used": smr_num_snp_used,
+                "comp_used": smr_comp_used,
+            }
         }
         json.dump(SSPvalues_dict, open(payload.file.SSPvalues_filepath, "w"))
 
