@@ -166,6 +166,7 @@ def query_smr(
     snp_df["CHROM"] = pd.to_numeric(snp_df["CHROM"].str.replace("X", "23").replace("Y", "24"))
     snp_df["POS"] = pd.to_numeric(snp_df["POS"])
 
+    # liftover input SNPs to match SMR dataset assembly
     if needs_liftover:
         lifted, lost_snps = run_liftover(
             snp_df,
@@ -178,8 +179,8 @@ def query_smr(
             # we lost literally all the snps
             raise LiftoverError(
                 "Could not perform SMR query; "
-                f"Unable to liftover {assembly} snps prior to query on {dataset_assembly} SMR dataset. "
-                f"Consider deselecting this dataset or using only {assembly} SMR datasets."
+                f"Unable to liftover '{assembly}' snps prior to query on '{dataset_assembly}' SMR dataset. "
+                f"Consider deselecting this dataset or using only '{assembly}' SMR datasets."
             )
 
         lifted["SNP"] = \
@@ -208,7 +209,27 @@ def query_smr(
 
     if query_result is None:
         return None
+    
+    # liftover results to match input SNPs 
+    # (hg38 input --(lift down input SNPs)--> hg19 --(lift up SMR results)--> hg38)
+    if needs_liftover:
+        smr_lifted, smr_lost_snps = run_liftover(
+            query_result,
+            dataset_assembly,
+            chrom_col="Chr",
+            pos_col="BP"
+        )
 
+        if len(smr_lost_snps) == len(query_result):
+            raise LiftoverError(
+                "Could not perform SMR query; "
+                f"Unable to liftover '{dataset_assembly}' snps to '{assembly}' after querying '{dataset_assembly}' SMR dataset. "
+                f"Consider deselecting this dataset or using only '{assembly}' SMR datasets."
+            )
+        
+        query_result = smr_lifted
+
+    # TODO: rewrite this without .apply
     query_result["full_snp"] = query_result.apply(
         lambda df: f"chr{str(df['Chr'])}"
         + "_"
