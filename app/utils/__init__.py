@@ -141,6 +141,7 @@ def standardize_snps(variantlist, regiontxt, build):
     if build.lower() in ["hg38", "grch38"]:
         rsid_colname = "rs_id_dbSNP151_GRCh38p7"
         suffix = "b38"
+        # TODO: use newer dbSNP file
         dbsnp_filepath = os.path.join(
             app.config["LF_DATA_FOLDER"], "dbSNP151", "GRCh38p7", "All_20180418.vcf.gz"
         )
