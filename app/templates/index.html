@@ -317,46 +317,46 @@
                   <option id="smr-US_Blood" name="smr-US_Blood" value="US_mQTLS_SMR_format">(n=1,175) Whole blood mQTL data set used in Hannon et al.</option>
                 </select>
               </div>
-            </div>
-            <hr />
-            <div class="row">
-              <div class="col-md-12">
-                <h5>Upload Secondary Datasets</h5>
-              </div>
-              <div class="col-md-4">
-                <input class="shadow-sm p-3 mb-3 bg-light rounded" type="file" id="html-file" name="html-file" accept=".html" data-toggle="tooltip"
-                  title=".html (required): HTML file generated with LocusFocus"/>
-                <label for="html-file-coordinate" id="html-file-coordinate-label" data-toggle="tooltip"
-                  title="Select the coordinate system of your HTML file. LiftOver will be used to convert the data if necessary.">
-                    Select Coordinate System
-                  </label>
-                <select id="html-file-coordinate" name="html-file-coordinate">
-                  <option id="html-file-coordinate-gwas" value="gwas" label="Same as GWAS" selected="selected"></option>
-                  <option id="html-file-coordinate-hg19" value="hg19" label="hg19"></option>
-                  <option id="html-file-coordinate-hg38" value="hg38" label="hg38"></option>
-                </select>
-              </div>
-              <div class="col-md-8">
-                <div class="alert alert-dismissible alert-info">
-                  <p>For convenience, we are making available eQTL datasets from the GTEx project for use as secondary datasets.</p>
-                  <p>LocusFocus, however, can perform more custom colocalization analyses utilizing other secondary (e.g. eQTL, mQTL, other phenotypes) datasets provided by the user.</p>
-                  <p>Custom secondary datasets may be uploaded after conversion to HTML format as described above or in the documentation.</p>
-                  <p>
-                    <ul>
-                      <li>Refer to the <a
-                          href="https://locusfocus.readthedocs.io/en/latest/quick_start.html#formatting-custom-secondary-datasets">documentation</a>
-                        on how to generate the HTML file.</li>
-                      <li>You may use the <a
-                          href="https://github.com/strug-hub/LocusFocus/blob/master/merge_and_convert_to_html.py">merge_and_convert_to_html.py</a>
-                        script,
-                        or <a
-                          href="https://github.com/strug-hub/LocusFocus/blob/master/merge_and_convert_to_html_coloc2.py">merge_and_convert_to_html_coloc2.py</a>.
-                      </li>
-                      <li>You may use provided <a
-                          href="https://github.com/strug-hub/LocusFocus/tree/master/data/sample_datasets">sample
-                          datasets</a> as a guide to formatting your files.</li>
-                    </ul>
-                  </p>
+              <hr />
+              <div class="row">
+                <div class="col-md-12">
+                  <h5>Upload Secondary Datasets</h5>
+                </div>
+                <div class="col-md-4">
+                  <input class="shadow-sm p-3 mb-3 bg-light rounded" type="file" id="html-file" name="html-file" accept=".html" data-toggle="tooltip"
+                    title=".html (required): HTML file generated with LocusFocus"/>
+                  <label for="html-file-coordinate" id="html-file-coordinate-label" data-toggle="tooltip"
+                    title="Select the coordinate system of your HTML file. LiftOver will be used to convert the data if necessary.">
+                      Select Coordinate System
+                    </label>
+                  <select id="html-file-coordinate" name="html-file-coordinate">
+                    <option id="html-file-coordinate-gwas" value="gwas" label="Same as GWAS" selected="selected"></option>
+                    <option id="html-file-coordinate-hg19" value="hg19" label="hg19"></option>
+                    <option id="html-file-coordinate-hg38" value="hg38" label="hg38"></option>
+                  </select>
+                </div>
+                <div class="col-md-8">
+                  <div class="alert alert-dismissible alert-info">
+                    <p>For convenience, we are making available eQTL datasets from the GTEx project for use as secondary datasets.</p>
+                    <p>LocusFocus, however, can perform more custom colocalization analyses utilizing other secondary (e.g. eQTL, mQTL, other phenotypes) datasets provided by the user.</p>
+                    <p>Custom secondary datasets may be uploaded after conversion to HTML format as described above or in the documentation.</p>
+                    <p>
+                      <ul>
+                        <li>Refer to the <a
+                            href="https://locusfocus.readthedocs.io/en/latest/quick_start.html#formatting-custom-secondary-datasets">documentation</a>
+                          on how to generate the HTML file.</li>
+                        <li>You may use the <a
+                            href="https://github.com/strug-hub/LocusFocus/blob/master/merge_and_convert_to_html.py">merge_and_convert_to_html.py</a>
+                          script,
+                          or <a
+                            href="https://github.com/strug-hub/LocusFocus/blob/master/merge_and_convert_to_html_coloc2.py">merge_and_convert_to_html_coloc2.py</a>.
+                        </li>
+                        <li>You may use provided <a
+                            href="https://github.com/strug-hub/LocusFocus/tree/master/data/sample_datasets">sample
+                            datasets</a> as a guide to formatting your files.</li>
+                      </ul>
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
