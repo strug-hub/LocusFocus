@@ -411,7 +411,7 @@ class SessionPayload:
         if self.smr_selected is None:
             self.smr_selected = self.request_form.get("smr-select", [])
 
-        return self.smr_selected
+        return self.smr_selected or []
 
     def get_p_value_threshold(self) -> Union[float, str]:
         """

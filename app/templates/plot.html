@@ -731,6 +731,19 @@
               SSResponseJson.Num_SNPs_Used_for_SS_secondary
             );
           }
+          if (SSResponseJson?.["smr"]?.["datasets"]?.length > 0) {
+            populateSSPTable(
+              "#smr-table",
+              SSResponseJson?.smr?.datasets || [],
+              SSResponseJson?.smr?.smr_ssp_values || [],
+              SSResponseJson?.smr?.smr_num_snp_used || [],
+            );
+          } else {
+            d3.select(".smr_datasets_message")
+              .append("p")
+              .attr("class", "text-warning")
+              .text(`No SMR datasets selected`);
+          }
           buildSSguidanceTable(
             SSResponseJson.Genes,
             SSResponseJson.Tissues,

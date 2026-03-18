@@ -162,12 +162,19 @@ function buildNTable(genes, tissues, num_SS_snps_used, transpose = false) {
   });
 }
 
-function list_secondary_SSPvalues(titles, SSPvalues, SSPvaluesN) {
-  let table_data = titles.map((title, i) => [title, SSPvalues[i], SSPvaluesN[i]]);
+/**
+ * Populate a simple sum P-value table.
+ * @param {string} id id for table element. Ex. "#secondary-table"
+ * @param {string[]} titles List of dataset descriptions / names of length N.
+ * @param {number[]} SSPvalues List of SS -log10 P-values of length N.
+ * @param {number[]} SNPcounts List of numbers of SNPs used for dataset, length N.
+ */
+function populateSSPTable(id, titles, SSPvalues, SNPcounts) {
+  if (titles?.length == 0 || SSPvalues?.length == 0 || SNPcounts?.length == 0) return;
+  let table_data = titles.map((title, i) => [title, SSPvalues[i], SNPcounts[i]]);
 
-  // Add DataTables functionality:
   $(document).ready(function () {
-    $("#secondary-table").DataTable({
+    $(id).DataTable({
       dom: "Bfrtipl",
       data: table_data,
       columns: [
@@ -189,4 +196,8 @@ function list_secondary_SSPvalues(titles, SSPvalues, SSPvaluesN) {
       ],
     });
   });
+}
+
+function list_secondary_SSPvalues(titles, SSPvalues, SSPvaluesN) {
+  populateSSPTable("#secondary-table", titles, SSPvalues, SSPvaluesN);
 }
