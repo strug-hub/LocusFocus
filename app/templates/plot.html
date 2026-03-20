@@ -667,6 +667,7 @@
           "SSguidance-table",
           "coloc2-table",
           "set-based-test-table",
+          "smr-table",
         ].forEach((name) => showSection(name));
 
         if (sessionData !== null) {
@@ -735,8 +736,8 @@
             populateSSPTable(
               "#smr-table",
               SSResponseJson?.smr?.datasets || [],
-              SSResponseJson?.smr?.smr_ssp_values || [],
-              SSResponseJson?.smr?.smr_num_snp_used || [],
+              SSResponseJson?.smr?.ssp_values || [],
+              SSResponseJson?.smr?.num_snp_used || [],
             );
           } else {
             d3.select(".smr_datasets_message")

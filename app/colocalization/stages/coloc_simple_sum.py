@@ -481,8 +481,8 @@ class ColocSimpleSumStage(PipelineStage):
         smr_comp_used = []
         if (smr_range[1] - smr_range[0]) > 0:
             smr_ssp_values = SSPvalues[smr_range[0]:smr_range[1]]
-            smr_num_snp_used = SSPvalues[smr_range[0]:smr_range[1]]
-            smr_comp_used = SSPvalues[smr_range[0]:smr_range[1]]
+            smr_num_snp_used = num_SNP_used_for_SS[smr_range[0]:smr_range[1]]
+            smr_comp_used = comp_used[smr_range[0]:smr_range[1]]
         # user secondary datasets
         if (user_range[1] - user_range[0]) > 0:
             SSPvaluesSecondary = SSPvalues[user_range[0] : user_range[1]]
