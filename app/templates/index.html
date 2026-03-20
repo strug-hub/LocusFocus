@@ -227,15 +227,17 @@
                   <p>For the most accurate results, the LD (r<sup>2</sup>) matrix for your primary (e.g. GWAS) dataset is recommended to be uploaded as a .ld square matrix file.
                     If the .ld file is unavailable, you may choose one of the publicly-available 1000 Genomes population datasets.</p>
                   <p>
-                  <ul>
-                    <li>EUR: European</li>
-                    <li>NFE: Non-Finnish European</li>
-                    <li>AFR: African</li>
-                    <li>EAS: East Asian</li>
-                    <li>SAS: South Asian</li>
-                    <li>AMR: Ad Mixed American</li>
-                  </ul></p>
-                  <p>Note: For Hg38 X chromosome datasets, we will only use female sample data from 1000 Genomes to calculate LD.
+                    <ul>
+                      <li>EUR: European</li>
+                      <li>NFE: Non-Finnish European</li>
+                      <li>AFR: African</li>
+                      <li>EAS: East Asian</li>
+                      <li>SAS: South Asian</li>
+                      <li>AMR: Ad Mixed American</li>
+                    </ul>
+                  </p>
+                  <p>
+                    Note: For Hg38 X chromosome datasets, we will only use female sample data from 1000 Genomes to calculate LD.
                   </p>
                 </div>
               </div>
@@ -299,64 +301,63 @@
             <hr />
             <div class="row">
               <div class="col-md-12">
-                <h5>Select SMR Datasets</h5>
+                <h5>Select SMR mQTL Datasets</h5>
               </div>
-              <div class="col-md-4">
+              <div class="col-md-6">
                 <div id="smr-select-label" data-toggle="tooltip"
                   title="Select the SMR datasets you would like to use. Note that datasets on different assemblies will be lifted over."></div>
-                  Select SMR Version
+                  Select SMR datasets
                 </div>
-                <select id="smr-select" name="smr-select" multiple>
-                  <option id="smr-Brain-mMeta" name="smr-Brain-mMeta" value="Brain-mMeta">(n=1,160) Qi et al. Brain-mMeta mQTL summary data</option>
-                  <option id="smr-EAS" name="smr-EAS" value="EAS">(n=2,099) Hatton et al. mQTL summary data from a meta-analysis of samples of East Asian ancestry.</option>
-                  <option id="smr-EUR" name="smr-EUR" value="EUR">(n=3,701) Hatton et al. mQTL summary data from a meta-analysis of samples of European ancestry.</option>
-                  <option id="smr-Aberdeen_Blood" name="smr-Aberdeen_Blood" value="Hannon et al. Blood dataset1">(n=639) Blood dataset 1, Hannon et al. 2016 Genome Biology</option>
-                  <option id="smr-UCL_Blood" name="smr-UCL_Blood" value="Hannon et al. Blood dataset2">(n=665) Blood dataset 2, Hannon et al. 2016 Genome Biology</option>
-                  <option id="smr-FB_Brain" name="smr-FB_Brain" value="Hannon et al. FetalBrain">(n=166) Fetal brain mQTL data (Hannon et al. 2015 Nat Neurosci)</option>
-                  <option id="smr-bl_mqtl" name="smr-bl_mqtl" value="LBC_BSGS_meta">(n=1,980) McRae et al. mQTL summary data.</option>
-                  <option id="smr-US_Blood" name="smr-US_Blood" value="US_mQTLS_SMR_format">(n=1,175) Whole blood mQTL data set used in Hannon et al.</option>
+                <select id="smr-select" name="smr-select" multiple="multiple">
+                  <option id="smr-Brain-mMeta" name="smr-Brain-mMeta" value="Brain-mMeta">Qi et al. Brain-mMeta mQTL summary data (n=1,160)</option>
+                  <option id="smr-EAS" name="smr-EAS" value="EAS">Hatton et al. mQTL summary data from a meta-analysis of samples of East Asian ancestry. (n=2,099)</option>
+                  <option id="smr-EUR" name="smr-EUR" value="EUR">Hatton et al. mQTL summary data from a meta-analysis of samples of European ancestry. (n=3,701)</option>
+                  <option id="smr-Aberdeen_Blood" name="smr-Aberdeen_Blood" value="Hannon et al. Blood dataset1">Blood dataset 1, Hannon et al. 2016 Genome Biology (n=639)</option>
+                  <option id="smr-UCL_Blood" name="smr-UCL_Blood" value="Hannon et al. Blood dataset2">Blood dataset 2, Hannon et al. 2016 Genome Biology (n=665)</option>
+                  <option id="smr-FB_Brain" name="smr-FB_Brain" value="Hannon et al. FetalBrain">Fetal brain mQTL data (Hannon et al. 2015 Nat Neurosci) (n=166)</option>
+                  <option id="smr-bl_mqtl" name="smr-bl_mqtl" value="LBC_BSGS_meta">McRae et al. mQTL summary data. (n=1,980)</option>
+                  <option id="smr-US_Blood" name="smr-US_Blood" value="US_mQTLS_SMR_format">Whole blood mQTL data set used in Hannon et al. (n=1,175)</option>
+                </select>
+            </div>
+            <hr />
+            <div class="row">
+              <div class="col-md-12">
+                <h5>Upload Secondary Datasets</h5>
+              </div>
+              <div class="col-md-4">
+                <input class="shadow-sm p-3 mb-3 bg-light rounded" type="file" id="html-file" name="html-file" accept=".html" data-toggle="tooltip"
+                  title=".html (required): HTML file generated with LocusFocus"/>
+                <label for="html-file-coordinate" id="html-file-coordinate-label" data-toggle="tooltip"
+                  title="Select the coordinate system of your HTML file. LiftOver will be used to convert the data if necessary.">
+                    Select Coordinate System
+                  </label>
+                <select id="html-file-coordinate" name="html-file-coordinate">
+                  <option id="html-file-coordinate-gwas" value="gwas" label="Same as GWAS" selected="selected"></option>
+                  <option id="html-file-coordinate-hg19" value="hg19" label="hg19"></option>
+                  <option id="html-file-coordinate-hg38" value="hg38" label="hg38"></option>
                 </select>
               </div>
-              <hr />
-              <div class="row">
-                <div class="col-md-12">
-                  <h5>Upload Secondary Datasets</h5>
-                </div>
-                <div class="col-md-4">
-                  <input class="shadow-sm p-3 mb-3 bg-light rounded" type="file" id="html-file" name="html-file" accept=".html" data-toggle="tooltip"
-                    title=".html (required): HTML file generated with LocusFocus"/>
-                  <label for="html-file-coordinate" id="html-file-coordinate-label" data-toggle="tooltip"
-                    title="Select the coordinate system of your HTML file. LiftOver will be used to convert the data if necessary.">
-                      Select Coordinate System
-                    </label>
-                  <select id="html-file-coordinate" name="html-file-coordinate">
-                    <option id="html-file-coordinate-gwas" value="gwas" label="Same as GWAS" selected="selected"></option>
-                    <option id="html-file-coordinate-hg19" value="hg19" label="hg19"></option>
-                    <option id="html-file-coordinate-hg38" value="hg38" label="hg38"></option>
-                  </select>
-                </div>
-                <div class="col-md-8">
-                  <div class="alert alert-dismissible alert-info">
-                    <p>For convenience, we are making available eQTL datasets from the GTEx project for use as secondary datasets.</p>
-                    <p>LocusFocus, however, can perform more custom colocalization analyses utilizing other secondary (e.g. eQTL, mQTL, other phenotypes) datasets provided by the user.</p>
-                    <p>Custom secondary datasets may be uploaded after conversion to HTML format as described above or in the documentation.</p>
-                    <p>
-                      <ul>
-                        <li>Refer to the <a
-                            href="https://locusfocus.readthedocs.io/en/latest/quick_start.html#formatting-custom-secondary-datasets">documentation</a>
-                          on how to generate the HTML file.</li>
-                        <li>You may use the <a
-                            href="https://github.com/strug-hub/LocusFocus/blob/master/merge_and_convert_to_html.py">merge_and_convert_to_html.py</a>
-                          script,
-                          or <a
-                            href="https://github.com/strug-hub/LocusFocus/blob/master/merge_and_convert_to_html_coloc2.py">merge_and_convert_to_html_coloc2.py</a>.
-                        </li>
-                        <li>You may use provided <a
-                            href="https://github.com/strug-hub/LocusFocus/tree/master/data/sample_datasets">sample
-                            datasets</a> as a guide to formatting your files.</li>
-                      </ul>
-                    </p>
-                  </div>
+              <div class="col-md-8">
+                <div class="alert alert-dismissible alert-info">
+                  <p>For convenience, we are making available eQTL datasets from the GTEx project for use as secondary datasets.</p>
+                  <p>LocusFocus, however, can perform more custom colocalization analyses utilizing other secondary (e.g. eQTL, mQTL, other phenotypes) datasets provided by the user.</p>
+                  <p>Custom secondary datasets may be uploaded after conversion to HTML format as described above or in the documentation.</p>
+                  <p>
+                    <ul>
+                      <li>Refer to the <a
+                          href="https://locusfocus.readthedocs.io/en/latest/quick_start.html#formatting-custom-secondary-datasets">documentation</a>
+                        on how to generate the HTML file.</li>
+                      <li>You may use the <a
+                          href="https://github.com/strug-hub/LocusFocus/blob/master/merge_and_convert_to_html.py">merge_and_convert_to_html.py</a>
+                        script,
+                        or <a
+                          href="https://github.com/strug-hub/LocusFocus/blob/master/merge_and_convert_to_html_coloc2.py">merge_and_convert_to_html_coloc2.py</a>.
+                      </li>
+                      <li>You may use provided <a
+                          href="https://github.com/strug-hub/LocusFocus/tree/master/data/sample_datasets">sample
+                          datasets</a> as a guide to formatting your files.</li>
+                    </ul>
+                  </p>
                 </div>
               </div>
             </div>
@@ -418,7 +419,9 @@
                 <span class="sr-only">Loading...</span>
               </div>
             </div>
-            <p>Please wait while LocusFocus is processing your submission...</p>
+            <p>
+              Please wait while LocusFocus is processing your submission...
+            </p>
           </div>
         </div>
       </div>
@@ -433,7 +436,9 @@
             </button>
           </div>
           <div class="modal-body">
-            <p>Something went wrong!</p>
+            <p>
+              Something went wrong!
+            </p>
           </div>
         </div>
       </div>

@@ -229,7 +229,7 @@ class ColocSimpleSumStage(PipelineStage):
                         "standard_snp": ss_std_snp_list,
                         "smr_snp": smr_std_snp_list,
                     })
-                    snp_df.merge(how="left", right=smr_df, left_on="smr_snp", right_on="full_snp")
+                    snp_df = snp_df.merge(how="left", right=smr_df, left_on="smr_snp", right_on="full_snp")
                     pvalues = list(snp_df["p"])
                     p_value_matrix.append(pvalues)
 

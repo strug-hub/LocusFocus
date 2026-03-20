@@ -1562,7 +1562,8 @@ def index():
     # Convert request.form to dict
     request_form: Dict[str, Union[str, List[str]]] = request.form.to_dict(flat=False)  # type: ignore
     for key in request_form.keys():
-        if key not in ["multiselect[]", "GTEx-tissues", "region-genes"]:
+        # multiselect must be put here
+        if key not in ["multiselect[]", "GTEx-tissues", "region-genes", "smr-select"]:
             request_form[key] = request_form[key][0]
 
     if app.config["DISABLE_CELERY"] or not get_is_celery_running():
