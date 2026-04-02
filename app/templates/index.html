@@ -308,10 +308,10 @@
                   <table class="table table-hover table-bordered" id="mqtl-select">
                     <thead class="thead-light">
                       <tr>
-                        <th scope="col" style="width: 60px;"><input type="checkbox" id="mqtl-selectall"></th>
+                        <th scope="col" class="text-center" style="width: 60px;"><input type="checkbox" id="mqtl-selectall"></th>
                         <th scope="col">Dataset Name</th>
                         <th scope="col">Description</th>
-                        <th scope="col">Citation</th>
+                        <th scope="col">Citations</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -319,7 +319,16 @@
                         dataset_id="smr-Brain-mMeta",
                         name="Brain-mMeta",
                         description="Qi et al. Brain-mMeta mQTL summary data (n=1,160, hg38)",
-                        citation=""
+                        citations=[
+                          ("Qi et al. 2018 Nat Commun", "Qi, T., Wu, Y., Zeng, J. <i>et al.</i> Identifying gene targets for brain-related traits using transcriptomic and methylomic data from blood.
+                    <i>Nat Commun</i> <b>9</b>, 2282 (2018). https://doi.org/10.1038/s41467-018-04558-1", "https://www.nature.com/articles/s41467-018-04558-1"),
+                          ("Ng et al. 2017 Nat Neurosci", "Ng, B., White, C., Klein, HU. <i>et al.</i> An xQTL map integrates the genetic architecture of the human brain's transcriptome and epigenome.
+                    <i>Nat Neurosci</i> <b>20</b>, 1418–1426 (2017). https://doi.org/10.1038/nn.4632", "https://www.nature.com/articles/nn.4632"),
+                          ("Hannon et al. 2016 Nat Neurosci", "Hannon, E., Spiers, H., Viana, J. <i>et al.</i> Methylation QTLs in the developing brain and their enrichment in schizophrenia risk loci.
+                    <i>Nat Neurosci</i> <b>19</b>, 48–54 (2016). https://doi.org/10.1038/nn.4182", "https://www.nature.com/articles/nn.4182"),
+                          ("Jaffe et al. 2016 Nat Neurosci", "Jaffe, A., Gao, Y., Deep-Soboslay, A. <i>et al.</i> Mapping DNA methylation across development, genotype and schizophrenia in the human frontal cortex.
+                    <i>Nat Neurosci</i> <b>19</b>, 40–47 (2016). https://doi.org/10.1038/nn.4181", "https://www.nature.com/articles/nn.4181")
+                        ]
                       %}
                         {% include "components/form/xqtl-table-row.html" %}
                       {% endwith %}
@@ -327,7 +336,10 @@
                         dataset_id="smr-EAS",
                         name="EAS",
                         description="Hatton et al. mQTL summary data from a meta-analysis of samples of East Asian ancestry. (n=2,099, hg38)",
-                        citation=""
+                        citations=[
+                          ("Hatton et al. 2024 Nat Commun", "Hatton, A.A., Cheng, FF., Lin, T. <i>et al.</i> Genetic control of DNA methylation is largely shared across European and East Asian populations.
+                    <i>Nat Commun</i> <b>15</b>, 2713 (2024). https://doi.org/10.1038/s41467-024-47005-0", "https://www.nature.com/articles/s41467-024-47005-0")
+                        ]
                       %}
                         {% include "components/form/xqtl-table-row.html" %}
                       {% endwith %}
@@ -335,15 +347,21 @@
                         dataset_id="smr-EUR",
                         name="EUR",
                         description="Hatton et al. mQTL summary data from a meta-analysis of samples of European ancestry. (n=3,701, hg38)",
-                        citation=""
+                        citations=[
+                          ("Hatton et al. 2024 Nat Commun", "Hatton, A.A., Cheng, FF., Lin, T. <i>et al.</i> Genetic control of DNA methylation is largely shared across European and East Asian populations.
+                    <i>Nat Commun</i> <b>15</b>, 2713 (2024). https://doi.org/10.1038/s41467-024-47005-0", "https://www.nature.com/articles/s41467-024-47005-0")
+                        ]
                       %}
                         {% include "components/form/xqtl-table-row.html" %}
                       {% endwith %}
-                        {% with
+                      {% with
                         dataset_id="smr-Aberdeen_Blood",
                         name="Hannon et al. Blood dataset1",
                         description="Blood dataset 1, Hannon et al. 2016 Genome Biology (n=639, hg19)",
-                        citation=""
+                        citations=[
+                          ("Hannon et al. 2016 Genome Biology", "Hannon, E., Dempster, E., Viana, J. <i>et al.</i> An integrated genetic-epigenetic analysis of schizophrenia: evidence for co-localization of genetic associations and differential DNA methylation.
+                    <i>Genome Biol</i> <b>17</b>, 176 (2016). https://doi.org/10.1186/s13059-016-1041-x", "https://genomebiology.biomedcentral.com/articles/10.1186/s13059-016-1041-x")
+                        ]
                       %}
                           {% include "components/form/xqtl-table-row.html" %}
                       {% endwith %}
@@ -351,7 +369,10 @@
                         dataset_id="smr-UCL_Blood",
                         name="Hannon et al. Blood dataset2",
                         description="Blood dataset 2, Hannon et al. 2016 Genome Biology (n=665, hg19)",
-                        citation=""
+                        citations=[
+                          ("Hannon et al. 2016 Genome Biology", "Hannon, E., Dempster, E., Viana, J. <i>et al.</i> An integrated genetic-epigenetic analysis of schizophrenia: evidence for co-localization of genetic associations and differential DNA methylation.
+                    <i>Genome Biol</i> <b>17</b>, 176 (2016). https://doi.org/10.1186/s13059-016-1041-x", "https://genomebiology.biomedcentral.com/articles/10.1186/s13059-016-1041-x")
+                        ]
                       %}
                         {% include "components/form/xqtl-table-row.html" %}
                       {% endwith %}
@@ -359,7 +380,10 @@
                         dataset_id="smr-FB_Brain",
                         name="Hannon et al. FetalBrain",
                         description="Fetal brain mQTL data (Hannon et al. 2015 Nat Neurosci) (n=166, hg19)",
-                        citation=""
+                        citations=[
+                          ("Hannon et al. 2015 Nat Neurosci", "Hannon, E., Spiers, H., Viana, J. <i>et al.</i> Methylation QTLs in the developing brain and their enrichment in schizophrenia risk loci.
+                    <i>Nat Neurosci</i> <b>19</b>, 48–54 (2016). https://doi.org/10.1038/nn.4182", "https://www.nature.com/articles/nn.4182")
+                        ]
                       %}
                         {% include "components/form/xqtl-table-row.html" %}
                       {% endwith %}
@@ -367,7 +391,12 @@
                         dataset_id="smr-bl_mqtl",
                         name="LBC_BSGS_meta",
                         description="McRae et al. mQTL summary data. (n=1,980, hg19)",
-                        citation=""
+                        citations=[
+                          ("McRae et al. 2018 Sci Rep", "McRae, A.F., Marioni, R.E., Shah, S. <i>et al.</i> Identification of 55,000 Replicated DNA Methylation QTL.
+                    <i>Sci Rep</i> <b>8</b>, 17605 (2018). https://doi.org/10.1038/s41598-018-35871-w", "https://www.nature.com/articles/s41598-018-35871-w"),
+                          ("Wu et al. 2018 Nat Commun", "Wu, Y., Zeng, J., Zhang, F. <i>et al.</i> Integrative analysis of omics summary data reveals putative mechanisms underlying complex traits.
+                    <i>Nat Commun</i> <b>9</b>, 918 (2018). https://doi.org/10.1038/s41467-018-03371-0", "https://www.nature.com/articles/s41467-018-03371-0")
+                        ]
                       %}
                         {% include "components/form/xqtl-table-row.html" %}
                       {% endwith %}
@@ -375,7 +404,9 @@
                         dataset_id="smr-US_Blood",
                         name="US_mQTLS_SMR_format",
                         description="Whole blood mQTL data set used in Hannon et al. (n=1,175, hg19)",
-                        citation=""
+                        citations=[
+                          ("Hannon et al. 2018 AJHG", "Hannon, E., Gorrie-Stone, T. J., Smart, M. C., Burrage, J., Hughes, A., Bao, Y., Kumari, M., Schalkwyk, L. C., &amp; Mill, J. (2018). Leveraging DNA-Methylation Quantitative-Trait Loci to Characterize the Relationship between Methylomic Variation, Gene Expression, and Complex Traits. <i>The American Journal of Human Genetics</i>, <i>103</i>(5), 654–665. <a href='https://doi.org/10.1016/j.ajhg.2018.09.007'>https://doi.org/10.1016/j.ajhg.2018.09.007</a>", "https://www.sciencedirect.com/science/article/pii/S0002929718303185?via=ihub")
+                        ]
                       %}
                         {% include "components/form/xqtl-table-row.html" %}
                       {% endwith %}

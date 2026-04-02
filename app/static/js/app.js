@@ -871,7 +871,7 @@ document.addEventListener("DOMContentLoaded", function () {
   table.querySelectorAll("tbody tr").forEach(row => {
     row.addEventListener("click", function (e) {
       // Prevent double toggle if checkbox itself was clicked
-      if (e.target.tagName.toLowerCase() === "input") return;
+      if (["input", "a"].includes(e.target.tagName.toLowerCase())) return;
 
       const checkbox = row.querySelector("input[type='checkbox']");
       checkbox.checked = !checkbox.checked;
