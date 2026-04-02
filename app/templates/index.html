@@ -301,23 +301,88 @@
             <hr />
             <div class="row">
               <div class="col-md-12">
-                <h5>Select SMR mQTL Datasets</h5>
+                <h5>Select mQTL Datasets</h5>
               </div>
-              <div class="col-md-6">
-                <div id="smr-select-label" data-toggle="tooltip"
-                  title="Select the SMR datasets you would like to use. Note that datasets on different assemblies will be converted using LiftOver."></div>
-                  Select SMR datasets
+              <div class="col-md-12">
+                <div class="table-responsive">
+                  <table class="table table-hover table-bordered" id="mqtl-select">
+                    <thead class="thead-light">
+                      <tr>
+                        <th scope="col" style="width: 60px;"><input type="checkbox" id="mqtl-selectall"></th>
+                        <th scope="col">Dataset Name</th>
+                        <th scope="col">Description</th>
+                        <th scope="col">Citation</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% with
+                        dataset_id="smr-Brain-mMeta",
+                        name="Brain-mMeta",
+                        description="Qi et al. Brain-mMeta mQTL summary data (n=1,160, hg38)",
+                        citation=""
+                      %}
+                        {% include "components/form/xqtl-table-row.html" %}
+                      {% endwith %}
+                      {% with
+                        dataset_id="smr-EAS",
+                        name="EAS",
+                        description="Hatton et al. mQTL summary data from a meta-analysis of samples of East Asian ancestry. (n=2,099, hg38)",
+                        citation=""
+                      %}
+                        {% include "components/form/xqtl-table-row.html" %}
+                      {% endwith %}
+                      {% with
+                        dataset_id="smr-EUR",
+                        name="EUR",
+                        description="Hatton et al. mQTL summary data from a meta-analysis of samples of European ancestry. (n=3,701, hg38)",
+                        citation=""
+                      %}
+                        {% include "components/form/xqtl-table-row.html" %}
+                      {% endwith %}
+                        {% with
+                        dataset_id="smr-Aberdeen_Blood",
+                        name="Hannon et al. Blood dataset1",
+                        description="Blood dataset 1, Hannon et al. 2016 Genome Biology (n=639, hg19)",
+                        citation=""
+                      %}
+                          {% include "components/form/xqtl-table-row.html" %}
+                      {% endwith %}
+                      {% with
+                        dataset_id="smr-UCL_Blood",
+                        name="Hannon et al. Blood dataset2",
+                        description="Blood dataset 2, Hannon et al. 2016 Genome Biology (n=665, hg19)",
+                        citation=""
+                      %}
+                        {% include "components/form/xqtl-table-row.html" %}
+                      {% endwith %}
+                      {% with
+                        dataset_id="smr-FB_Brain",
+                        name="Hannon et al. FetalBrain",
+                        description="Fetal brain mQTL data (Hannon et al. 2015 Nat Neurosci) (n=166, hg19)",
+                        citation=""
+                      %}
+                        {% include "components/form/xqtl-table-row.html" %}
+                      {% endwith %}
+                      {% with
+                        dataset_id="smr-bl_mqtl",
+                        name="LBC_BSGS_meta",
+                        description="McRae et al. mQTL summary data. (n=1,980, hg19)",
+                        citation=""
+                      %}
+                        {% include "components/form/xqtl-table-row.html" %}
+                      {% endwith %}
+                      {% with
+                        dataset_id="smr-US_Blood",
+                        name="US_mQTLS_SMR_format",
+                        description="Whole blood mQTL data set used in Hannon et al. (n=1,175, hg19)",
+                        citation=""
+                      %}
+                        {% include "components/form/xqtl-table-row.html" %}
+                      {% endwith %}
+                    </tbody>
+                  </table>
                 </div>
-                <select id="smr-select" name="smr-select" multiple="multiple">
-                  <option id="smr-Brain-mMeta" name="smr-Brain-mMeta" value="Brain-mMeta">Qi et al. Brain-mMeta mQTL summary data (n=1,160, hg38)</option>
-                  <option id="smr-EAS" name="smr-EAS" value="EAS">Hatton et al. mQTL summary data from a meta-analysis of samples of East Asian ancestry. (n=2,099, hg38)</option>
-                  <option id="smr-EUR" name="smr-EUR" value="EUR">Hatton et al. mQTL summary data from a meta-analysis of samples of European ancestry. (n=3,701, hg38)</option>
-                  <option id="smr-Aberdeen_Blood" name="smr-Aberdeen_Blood" value="Hannon et al. Blood dataset1">Blood dataset 1, Hannon et al. 2016 Genome Biology (n=639, hg19)</option>
-                  <option id="smr-UCL_Blood" name="smr-UCL_Blood" value="Hannon et al. Blood dataset2">Blood dataset 2, Hannon et al. 2016 Genome Biology (n=665, hg19)</option>
-                  <option id="smr-FB_Brain" name="smr-FB_Brain" value="Hannon et al. FetalBrain">Fetal brain mQTL data (Hannon et al. 2015 Nat Neurosci) (n=166, hg19)</option>
-                  <option id="smr-bl_mqtl" name="smr-bl_mqtl" value="LBC_BSGS_meta">McRae et al. mQTL summary data. (n=1,980, hg19)</option>
-                  <option id="smr-US_Blood" name="smr-US_Blood" value="US_mQTLS_SMR_format">Whole blood mQTL data set used in Hannon et al. (n=1,175, hg19)</option>
-                </select>
+              </div>
             </div>
             <hr />
             <div class="row">

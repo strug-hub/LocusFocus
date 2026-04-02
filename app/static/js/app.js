@@ -863,3 +863,36 @@ function init() {
 }
 
 init();
+
+// load mqtl table handler
+document.addEventListener("DOMContentLoaded", function () {
+  const table = document.getElementById("mqtl-select");
+
+  table.querySelectorAll("tbody tr").forEach(row => {
+    row.addEventListener("click", function (e) {
+      // Prevent double toggle if checkbox itself was clicked
+      if (e.target.tagName.toLowerCase() === "input") return;
+
+      const checkbox = row.querySelector("input[type='checkbox']");
+      checkbox.checked = !checkbox.checked;
+      row.classList.toggle("table-active", checkbox.checked);
+    });
+
+    // Sync row highlight when checkbox clicked directly
+    const checkbox = row.querySelector("input[type='checkbox']");
+    checkbox.addEventListener("click", function (e) {
+      e.stopPropagation();
+      row.classList.toggle("table-active", checkbox.checked);
+    });
+  });
+});
+
+// select all functionality
+document.getElementById("mqtl-selectall").addEventListener("change", function () {
+  const rows = document.querySelectorAll("#mqtl-select tbody tr");
+  rows.forEach(row => {
+    const cb = row.querySelector("input[type='checkbox']");
+    cb.checked = this.checked;
+    row.classList.toggle("table-active", this.checked);
+  });
+});
