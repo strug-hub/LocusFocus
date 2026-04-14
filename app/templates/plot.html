@@ -626,7 +626,7 @@
             (genesResponse) => {
               var newdata = newresponse;
               var genesdata = genesResponse;
-              plot_gwas(newdata, genesdata);
+              plotGWAS(newdata, genesdata);
               d3.select("#plot_message").text("");
               // plot_heatmap(SSResponse.Genes, SSResponse.Tissues, SSResponse.SSPvalues);
               // buildTable(SSResponse.Genes, SSResponse.Tissues, SSResponse.SSPvalues);
@@ -685,7 +685,7 @@
           buildParamsTable(sessionData, sessionid, type = "default");
           if (genesData !== null) {
             populate_genes(genesData, sessionData);
-            plot_gwas(sessionData, genesData);
+            plotGWAS(sessionData, genesData);
           }
           if (sessionData["liftover_warning"]?.length > 0) {
             d3.select("#liftover-warning")
@@ -800,19 +800,12 @@
                     .text(
                       `Please wait while re-drawing with all GWAS points (slow)`
                     );
-                  plot_gwas(
+                  plotGWAS(
                     data,
                     genesdata,
-                    (eqtl_smoothing_window_size = -1),
-                    (percent_occupied_by_one_char = 0.02),
-                    (inputHeight = 720),
-                    (inputWidth = 1080),
-                    (font_size = 14),
-                    (legend_offset = 0.1),
-                    (pval_filter = false)
                   );
                 } else {
-                  plot_gwas(data, genesdata);
+                  plotGWAS(data, genesdata);
                 }
                 d3.select("#plot_message").text("");
               }
@@ -868,15 +861,17 @@
             (genesResponse) => {
               var data = response;
               var genesdata = genesResponse;
-              plot_gwas(
+              plotGWAS(
                 data,
                 genesdata,
-                (eqtl_smoothing_window_size = +eqtl_window_size),
-                (percent_occupied_by_one_char = +percent_occupied_by_one_char),
-                (inputHeight = +coloc_plot_height),
-                (inputWidth = +coloc_plot_width),
-                (font_size = +coloc_plot_fontsize),
-                (legend_offset = +legendOffset)
+                {
+                  eqtlSmoothingWindow: +eqtl_window_size,
+                  percentCharWidth: +percent_occupied_by_one_char,
+                  width: +coloc_plot_width,
+                  height: +coloc_plot_height,
+                  fontSize: +coloc_plot_fontsize,
+                  legendOffset: +legendOffset,
+                }
               );
             }
           );
