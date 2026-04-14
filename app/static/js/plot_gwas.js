@@ -126,38 +126,92 @@ const LD_BINS = [
 
 function makeLDTraces(gwas, cfg) {
   const traces = [];
+
+  const leadIndex = gwas.leadIndex;
   const used = new Set();
 
+  // Never allow lead SNP to be picked up by LD bins
+  if (leadIndex !== -1) {
+    used.add(leadIndex);
+  }
+
+  const LD_BINS = [
+    {
+      name: "< 0.2",
+      test: v => v >= 0 && Math.abs(v) < 0.2,
+      color: "#1f77b4"
+    },
+    {
+      name: "0.2–0.4",
+      test: v => Math.abs(v) >= 0.2 && Math.abs(v) < 0.4,
+      color: "#17becf"
+    },
+    {
+      name: "0.4–0.6",
+      test: v => Math.abs(v) >= 0.4 && Math.abs(v) < 0.6,
+      color: "#bcbd22"
+    },
+    {
+      name: "0.6–0.8",
+      test: v => Math.abs(v) >= 0.6 && Math.abs(v) < 0.8,
+      color: "#ff7f0e"
+    },
+    {
+      name: "≥ 0.8",
+      test: v => Math.abs(v) >= 0.8,
+      color: "#d62728"
+    }
+  ];
+
+  // Build LD bin traces
   LD_BINS.forEach(bin => {
-    const idx = gwas.ld_values
-      .map((v, i) => (!used.has(i) && bin.test(v) ? i : -1))
-      .filter(i => i !== -1);
+    const indices = [];
 
-    idx.forEach(i => used.add(i));
+    for (let i = 0; i < gwas.ld_values.length; i++) {
+      const ld = gwas.ld_values[i];
 
-    traces.push({
-      x: idx.map(i => gwas.positions[i]),
-      y: idx.map(i => gwas.log10p[i]),
-      text: idx.map(i => gwas.snps[i]),
-      name: bin.name,
-      mode: "markers",
-      type: "scatter",
-      marker: { size: cfg.markerSize, color: bin.color }
-    });
-  });
+      // Critical guard:
+      // Do NOT plot any negative LD values (error sentinels)
+      if (ld < 0) continue;
+      if (used.has(i)) continue;
 
-  traces.push({
-    x: [gwas.positions[gwas.leadIndex]],
-    y: [gwas.log10p[gwas.leadIndex]],
-    text: [gwas.lead_snp],
-    name: "Lead SNP",
-    mode: "markers",
-    type: "scatter",
-    marker: {
-      size: cfg.markerSize * cfg.leadMarkerScale,
-      color: "#9467bd"
+      if (bin.test(ld)) {
+        indices.push(i);
+        used.add(i);
+      }
+    }
+
+    if (indices.length > 0) {
+      traces.push({
+        x: indices.map(i => gwas.positions[i]),
+        y: indices.map(i => gwas.log10p[i]),
+        text: indices.map(i => gwas.snps[i]),
+        name: bin.name,
+        type: "scatter",
+        mode: "markers",
+        marker: {
+          size: cfg.markerSize,
+          color: bin.color
+        }
+      });
     }
   });
+
+  // Lead SNP trace (always plotted)
+  if (leadIndex !== -1) {
+    traces.push({
+      x: [gwas.positions[leadIndex]],
+      y: [gwas.log10p[leadIndex]],
+      text: [gwas.lead_snp],
+      name: "Lead SNP",
+      type: "scatter",
+      mode: "markers",
+      marker: {
+        size: cfg.markerSize * cfg.leadMarkerScale,
+        color: "#9467bd"
+      }
+    });
+  }
 
   return traces;
 }
@@ -437,16 +491,28 @@ function makeLayout(gwas, genes, gtex, secondary, cfg) {
   const extraX = 0.05 * gwas.regionSize;
   const extraY = 0.05 * gwas.yMax;
 
+  // Primary axis (GWAS)
+  const yMin1 = -genes.height;
+  const yMax1 = gwas.yMax + extraY;
+
+  // Fractional position of zero on primary axis
+  const zeroFrac = (0 - yMin1) / (yMax1 - yMin1);
+
+  // Secondary axis (GTEx / secondary datasets)
+  const yMax2 = gtexYMax + extraY * (gtexYMax / gwas.yMax);
+  const yMin2 = -zeroFrac * yMax2 / (1 - zeroFrac);
+
   return {
     xaxis: {
       range: [gwas.startbp - extraX, gwas.endbp + extraX],
       title: `Chromosome ${gwas.chrom} (${gwas.build})`
     },
     yaxis: {
-      range: [-genes.height, gwas.yMax + extraY],
+      range: [yMin1, yMax1],
       title: "-log10(p)"
     },
     yaxis2: {
+      range: [yMin2, yMax2],
       overlaying: "y",
       side: "right",
       title: "Secondary datasets -log10(p)",
