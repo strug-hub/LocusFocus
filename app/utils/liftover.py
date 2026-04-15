@@ -56,6 +56,12 @@ def run_liftover(
     # ensure proper column order
     transformed_df = transformed_df[["#CHROM", pos_col, "end", "index"]]
 
+    # typecast columns
+    transformed_df = transformed_df.astype({
+        pos_col: int,
+        "end": int,
+    })
+
     chain_root = os.path.join("/usr", "local", "share", "liftOver")
 
     chain_file = (

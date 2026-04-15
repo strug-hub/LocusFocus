@@ -61,7 +61,10 @@ class ReadSecondaryDatasetsStage(PipelineStage):
         for i in np.arange(len(tables)):
             try:
                 table = hp.parse_html_table(tables[i])
-                secondary_datasets[table_titles[i]] = table.fillna(-1).to_dict(
+                secondary_datasets[table_titles[i]] = table.fillna(-1).astype({
+                    "CHROM": int,
+                    "BP": int,
+                }).to_dict(
                     orient="records"
                 )
             except Exception:
