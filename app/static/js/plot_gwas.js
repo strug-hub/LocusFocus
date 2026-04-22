@@ -487,7 +487,24 @@ function layoutGenes(genesData, gwas, cfg) {
 }
 
 
-function makeLayout(gwas, genes, gtex, secondary, cfg) {
+function getSecondaryYMax(...datasets) {
+  let ymax = 1;
+
+  datasets.forEach(group => {
+    Object.values(group).forEach(dataset => {
+      const y = dataset.smooth?.[1];
+      if (Array.isArray(y) && y.length > 0) {
+        const m = d3.max(y);
+        if (m > ymax) ymax = m;
+      }
+    });
+  });
+
+  return ymax;
+}
+
+
+function makeLayout(gwas, genes, gtex, secondary, cfg, gtexYMax) {
   const extraX = 0.05 * gwas.regionSize;
   const extraY = 0.05 * gwas.yMax;
 
@@ -563,7 +580,8 @@ function plotGWAS(
     ...makeGeneNameTraces(genes)
   ];
 
-  const layout = makeLayout(gwas, genes, gtex, secondary, cfg);
+  const gtexYMax = getSecondaryYMax(gtex, secondary);
+  const layout = makeLayout(gwas, genes, gtex, secondary, cfg, gtexYMax);
 
   Plotly.newPlot("plot", traces, layout);
 }
