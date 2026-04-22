@@ -17,11 +17,14 @@ def get_is_celery_running() -> bool:
     Check if Celery is running and available to accept tasks.
     """
     try:
-        return app.extensions["celery"].control.ping() is not None
+        celery = app.extensions["celery"]
+        with celery.connection_or_acquire() as conn:
+            conn.ensure_connection(max_retries=1)
+        return True
     except IOError:
         return False
     except OperationalError:
-        app.logger.error("Could not connect to redis server. Celery is not available.")
+        app.logger.error("Celery broker is unreachable.")
         return False
     except Exception:
         app.logger.error(
