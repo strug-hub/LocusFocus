@@ -217,7 +217,7 @@ function makeLDTraces(gwas, cfg) {
 }
 
 
-function prepareEQTLData(data, names, gwas, cfg, cols = {}) {
+function prepareXQTLData(data, names, gwas, cfg, cols = {}) {
   const result = {};
 
   names.forEach(name => {
@@ -568,7 +568,8 @@ function plotGWAS(
   const gwas = prepareGWASData(data, cfg);
   const genes = layoutGenes(genesData, gwas, cfg);
 
-  const gtex = prepareEQTLData(data, data.gtex_tissues, gwas, cfg);
+  const gtex = prepareXQTLData(data, data.gtex_tissues, gwas, cfg);
+  const mqtl = prepareXQTLData(data?.["xqtl"] || {}, data?.["xqtl_names"] || [], gwas, cfg);
   const secondary = prepareSecondaryData(data, gwas, cfg);
 
   const traces = [
@@ -577,6 +578,8 @@ function plotGWAS(
     ...makeEQTLMarkerTraces(gtex),
     ...makeEQTLTraces(secondary),
     ...makeEQTLMarkerTraces(secondary),
+    ...makeEQTLTraces(mqtl),
+    ...makeEQTLMarkerTraces(mqtl),
     ...makeGeneNameTraces(genes)
   ];
 

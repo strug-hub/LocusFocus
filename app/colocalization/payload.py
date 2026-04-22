@@ -115,6 +115,7 @@ class SessionPayload:
     lead_snp_name: Optional[str] = None
     # smr
     xqtl_selected: Optional[List[str]] = None
+    xqtl_datasets: Dict[str, pd.DataFrame] = field(default_factory=dict)
 
     # File data
     # GWAS data is user-uploaded, and we update gwas_indices_kept in each stage to "keep" or "discard" SNPs
@@ -515,6 +516,11 @@ class SessionPayload:
         if self.reported_gtex_data is not None:
             for tissue, table in self.reported_gtex_data.items():
                 data[tissue] = table
+
+        data["xqtl"] = {}
+        data["xqtl_names"] = self.get_xqtl_selection()
+        for dataset_name in data["xqtl_names"]:
+            data["xqtl"][dataset_name] = self.xqtl_datasets[dataset_name].to_dict(orient="records")
 
         if self.coloc2:
             data["secondary_dataset_colnames"] = [

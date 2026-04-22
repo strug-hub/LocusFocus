@@ -207,31 +207,33 @@ class ColocSimpleSumStage(PipelineStage):
 
             # ss_std_snp_format ~= "chr_pos_ref_alt_build", chr can be X,Y
             # output["full_snp"] ~= "chr{chr}_pos_ref_alt"
-            smr_std_snp_list = []
+            xqtl_std_snp_list = []
             for snp in ss_std_snp_list:
                 chrom, pos, ref, alt, build = snp.split("_")
-                smr_std_snp_list.append(f"chr{chrom}_{pos}_{ref}_{alt}")
-            for smr_name in payload.xqtl_selected:
+                xqtl_std_snp_list.append(f"chr{chrom}_{pos}_{ref}_{alt}")
+            for xqtl_name in payload.xqtl_selected:
                 try:
-                    smr_df = query_smr(
+                    xqtl_df = query_smr(
                         payload.get_locus_tuple()[0],
-                        smr_std_snp_list,
-                        smr_name,
+                        xqtl_std_snp_list,
+                        xqtl_name,
                         assembly=payload.lifted_over_coordinate  # type: ignore
                     )
-                    if smr_df is None:
-                        app.logger.warning(f"SMR query failed for {smr_name}")
+                    if xqtl_df is None:
+                        app.logger.warning(f"xqtl query failed for {xqtl_name}")
                         pvalues = np.repeat(np.nan, len(ss_std_snp_list))
                         p_value_matrix.append(pvalues)
+                        payload.xqtl_datasets[xqtl_name] = pd.DataFrame({})
                         continue
                     # left merge with snps
                     snp_df = pd.DataFrame({
                         "standard_snp": ss_std_snp_list,
-                        "smr_snp": smr_std_snp_list,
+                        "xqtl_snp": xqtl_std_snp_list,
                     })
-                    snp_df = snp_df.merge(how="left", right=smr_df, left_on="smr_snp", right_on="full_snp")
+                    snp_df = snp_df.merge(how="left", right=xqtl_df, left_on="xqtl_snp", right_on="full_snp")
                     pvalues = list(snp_df["p"])
                     p_value_matrix.append(pvalues)
+                    payload.xqtl_datasets[xqtl_name] = snp_df
 
                 except LiftoverError:
                     # means that there's no data after liftover conversion
