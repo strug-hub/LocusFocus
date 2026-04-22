@@ -203,7 +203,7 @@ class ColocSimpleSumStage(PipelineStage):
                     p_value_matrix.append(pvalues)
 
         # 3. SMR secondary datasets
-        if payload.smr_selected is not None and len(payload.smr_selected) > 0:
+        if payload.xqtl_selected is not None and len(payload.xqtl_selected) > 0:
 
             # ss_std_snp_format ~= "chr_pos_ref_alt_build", chr can be X,Y
             # output["full_snp"] ~= "chr{chr}_pos_ref_alt"
@@ -211,7 +211,7 @@ class ColocSimpleSumStage(PipelineStage):
             for snp in ss_std_snp_list:
                 chrom, pos, ref, alt, build = snp.split("_")
                 smr_std_snp_list.append(f"chr{chrom}_{pos}_{ref}_{alt}")
-            for smr_name in payload.smr_selected:
+            for smr_name in payload.xqtl_selected:
                 try:
                     smr_df = query_smr(
                         payload.get_locus_tuple()[0],
@@ -453,7 +453,7 @@ class ColocSimpleSumStage(PipelineStage):
         compUsedSecondary = []
 
         gtex_tissues, gtex_genes = payload.get_gtex_selection()
-        smr_datasets = payload.smr_selected if payload.smr_selected is not None else []
+        smr_datasets = payload.xqtl_selected if payload.xqtl_selected is not None else []
 
         table_titles = []
         if payload.secondary_datasets is not None:

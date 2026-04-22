@@ -104,7 +104,7 @@ def run_liftover(
 
         # Chrom can be affected by liftover, so we'll take it from the new DataFrame
         joined = joined.drop(
-            [chrom_col, pos_col, "index", "POS_lifted"], axis=1
+            [chrom_col, pos_col, "index", f"{pos_col}_lifted"], axis=1
         ).rename({"#CHROM": chrom_col, "end": pos_col}, axis=1)[original_df.columns]
 
     return joined, list(dropped)

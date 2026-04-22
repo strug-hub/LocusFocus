@@ -114,7 +114,7 @@ class SessionPayload:
     simple_sum_locus: Optional[str] = None
     lead_snp_name: Optional[str] = None
     # smr
-    smr_selected: Optional[List[str]] = None
+    xqtl_selected: Optional[List[str]] = None
 
     # File data
     # GWAS data is user-uploaded, and we update gwas_indices_kept in each stage to "keep" or "discard" SNPs
@@ -404,14 +404,14 @@ class SessionPayload:
             )
         return version
 
-    def get_smr_selection(self) -> List[str]:
+    def get_xqtl_selection(self) -> List[str]:
         """
         Get the selected SMR datasets from the form.
         """
-        if self.smr_selected is None:
-            self.smr_selected = self.request_form.get("smr-select", [])
+        if self.xqtl_selected is None:
+            self.xqtl_selected = self.request_form.get("xqtl-datasets[]", [])
 
-        return self.smr_selected or []
+        return self.xqtl_selected or []
 
     def get_p_value_threshold(self) -> Union[float, str]:
         """

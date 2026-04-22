@@ -792,15 +792,6 @@ function init() {
           return "multiselect[]";
         },
       });
-      $("#smr-select").multiselect({
-        enableCaseInsensitiveFiltering: true,
-        includeSelectAllOption: true,
-        maxHeight: 400,
-        buttonWidth: "400px",
-        checkboxName: function (option) {
-          return "multiselect[]";
-        },
-      });
       $("#region-genes").multiselect({
         enableCaseInsensitiveFiltering: true,
         includeSelectAllOption: true,

@@ -71,12 +71,12 @@ class CollectUserInputStage(PipelineStage):
             )
 
         # SMR
-        payload.smr_selected = payload.request_form.get("smr-select", [])
-        _invalid_smr_datasets = [x for x in (payload.smr_selected or []) if x not in smr_datasets]
+        payload.xqtl_selected = payload.get_xqtl_selection()
+        _invalid_smr_datasets = [x for x in (payload.xqtl_selected or []) if x not in smr_datasets]
         if len(_invalid_smr_datasets) > 0:
             errors.append(
                 f"Invalid SMR datasets selected: {_invalid_smr_datasets}"
-            ) 
+            )
 
         # First stage set-based test P value threshold
         p_threshold = payload.request_form.get("setbasedP", "")
@@ -103,6 +103,6 @@ class CollectUserInputStage(PipelineStage):
                 message=f"Error(s) found in uploaded form: {'; '.join(errors)}",
                 payload={f"error_{i + 1}": error for i, error in enumerate(errors)},
             )
-        
+
 
         return payload

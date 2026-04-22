@@ -363,7 +363,7 @@
         <div class="col-md-12">
           <div id="table-area">
             <h3>
-              Simple Sum -log10 P-values Table for SMR Datasets Selected
+              Simple Sum -log10 P-values Table for mQTL Datasets Selected
             </h3>
             <div class="smr_datasets_message"></div>
             <table
@@ -743,7 +743,7 @@
             d3.select(".smr_datasets_message")
               .append("p")
               .attr("class", "text-warning")
-              .text(`No SMR datasets selected`);
+              .text(`No mQTL datasets selected`);
           }
           buildSSguidanceTable(
             SSResponseJson.Genes,

@@ -53,7 +53,7 @@ smr_datasets: dict[str, SMRDataset] = {
     "Hannon et al. FetalBrain": {
         "assembly": "hg19",
         "by_chr": False,
-        "base_filename": "FB_Brain",
+        "base_filename": "FB_Brain_2",
         "description": "(n=166) Fetal brain mQTL data (Hannon et al. 2015 Nat Neurosci)",
     },
     "LBC_BSGS_meta": {
@@ -124,7 +124,7 @@ def run_smr_query(
 def query_smr(
     chr: int,
     snps: List[str],
-    dataset: str,
+    dataset_name: str,
     thresh: float = 5.0e-8,
     assembly: Literal["hg19", "hg38"] = "hg38",
 ) -> pd.DataFrame | None:
@@ -149,15 +149,17 @@ def query_smr(
     May be None if SMR failed to provide an output file (ie. no data for query).
     :rtype: pd.DataFrame | None
     """
-    if dataset not in smr_datasets.keys():
-        raise FileNotFoundError(f"Dataset {dataset} does not exist!")
+    if dataset_name not in smr_datasets.keys():
+        raise FileNotFoundError(f"Dataset {dataset_name} does not exist!")
+    
+    dataset = smr_datasets[dataset_name]
 
-    dataset_assembly = smr_datasets[dataset]["assembly"]
+    dataset_assembly = dataset["assembly"]
     needs_liftover = assembly != dataset_assembly
 
-    dataset_dir = os.path.join(data_dir, dataset)
-    base_filepath = os.path.join(dataset_dir, dataset)
-    if smr_datasets[dataset]["by_chr"]:
+    dataset_dir = os.path.join(data_dir, dataset_name)
+    base_filepath = os.path.join(dataset_dir, dataset["base_filename"])
+    if dataset["by_chr"]:
         base_filepath = f"{base_filepath}_chr{chr}"
 
     snp_df = pd.DataFrame(data=snps, columns=["SNP"])
@@ -210,7 +212,7 @@ def query_smr(
     if query_result is None:
         return None
     
-    # liftover results to match input SNPs 
+    # liftover results to match input SNPs
     # (hg38 input --(lift down input SNPs)--> hg19 --(lift up SMR results)--> hg38)
     if needs_liftover:
         smr_lifted, smr_lost_snps = run_liftover(
