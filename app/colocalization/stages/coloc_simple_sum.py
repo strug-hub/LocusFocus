@@ -112,9 +112,9 @@ class ColocSimpleSumStage(PipelineStage):
         secondary datasets provided by the user, if any.
 
         Example:
-        - User selects GTEx datasets for
-            - tissues "Blood" and "Liver"
-            - genes "NUCKS1" and "CDK18"
+        - User...
+            - selects GTEx tissues "Blood" and "Liver"
+            - selects GTEx genes "NUCKS1" and "CDK18"
             - uploads secondary datasets Alpha, Bravo, Charlie
             - Selects SMR datasets "Hannon et al. Blood dataset1" and "Brain-mMeta"
         - We expect 10 rows in the matrix that could be labelled as:
@@ -231,6 +231,26 @@ class ColocSimpleSumStage(PipelineStage):
                         "xqtl_snp": xqtl_std_snp_list,
                     })
                     snp_df = snp_df.merge(how="left", right=xqtl_df, left_on="xqtl_snp", right_on="full_snp")
+                    # map columns to GTEx equivalent, and drop others
+                    snp_df = snp_df.rename(columns={
+                        "standard_snp": "variant_id",
+                        "SNP": "rs_id",
+                        "Chr": "chr",
+                        "BP": "pos",
+                        "A1": "ref",
+                        "A2": "alt",
+                        "b": "beta",
+                        "SE": "se",
+                        "p": "pval"
+                    }).drop(columns=[
+                        "xqtl_snp",
+                        "Probe",
+                        "Probe_Chr",
+                        "Probe_bp",
+                        "Gene",
+                        "Orientation",
+                        "full_snp"
+                    ])
                     pvalues = list(snp_df["p"])
                     p_value_matrix.append(pvalues)
                     payload.xqtl_datasets[xqtl_name] = snp_df
