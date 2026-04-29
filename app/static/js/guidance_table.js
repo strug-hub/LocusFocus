@@ -30,9 +30,9 @@ function buildSSguidanceTable(genes, tissues, SSP, SSP2, smr) {
         .attr('class', 'th-sm')
         .text('Value');
 
-    var allSSPs = SSP.flat().concat(smr.ssp_values).concat(SSP2);
+    var allSSPs = SSP.flat().concat(smr?.ssp_values || []).concat(SSP2);
     var numGTEx = tissues.length * genes.length;
-    var numSMR = smr.ssp_values.length;
+    var numSMR = smr?.ssp_values?.length || 0;
     var numSecondary = SSP2.length;
     var numNoeQTL = allSSPs.reduce((acc, curr) => (acc + (curr == -1)), 0);
     var numFirstStage = allSSPs.reduce((acc, curr) => (acc + (curr == -2)), 0);

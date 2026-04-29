@@ -520,7 +520,7 @@ class SessionPayload:
         data["xqtl"] = {}
         data["xqtl_names"] = self.get_xqtl_selection()
         for dataset_name in data["xqtl_names"]:
-            data["xqtl"][dataset_name] = self.xqtl_datasets[dataset_name].to_dict(orient="records")
+            data["xqtl"][dataset_name] = self.xqtl_datasets[dataset_name].replace({np.nan: None}).to_dict(orient="records")
 
         if self.coloc2:
             data["secondary_dataset_colnames"] = [
