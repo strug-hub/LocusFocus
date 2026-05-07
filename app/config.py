@@ -38,6 +38,7 @@ class BaseConfig:
             "use.fontawesome.com",
             "cdnjs.cloudflare.com",
             "stackpath.bootstrapcdn.com",
+            "code.jquery.com",
         ],
         "font-src": [
             "'self'",

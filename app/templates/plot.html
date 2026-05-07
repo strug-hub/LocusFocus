@@ -46,6 +46,7 @@
       type="text/css"
       href="{{ url_for('static', filename='css/d3Style.css') }}"
     />
+    {% include "lib/jquery-core.html" %}
   </head>
 
   <body>
@@ -462,13 +463,6 @@
     <script
       type="module"
       src="{{ url_for('static', filename='js/file-saver/src/FileSaver.js') }}"
-    ></script>
-    <!-- JQuery -->
-    <script
-      type="text/javascript"
-      src="https://code.jquery.com/jquery-3.7.1.min.js"
-      integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo="
-      crossorigin="anonymous"
     ></script>
     <!-- Plotly -->
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>

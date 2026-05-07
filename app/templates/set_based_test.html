@@ -20,14 +20,8 @@
   <meta property="og:url" content="https://locusfocus.research.sickkids.ca/">
   <!-- Font Awesome -->
   <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.0/css/all.css">
-  <!-- JQuery-UI -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/jquery-ui.css') }}">
-  <!-- JQuery -->
-  <script type="text/javascript" src="https://code.jquery.com/jquery-3.7.1.min.js"
-    integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo="
-    crossorigin="anonymous"></script>
-  <!-- JQuery-UI -->
-  <script type="text/javascript" src="{{ url_for('static', filename='js/lib/jquery-ui.js') }}"></script>
+  {% include "lib/jquery-core.html" %}
+  {% include "lib/jquery-ui.html" %}
   <!-- Bootstrap core CSS -->
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
     integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
