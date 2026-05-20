@@ -349,7 +349,7 @@
                     type="range" 
                     min="0"
                     max="100"
-                    value="50"
+                    value="0"
                     class="form-control-range flex-fill"
                     id="overlapThresholdRange"
                     oninput="overlapThresholdText.value = this.value"
@@ -357,13 +357,14 @@
                   </div>
                   <div class="p-2">
                     <input
-                    type="number"
+                    type="text"
+                    inputmode="numeric"
                     min="0"
                     max="100"
-                    value="50"
+                    value="0"
                     class="form-control"
                     id="overlapThresholdText"
-                    oninput="overlapThresholdRange.value = this.value"
+                    oninput="overlapThresholdRange.value = Number(this.value)"
                     >
                   </div>
                 </div>
@@ -382,7 +383,7 @@
                     <ul>
                       <li><b>20</b> SNPs in common: <b>keep</b> (20% &GreaterEqual; 15%)</li>
                       <li><b>15</b> SNPs in common: <b>keep</b> (15% &GreaterEqual; 15%)</li>
-                      <li><b>10</b> SNPs in common: <b>drop</b> (10% &lt; 15%)</li>
+                      <li><b>14</b> SNPs in common: <b>drop</b> (14% &lt; 15%)</li>
                     </ul>
                   </p>
                 </div>
