@@ -34,7 +34,6 @@ def check_data_overlap(data_df, threshold, p_col="pval"):
 
     return False, DataExclusionReason.NO_REASON
 
-def check_uploaded_overlap(secondary_df, threshold):
 
 class ColocSimpleSumStage(PipelineStage):
     """
