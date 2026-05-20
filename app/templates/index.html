@@ -343,19 +343,19 @@
                 <label for="overlapThreshold" id="overlapThresholdLabel">
                   <h5>Secondary Dataset Overlap threshold (%)</h5>
                 </label>
-                <div class="d-flex flex-row">
+                <div class="d-flex flex-row align-items-center">
                   <div class="flex-fill p-2">
                     <input 
                     type="range" 
                     min="0"
                     max="100"
                     value="0"
-                    class="form-control-range flex-fill"
+                    class="form-control-range w-100"
                     id="overlapThresholdRange"
                     oninput="overlapThresholdText.value = this.value"
                     >
                   </div>
-                  <div class="p-2">
+                  <div class="input-group threshold-input">
                     <input
                     type="text"
                     inputmode="numeric"
@@ -366,6 +366,9 @@
                     id="overlapThresholdText"
                     oninput="overlapThresholdRange.value = Number(this.value)"
                     >
+                    <div class="input-group-append">
+                      <span class="input-group-text">%</span>
+                    </div>
                   </div>
                 </div>
               </div>

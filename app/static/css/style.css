@@ -133,3 +133,7 @@ bottom: .5em;
   display: none
 } */
 
+.threshold-input {
+  width: 100px;
+  flex: 0 0 auto;
+}
