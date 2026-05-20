@@ -113,6 +113,7 @@ class SessionPayload:
     plot_locus: Optional[str] = None  # regionstr
     simple_sum_locus: Optional[str] = None
     lead_snp_name: Optional[str] = None
+    overlap_threshold: Optional[float] = None
 
     # File data
     # GWAS data is user-uploaded, and we update gwas_indices_kept in each stage to "keep" or "discard" SNPs
@@ -426,6 +427,24 @@ class SessionPayload:
             self.set_based_p = set_based_p
 
         return self.set_based_p
+    
+    def get_overlap_threshold(self) -> float:
+        """Get the GWAS overlap threshold for this submission.
+
+        Raises:
+            InvalidUsage: Overlap threshold is not a float, or is not between 0 and 100
+
+        Returns:
+            float: GWAS Overlap threshold percentage, float between 0 and 100.
+        """
+        if self.overlap_threshold is None:
+            try:
+                overlap_threshold = float(self.request_form["overlapThresholdText"])
+                assert overlap_threshold >= 0 and overlap_threshold <= 100
+            except (ValueError, AssertionError) as e:
+                raise InvalidUsage(f"Overlap threshold is invalid: '{self.request_form['overlapThresholdText']}'. Must be a number between 0 and 100") from e
+            self.overlap_threshold = overlap_threshold
+        return self.overlap_threshold
 
     def is_ld_user_defined(self) -> bool:
         """
