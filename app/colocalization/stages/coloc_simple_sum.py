@@ -4,13 +4,37 @@ import numpy as np
 import pandas as pd
 
 from app.colocalization.constants import LD_MAT_DIAG_CONSTANT
-from app.colocalization.payload import SessionPayload
+from app.colocalization.payload import SessionPayload, DataExclusionReason
 from app.utils import clean_snps, standardize_snps, write_list, write_matrix
 from app.pipeline.pipeline_stage import PipelineStage
 from app.scripts import ScriptError, coloc2, simple_sum
 from app.utils.errors import InvalidUsage, ServerError
 from app.utils.gtex import get_gtex_data
 
+
+def check_data_overlap(data_df, threshold, p_col="pval"):
+    """
+    Return whether to skip this dataset, and what reason.
+
+    Does this by counting the number of non-NA p-values after a left join
+    with GWAS.
+
+    For GTEx, p_col = "pval" (default)
+    For uploaded datasets, p_col = "P" (SS only) or "PVAL" (COLOC2)
+    """
+    # overlap == records with non-NA p value
+
+    if data_df.shape[0] == 0:
+        return True, DataExclusionReason.GTEX_NO_DATA
+    overlap_percentage = data_df[p_col].count() / data_df.shape[0]
+    if overlap_percentage == 0:
+        return True, DataExclusionReason.NO_OVERLAP
+    elif overlap_percentage < threshold:
+        return True, DataExclusionReason.BELOW_THRESHOLD
+
+    return False, DataExclusionReason.NO_REASON
+
+def check_uploaded_overlap(secondary_df, threshold):
 
 class ColocSimpleSumStage(PipelineStage):
     """
@@ -127,6 +151,7 @@ class ColocSimpleSumStage(PipelineStage):
         gtex_version = payload.get_gtex_version()
         regionstr = payload.get_locus()
         coordinate = payload.get_coordinate()
+        overlap_threshold = payload.get_overlap_threshold()
 
         coloc2eqtl_df = pd.DataFrame({})
 
@@ -146,52 +171,59 @@ class ColocSimpleSumStage(PipelineStage):
                     gtex_eqtl_df = get_gtex_data(
                         gtex_version, tissue, agene, ss_std_snp_list
                     )
-                    if len(gtex_eqtl_df) > 0:
-                        pvalues = list(gtex_eqtl_df["pval"])
-                        if payload.coloc2:
-                            tempdf = gtex_eqtl_df.rename(
-                                columns={
-                                    "rs_id": "SNPID",
-                                    "pval": "PVAL",
-                                    "beta": "BETA",
-                                    "se": "SE",
-                                    "sample_maf": "MAF",
-                                    "chr": "CHR",
-                                    "variant_pos": "POS",
-                                    "pos": "POS",
-                                    "ref": "A2",
-                                    "alt": "A1",
-                                }
-                            )
-                            tempdf.dropna(inplace=True)
-                            if len(tempdf.index) != 0:
-                                numsamples = round(
-                                    tempdf["ma_count"].tolist()[0]
-                                    / tempdf["MAF"].tolist()[0]
-                                )
-                                numsampleslist = np.repeat(
-                                    numsamples, tempdf.shape[0]
-                                ).tolist()
-                                tempdf = pd.concat(
-                                    [tempdf, pd.Series(numsampleslist, name="N")],
-                                    axis=1,
-                                )
-                                probeid = str(tissue) + ":" + str(agene)
-                                probeidlist = np.repeat(
-                                    probeid, tempdf.shape[0]
-                                ).tolist()
-                                tempdf = pd.concat(
-                                    [tempdf, pd.Series(probeidlist, name="ProbeID")],
-                                    axis=1,
-                                )
-                                tempdf = tempdf.reindex(
-                                    columns=self.COLOC2_EQTL_COLNAMES
-                                )
-                                coloc2eqtl_df = pd.concat(
-                                    [coloc2eqtl_df, tempdf], axis=0
-                                )
-                    else:
+
+                    # check overlap with GWAS
+                    skip, reason = check_data_overlap(gtex_eqtl_df, overlap_threshold)
+                    if skip:
+                        payload.secondary_exclude.gtex_tissue_gene[(tissue, agene)] = reason
                         pvalues = np.repeat(np.nan, len(ss_std_snp_list))
+                        p_value_matrix.append(pvalues)
+                        continue
+
+                    pvalues = list(gtex_eqtl_df["pval"])
+                    if payload.coloc2:
+                        tempdf = gtex_eqtl_df.rename(
+                            columns={
+                                "rs_id": "SNPID",
+                                "pval": "PVAL",
+                                "beta": "BETA",
+                                "se": "SE",
+                                "sample_maf": "MAF",
+                                "chr": "CHR",
+                                "variant_pos": "POS",
+                                "pos": "POS",
+                                "ref": "A2",
+                                "alt": "A1",
+                            }
+                        )
+                        tempdf.dropna(inplace=True)
+                        if len(tempdf.index) != 0:
+                            numsamples = round(
+                                tempdf["ma_count"].tolist()[0]
+                                / tempdf["MAF"].tolist()[0]
+                            )
+                            numsampleslist = np.repeat(
+                                numsamples, tempdf.shape[0]
+                            ).tolist()
+                            tempdf = pd.concat(
+                                [tempdf, pd.Series(numsampleslist, name="N")],
+                                axis=1,
+                            )
+                            probeid = str(tissue) + ":" + str(agene)
+                            probeidlist = np.repeat(
+                                probeid, tempdf.shape[0]
+                            ).tolist()
+                            tempdf = pd.concat(
+                                [tempdf, pd.Series(probeidlist, name="ProbeID")],
+                                axis=1,
+                            )
+                            tempdf = tempdf.reindex(
+                                columns=self.COLOC2_EQTL_COLNAMES
+                            )
+                            coloc2eqtl_df = pd.concat(
+                                [coloc2eqtl_df, tempdf], axis=0
+                            )
+
                     p_value_matrix.append(pvalues)
 
         # 3. Uploaded secondary datasets
@@ -206,11 +238,6 @@ class ColocSimpleSumStage(PipelineStage):
                     secondary_dataset,
                 ) in payload.secondary_datasets.items():
                     secondary_dataset = pd.DataFrame(secondary_dataset)
-                    if secondary_dataset.shape[0] == 0:
-                        # print(f'No data for table {table_titles[i]}')
-                        pvalues = np.repeat(np.nan, len(ss_std_snp_list))
-                        p_value_matrix.append(pvalues)
-                        continue
                     try:
                         if not set(self.COLOC2_EQTL_COLNAMES).issubset(
                             secondary_dataset
@@ -252,6 +279,12 @@ class ColocSimpleSumStage(PipelineStage):
                             )
                             .sort_values("index")
                         )
+                        skip, reason = check_data_overlap(secondary_data, overlap_threshold, p_col="PVAL")
+                        if skip:
+                            payload.secondary_exclude.uploaded[dataset_title] = reason
+                            pvalues = np.repeat(np.nan, len(ss_std_snp_list))
+                            p_value_matrix.append(pvalues)
+                            continue
                         pvalues = list(secondary_data["PVAL"])
                         p_value_matrix.append(pvalues)
                         coloc2eqtl_df = pd.concat(
@@ -309,6 +342,12 @@ class ColocSimpleSumStage(PipelineStage):
                             )
                             .sort_values("index")
                         )
+                        skip, reason = check_data_overlap(secondary_data, overlap_threshold, p_col="P")
+                        if skip:
+                            payload.secondary_exclude.uploaded[dataset_title] = reason
+                            pvalues = np.repeat(np.nan, len(ss_std_snp_list))
+                            p_value_matrix.append(pvalues)
+                            continue
                         pvalues = list(secondary_data["P"])
                         p_value_matrix.append(pvalues)
                     except InvalidUsage as e:

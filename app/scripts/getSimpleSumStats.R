@@ -279,6 +279,8 @@ if (first_stage_only) {
 
     P_mat_i <- as.numeric(P_mat_i)
 
+    # skip if all NA
+    # corollary: can pass in all NA to skip
     if (length(P_mat_i) < 1) {
       first_stages <- c(first_stages, "na")
       first_stage_p <- c(first_stage_p, "na")
