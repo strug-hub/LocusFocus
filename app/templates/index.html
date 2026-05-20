@@ -337,6 +337,62 @@
 
         <div class="row">
           <div class="col-md-12 borderit">
+
+            <div class="row">
+              <div class="col-md-12 form-group">
+                <label for="overlapThreshold" id="overlapThresholdLabel">
+                  <h5>Secondary Dataset Overlap threshold (%)</h5>
+                </label>
+                <div class="d-flex flex-row">
+                  <div class="flex-fill p-2">
+                    <input 
+                    type="range" 
+                    min="0"
+                    max="100"
+                    value="50"
+                    class="form-control-range flex-fill"
+                    id="overlapThresholdRange"
+                    oninput="overlapThresholdText.value = this.value"
+                    >
+                  </div>
+                  <div class="p-2">
+                    <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value="50"
+                    class="form-control"
+                    id="overlapThresholdText"
+                    oninput="overlapThresholdRange.value = this.value"
+                    >
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-12">
+                <div class="alert alert-dismissible alert-info">
+                  <p>
+                    Specify an overlap threshold as a percentage between 0 and 100. 
+                    Any secondary dataset (eg. GTEx gene-tissue pairs, uploaded secondary dataset tables) whose SNP 
+                    overlap is less than this threshold will be dropped before colocalization.
+                  </p>
+                  <p>
+                    Example: GWAS with 100 SNPs, threshold set to 15%. Secondary dataset has...
+                    <ul>
+                      <li><b>20</b> SNPs in common: <b>keep</b> (20% &GreaterEqual; 15%)</li>
+                      <li><b>15</b> SNPs in common: <b>keep</b> (15% &GreaterEqual; 15%)</li>
+                      <li><b>10</b> SNPs in common: <b>drop</b> (10% &lt; 15%)</li>
+                    </ul>
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div> <!-- row closing div -->
+
+        <div class="row">
+          <div class="col-md-12 borderit">
             <label for="setbasedP" id="set-based-P-label">
               <h5>Stage one set-based p-value threshold</h5>
             </label>
