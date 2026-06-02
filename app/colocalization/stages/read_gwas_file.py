@@ -227,6 +227,15 @@ class ReadGWASFileStage(PipelineStage):
         for col in ["REF", "ALT"]:
             gwas_data[col] = gwas_data[col].str.upper()
 
+        # ensure all columns are unique
+        if gwas_data.columns.duplicated().any():      
+            raise InvalidUsage(
+                f"Duplicate columns detected: "
+                f"{list(gwas_data.columns[gwas_data.columns.duplicated()])}\n"
+                "Please ensure that all column names are unique."
+            )
+
+
         return gwas_data
 
     def _infer_gwas_columns(
