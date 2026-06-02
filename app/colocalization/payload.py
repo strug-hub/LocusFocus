@@ -262,7 +262,7 @@ class SessionPayload:
         """
         if self.num_cases is None:
             try:
-                num_cases = self.request_form.get("numcases", type=int)
+                num_cases = int(self.request_form.get("numcases"))
             except ValueError:
                 raise InvalidUsage(
                     "Number of cases entered must be an integer", status_code=410
