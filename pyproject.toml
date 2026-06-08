@@ -41,6 +41,7 @@ ipykernel = "^7.0.1"
 pytest = "7.4.1"
 debugpy = "^1.8.12"
 ruff = "^0.11.12"
+pytest-playwright = "^0.8.0"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
