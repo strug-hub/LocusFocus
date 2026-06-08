@@ -198,7 +198,7 @@
             </div>
             <div class="row">
               <div class="col-md-6">
-                <h5>LD Population</h5>
+                <label for="LD-populations" class="h5">LD Population</label>
                 <select id="LD-populations" name="LD-populations">
                 </select>
                 <div id="chrX-warning" class="alert alert-dismissible alert-warning fade show" hidden role="alert">
@@ -210,7 +210,7 @@
                 </div>
               </div>
               <div class="col-md-6">
-                <h5>Upload LD Matrix</h5>
+                <label for="ld-file" class="h5">Upload LD Matrix</label>
                 <input class="shadow-sm p-3 mb-3 bg-light rounded" type="file" id="ld-file" name="ld-file" accept=".ld" data-toggle="tooltip"
                   title=".ld (optional): LD matrix file generated with PLINK or similar"/>
               </div>
@@ -262,10 +262,12 @@
             </div>
             <div class="row">
               <div class="col-md-6">
-                <div id="GTEx-version-label" data-toggle="tooltip"
-                  title="Select the GTEx version you would like to use.">
+                <label for="GTEx-version"
+                  id="GTEx-version-label" data-toggle="tooltip"
+                  title="Select the GTEx version you would like to use."
+                  class="my-2">
                   Select GTEx Version
-                </div>
+                </label>
                 <select id="GTEx-version" name="GTEx-version" onchange="gtexVersionChange(this.value)">
                   <option id="gtex-v8" value="V8" label="GTEx V8 (hg38)"></option>
                   <option id="gtex-v10" value="V10" label="GTEx V10 (hg38)" selected="selected"></option>
@@ -274,8 +276,13 @@
             </div>
             <div class="row">
               <div class="col-md-6">
-                <div id="tissue-select" data-toggle="tooltip"
-                  title="Select the tissues you would like to test colocalization with.">Select GTEx (V8) Tissues</div>
+                <label for="GTEx-tissues"
+                  id="tissue-select" 
+                  data-toggle="tooltip"
+                  title="Select the tissues you would like to test colocalization with."
+                  class="my-2">
+                    Select GTEx (V8) Tissues
+                </label>
                 <select id="GTEx-tissues" name="GTEx-tissues" multiple="multiple">
                 </select>
                 <div id="loading" class="spinner-border" role="status" style="display: none;">
@@ -283,9 +290,14 @@
                 </div>
               </div>
               <div class="col-md-6">
-                <div id="genes-select" data-toggle="tooltip"
-                  title="Select the genes in the region you would like to test colocalization with.">Select Genes (enter
-                  coordinates above to populate)</div>
+                <label for="region-genes"
+                  id="genes-select" 
+                  data-toggle="tooltip"
+                  title="Select the genes in the region you would like to test colocalization with."
+                  class="my-2">
+                    Select Genes (enter
+                    coordinates above to populate)
+                </label>
                 <select id="region-genes" name="region-genes" multiple="multiple">
                 </select>
               </div>
