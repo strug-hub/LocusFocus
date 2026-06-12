@@ -64,18 +64,28 @@ def create_app(config_class=ConfigClass):
     ext.init_app(app)
     talisman.init_app(app, content_security_policy=app.config["CSP_POLICY"])
 
-    mongo.init_app(app)
-    # check if mongo is reachable
-    try:
-        app.logger.debug("MongoDB connection test")
-        _version = mongo.cx.server_info().get("version")
-        app.logger.debug(f"Connected to MongoDB {_version}")
-    except Exception as e:
-        app.logger.error(f"MongoDB connection failed: {e}")
+    from app.utils.gtex_db import NullGTExDatabase, RealGTExDatabase
 
-    from app.utils.gtex_db import RealGTExDatabase
+    is_production = app.config.get("APP_ENV") == "production"
 
-    app.extensions["gtex_db"] = RealGTExDatabase(mongo.cx)
+    if app.config.get("MONGO_URI"):
+        mongo.init_app(app)
+        try:
+            app.logger.debug("MongoDB connection test")
+            _version = mongo.cx.server_info().get("version")
+            app.logger.debug(f"Connected to MongoDB {_version}")
+            app.extensions["gtex_db"] = RealGTExDatabase(mongo.cx)
+        except Exception as e:
+            if is_production:
+                raise RuntimeError("MongoDB connection failed in production") from e
+            app.logger.error(f"MongoDB connection failed: {e}")
+            app.logger.warning("Falling back to NullGTExDatabase (no GTEx data available)")
+            app.extensions["gtex_db"] = NullGTExDatabase()
+    else:
+        if is_production:
+            raise RuntimeError("MONGO_CONNECTION_STRING is required in production")
+        app.logger.warning("No MONGO_CONNECTION_STRING set; using NullGTExDatabase (no GTEx data available)")
+        app.extensions["gtex_db"] = NullGTExDatabase()
 
     celery_init_app(app)
     cache.init_app(app)
