@@ -1,20 +1,21 @@
 import pytest
+import os
 
 from app import create_app
 
 
 @pytest.fixture()
 def flask_app():
+    """Create a Flask app for testing."""
+    os.environ.update({
+        "FLASK_SECRET_KEY": "test",
+        "TESTING": "True",
+        "DISABLE_CACHE": "True",
+        "DISABLE_CELERY": "True",
+        "CACHE_TYPE": "NullCache",
+        "MONGO_CONNECTION_STRING": "mongodb://localhost:27017",
+    })
     app = create_app()
-    app.config.update(
-        {
-            "TESTING": True,
-            "DISABLE_CACHE": True,
-            "DISABLE_CELERY": True,
-            "CACHE_TYPE": "NullCache",
-            "MONGO_CONNECTION_STRING": "mongodb://localhost:27017",
-        }
-    )
     yield app
 
 
@@ -33,4 +34,5 @@ def fake_gtex_db(flask_app):
 
     fake = FakeGTExDatabase()
     flask_app.extensions["gtex_db"] = fake
+    print(f"FakeGTExDatabase injected into app.extensions['gtex_db']")
     yield fake

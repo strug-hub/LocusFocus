@@ -20,11 +20,11 @@ from flask import (
     jsonify,
     render_template,
     send_file,
-    Markup,
     current_app as app,
 )
 from celery.result import AsyncResult
 from werkzeug.utils import secure_filename
+from markupsafe import Markup
 
 from pymongo.errors import ConnectionFailure
 

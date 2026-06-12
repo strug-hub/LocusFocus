@@ -63,6 +63,7 @@ def create_app(config_class=ConfigClass):
 
     ext.init_app(app)
     talisman.init_app(app, content_security_policy=app.config["CSP_POLICY"])
+
     mongo.init_app(app)
     # check if mongo is reachable
     try:
