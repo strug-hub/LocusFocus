@@ -38,9 +38,6 @@ from app.utils.numpy_encoder import NumpyEncoder
 from app import ext, mongo
 from app.cache import cache
 
-client = mongo.cx
-db = client.GTEx_V8
-
 # import getSimpleSumStats
 
 genomicWindowLimit = 2_000_000
@@ -1248,7 +1245,7 @@ def handle_server_error(error: ServerError):
 @app.route("/dbstatus")
 def getDBStatus():
     try:
-        db.client.admin.command("ping")
+        mongo.cx.admin.command("ping")
     except ConnectionFailure:  # db is down
         print("Server not available")
         return jsonify({"status": "error"})
@@ -1285,16 +1282,10 @@ def list_tissues(version):
     version = version.upper()
     if version == "V7":
         raise InvalidUsage("GTEx V7 is no longer available")
-    elif version == "V8":
-        db = client.GTEx_V8
-        tissues = list(db.list_collection_names())
-        tissues.remove("variant_table")
-    elif version == "V10":
-        db = client.GTEx_V10
-        tissues = list(db.list_collection_names())
-        tissues.remove("variant_table")
-
-    return jsonify(sorted(tissues))
+    elif version not in ("V8", "V10"):
+        raise InvalidUsage(f"Unrecognized GTEx version: {version}")
+    tissues = app.extensions["gtex_db"].list_tissues(version)
+    return jsonify(tissues)
 
 
 @app.route("/gtex/<version>/<tissue>/<gene_id>")

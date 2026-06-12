@@ -71,6 +71,11 @@ def create_app(config_class=ConfigClass):
         app.logger.debug(f"Connected to MongoDB {_version}")
     except Exception as e:
         app.logger.error(f"MongoDB connection failed: {e}")
+
+    from app.utils.gtex_db import RealGTExDatabase
+
+    app.extensions["gtex_db"] = RealGTExDatabase(mongo.cx)
+
     celery_init_app(app)
     cache.init_app(app)
 

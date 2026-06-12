@@ -1,72 +1,57 @@
 import pandas as pd
-from flask import current_app as app
-from pymongo import MongoClient
+from flask import current_app
 
-
-from app import mongo
 from app.utils.variants import get_variants_by_region
-from app.utils import parse_region_text
 from app.utils.gencode import collapsed_genes_df_hg19, collapsed_genes_df_hg38
 from app.utils.errors import InvalidUsage
 
-client = None  # type: ignore
 
-with app.app_context():
-    client: MongoClient = mongo.cx  # type: ignore
-
-
-# This is the main function to extract the data for a tissue and gene_id:
 def get_gtex(version, tissue, gene_id):
-    if version.upper() == "V8":
-        db = client.GTEx_V8
-    elif version.upper() == "V10":
-        db = client.GTEx_V10
-    elif version.upper() == "V7":
+    """Fetch the merged eQTL + variant DataFrame for a tissue/gene pair.
+
+    Returns a DataFrame with all eQTL columns plus rs_id, chr, pos, ref, alt.
+    Returns a single-row error DataFrame (column "error") when no eQTL data
+    exists for the gene/tissue combination.
+    """
+    if version.upper() == "V7":
         raise InvalidUsage(
             "Cannot standardize SNPs to hg19; GTEx V7 is no longer available."
         )
+
+    gtex_db = current_app.extensions["gtex_db"]
+    version = version.upper()
+    tissue = tissue.replace(" ", "_")
+
+    if tissue not in gtex_db.list_tissues(version):
+        raise InvalidUsage(f"Tissue {tissue} not found", status_code=410)
+
     collapsed_genes_df = collapsed_genes_df_hg38
 
-    tissue = tissue.replace(" ", "_")
-    # gene_id = gene_id.upper()
-    ensg_name = ""
-    if tissue not in db.list_collection_names():
-        raise InvalidUsage(f"Tissue {tissue} not found", status_code=410)
-    collection = db[tissue]
     if gene_id.startswith("ENSG"):
-        i = list(collapsed_genes_df["ENSG_name"]).index(gene_id)
-        ensg_name = list(collapsed_genes_df["ENSG_name"])[i]
+        if gene_id not in list(collapsed_genes_df["ENSG_name"]):
+            raise InvalidUsage(f"Gene name {gene_id} not found", status_code=410)
+        ensg_name = gene_id
     elif gene_id in list(collapsed_genes_df["name"]):
         i = list(collapsed_genes_df["name"]).index(gene_id)
         ensg_name = list(collapsed_genes_df["ENSG_name"])[i]
     else:
         raise InvalidUsage(f"Gene name {gene_id} not found", status_code=410)
-    ensg_name = ensg_name.rsplit(".", 1)[0]  # remove version
-    results = list(collection.find({"gene_id": {"$regex": f"^{ensg_name}.*"}}))
-    response = []
-    try:
-        response = results[0]["eqtl_variants"]
-    except Exception:
+
+    ensg_id_prefix = ensg_name.rsplit(".", 1)[0]
+
+    result = gtex_db.get_eqtl_data(version, tissue, ensg_id_prefix)
+    if result.empty:
         return pd.DataFrame([{"error": f"No eQTL data for {gene_id} in {tissue}"}])
-    results_df = pd.DataFrame(response)
-    chrom = int(list(results_df["variant_id"])[0].split("_")[0].replace("X", "23"))
-    positions = [int(x.split("_")[1]) for x in list(results_df["variant_id"])]
-    variants_df = get_variants_by_region(
-        min(positions), max(positions), str(chrom), version.upper()
-    )
-    x = pd.merge(results_df, variants_df, on="variant_id")
-    return x
+    return result
 
 
-# Function to merge the GTEx data with a particular snp_list
 def get_gtex_data(version, tissue, gene, snp_list, raiseErrors=False) -> pd.DataFrame:
     if version.upper() == "V7":
         raise InvalidUsage(
             "GTEx V7 is no longer available. Please use GTEx V8 or GTEx V10."
         )
     assert version.upper() in ["V8", "V10"]
-    build = "hg38"
-    gtex_data = []
+
     rsids = True
     rsid_snps = [x for x in snp_list if x.startswith("rs")]
     b37_snps = [x for x in snp_list if x.endswith("_b37")]
@@ -83,8 +68,11 @@ def get_gtex_data(version, tissue, gene, snp_list, raiseErrors=False) -> pd.Data
         raise InvalidUsage(
             "Variant naming format not supported; ensure all are rs ID's are formatted as chrom_pos_ref_alt_b37 eg. 1_205720483_G_A_b37"
         )
-    hugo_gene, ensg_gene = gene_names(gene, build)
+
+    hugo_gene, ensg_gene = gene_names(gene, "hg38")
     response_df = get_gtex(version.upper(), tissue, gene)
+
+    gtex_data = []
     if "error" not in response_df.columns:
         eqtl = response_df
         if rsids:
@@ -121,8 +109,6 @@ def get_gtex_data(version, tissue, gene, snp_list, raiseErrors=False) -> pd.Data
     return gtex_data  # type: ignore
 
 
-# This function simply merges the eqtl_data extracted with the snp_list,
-# then returns a list of the eQTL pvalues for snp_list (if available)
 def get_gtex_data_pvalues(eqtl_data, snp_list):
     rsids = True
     if snp_list[0].startswith("rs"):
@@ -153,15 +139,13 @@ def get_gtex_data_pvalues(eqtl_data, snp_list):
 
 
 def get_gtex_snp_matches(stdsnplist, regiontxt, build, gtex_version="V10"):
-    """
-    Return the number of SNPs that can be found in the GTEx database for the given region.
-    """
+    """Return the number of SNPs that can be found in the GTEx database for the given region."""
     assert gtex_version.upper() in ["V8", "V10"]
-    # Ensure valid region:
+    from app.utils import parse_region_text
+
     chrom, startbp, endbp = parse_region_text(regiontxt, build)
     chrom = str(chrom).replace("23", "X")
 
-    # Lookup variants in GTEx db
     if build.lower() in ["hg19", "grch37"]:
         raise InvalidUsage(
             "Cannot use GTEx V7 variant table; GTEx V7 is no longer available."
@@ -175,7 +159,7 @@ def get_gtex_snp_matches(stdsnplist, regiontxt, build, gtex_version="V10"):
 
 
 def gene_names(genename, build):
-    # Given either ENSG gene name or HUGO gene name, returns both HUGO and ENSG names
+    """Given either an ENSG or HUGO gene name, return (HUGO, ENSG) names."""
     ensg_gene = genename
     if build.lower() in ["hg19", "grch37"]:
         collapsed_genes_df = collapsed_genes_df_hg19
