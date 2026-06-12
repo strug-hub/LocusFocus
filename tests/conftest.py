@@ -2,20 +2,19 @@ import pytest
 import os
 
 from app import create_app
+from app.config import DevConfig
 
 
 @pytest.fixture()
 def flask_app():
     """Create a Flask app for testing."""
-    os.environ.update({
-        "FLASK_SECRET_KEY": "test",
-        "TESTING": "True",
-        "DISABLE_CACHE": "True",
-        "DISABLE_CELERY": "True",
-        "CACHE_TYPE": "NullCache",
-        "MONGO_CONNECTION_STRING": "mongodb://localhost:27017",
-    })
-    app = create_app()
+    config = DevConfig()
+    config.SECRET_KEY = "test"
+    config.DISABLE_CACHE = True
+    config.DISABLE_CELERY = True
+    config.CACHE_TYPE = "NullCache"
+    config.MONGO_URI = None
+    app = create_app(config=config)
     yield app
 
 

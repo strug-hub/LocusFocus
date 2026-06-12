@@ -12,7 +12,7 @@ from flask_talisman import Talisman
 from app.config import BaseConfig, DevConfig, ProdConfig
 from app.cache import cache
 
-ConfigClass = ProdConfig if BaseConfig.APP_ENV == "production" else DevConfig
+DEFAULT_CONFIG = ProdConfig() if BaseConfig.APP_ENV == "production" else DevConfig()
 
 ext = Sitemap()
 talisman = Talisman()
@@ -38,7 +38,7 @@ def celery_init_app(app: Flask) -> Celery:
     return celery_app
 
 
-def create_app(config_class=ConfigClass):
+def create_app(config=DEFAULT_CONFIG):
     """
     Create an instance of a Flask app for LocusFocus.
     """
@@ -49,7 +49,7 @@ def create_app(config_class=ConfigClass):
     #    Loading the app a second time while the server is running (e.g., scripts)
     #    will call this line again and raise address conflict, which we swallow
     #    Note also that this will signifcantly slow down the app
-    if ConfigClass.FLASK_APP_DEBUG:
+    if config.FLASK_APP_DEBUG:
         import debugpy
 
         try:
@@ -57,9 +57,9 @@ def create_app(config_class=ConfigClass):
         except RuntimeError:
             pass
 
-    app.config.from_object(config_class())
+    app.config.from_object(config)
     if app.config["SECRET_KEY"] is None or app.config["SECRET_KEY"] == "":
-        raise Exception("SECRET_KEY is not set! Add FLASK_SECRET_KEY to environment!")
+        raise RuntimeError("SECRET_KEY is not set! Add FLASK_SECRET_KEY to environment!")
 
     ext.init_app(app)
     talisman.init_app(app, content_security_policy=app.config["CSP_POLICY"])
