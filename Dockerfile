@@ -101,8 +101,6 @@ COPY --chown=$USERNAME:$USERNAME ./tests /code/app
 
 RUN poetry install --with dev
 
-RUN playwright install-deps
-
 FROM base AS prod
 
 COPY --chown=$USERNAME:$USERNAME ./pyproject.toml /code/pyproject.toml
