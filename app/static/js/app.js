@@ -851,6 +851,31 @@ function init() {
   ["#locus", "#coordinate", "#file-upload"].forEach((id) =>
     $(id).on("change", updateChrXWarning)
   );
+
+  const overlapInput = $("#overlapThresholdText");
+
+  // only let users type between 0 and 100, floats allowed
+  overlapInput.on('beforeinput', (e) => {
+    if (['delete', 'insertReplacementText'].includes(e.originalEvent.inputType)) return;
+    const input = overlapInput[0];
+    const nextValue = 
+      input.value.slice(0, input.selectionStart) 
+      + (e.originalEvent.data ?? '')
+      + input.value.slice(input.selectionEnd);
+
+    const pattern = /^(\d{1,2}(\.(\d+)?)?|100)$/;
+
+    if (!pattern.test(nextValue)) {
+      e.preventDefault();
+    }
+
+    const num = Number(nextValue);
+
+    if ((nextValue !== '' && !nextValue.endsWith(".") && (num < 0 || num > 100))) {
+      e.originalEvent.preventDefault();
+    }
+  });
 }
 
 init();
+

@@ -1,3 +1,4 @@
+from enum import Enum
 from dataclasses import dataclass, field
 from uuid import UUID
 from typing import List, Dict, Optional, Tuple, Union
@@ -85,6 +86,29 @@ class SessionFiles:
         return adjusted_paths
 
 
+class DataExclusionReason(Enum):
+    """Reasons for secondary data to be excluded."""
+    NO_REASON = -1
+    NO_OVERLAP = 0
+    GTEX_NO_DATA = 1
+    BELOW_THRESHOLD = 2
+
+
+@dataclass
+class DataExclusion:
+    """
+    Class for reporting datasets that are excluded.
+
+    Secondary data can be excluded for the following reasons:
+    - Zero SNP overlap with provided GWAS
+    - For GTEx, no data in the locus/gene/tissue trio.
+    - GWAS SNP overlap percentage is below overlap threshold.
+    """
+
+    gtex_tissue_gene: dict[tuple[str, str], DataExclusionReason] = field(default_factory=dict)
+    uploaded: dict[str, DataExclusionReason] = field(default_factory=dict)
+
+
 @dataclass
 class SessionPayload:
     """
@@ -113,6 +137,10 @@ class SessionPayload:
     plot_locus: Optional[str] = None  # regionstr
     simple_sum_locus: Optional[str] = None
     lead_snp_name: Optional[str] = None
+    overlap_threshold: Optional[float] = None
+
+    # secondary data exclusions
+    secondary_exclude: DataExclusion = field(default_factory=DataExclusion)
 
     # File data
     # GWAS data is user-uploaded, and we update gwas_indices_kept in each stage to "keep" or "discard" SNPs
@@ -426,6 +454,24 @@ class SessionPayload:
             self.set_based_p = set_based_p
 
         return self.set_based_p
+    
+    def get_overlap_threshold(self) -> float:
+        """Get the GWAS overlap threshold for this submission.
+
+        Raises:
+            InvalidUsage: Overlap threshold is not a float, or is not between 0 and 100
+
+        Returns:
+            float: GWAS Overlap threshold percentage, float between 0 and 1 (already converted to percentage).
+        """
+        if self.overlap_threshold is None:
+            try:
+                overlap_threshold = float(self.request_form["overlapThresholdText"])
+                assert overlap_threshold >= 0 and overlap_threshold <= 100
+            except (ValueError, AssertionError) as e:
+                raise InvalidUsage(f"Overlap threshold is invalid: '{self.request_form['overlapThresholdText']}'. Must be a number between 0 and 100") from e
+            self.overlap_threshold = overlap_threshold
+        return self.overlap_threshold / 100
 
     def is_ld_user_defined(self) -> bool:
         """
