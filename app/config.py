@@ -19,6 +19,7 @@ class BaseConfig:
         "default-src": "'self'",
         "img-src": [
             "*",
+            "blob:",
             "data:",
             "https://*.google-analytics.com",
             "https://*.googletagmanager.com",
