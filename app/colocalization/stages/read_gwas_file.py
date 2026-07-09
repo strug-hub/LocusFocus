@@ -392,12 +392,19 @@ class ReadGWASFileStage(PipelineStage):
 
         vcf_snps = gwas_data[gwas_data["SNP"].str.contains(VCF_FORMAT_PATTERN)]
         if len(vcf_snps) > 0:
-            expanded = (
-                gwas_data["SNP"]
-                .str.extract(VCF_FORMAT_PATTERN)
-                .rename(columns={0: "CHROM", 1: "POS", 2: "REF", 3: "ALT"})
-                .astype({"CHROM": str, "POS": int, "REF": str, "ALT": str})
-            )
+            try:
+                expanded = (
+                    gwas_data["SNP"]
+                    .str.extract(VCF_FORMAT_PATTERN)
+                    .rename(columns={0: "CHROM", 1: "POS", 2: "REF", 3: "ALT"})
+                    .astype({"CHROM": str, "POS": int, "REF": str, "ALT": str})
+                )
+            except ValueError as e:
+                raise InvalidUsage(
+                    "Failed to parse SNP column as VCF format. Please inspect your GWAS file and ensure that the SNP column is consistent."
+                    "Note that the GWAS file must contain a SNP column with the SNP IDs in the format chr_pos_ref_alt_build,"
+                    "where 'pos' is a positive integer and 'ref' and 'alt' are the reference and alternate alleles, respectively."
+                ) from e
             vcf_snps.astype({"CHROM": str, "POS": int, "REF": str, "ALT": str})
 
             merged_vcf_snps = expanded.merge(
