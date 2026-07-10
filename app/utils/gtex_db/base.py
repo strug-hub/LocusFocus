@@ -6,7 +6,7 @@ in-memory fake used in tests (FakeGTExDatabase) implement this interface.
 """
 
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Optional
 
 import pandas as pd
 
@@ -23,6 +23,15 @@ class GTExDatabase(ABC):
     @abstractmethod
     def list_tissues(self, version: str) -> List[str]:
         """Return the sorted list of tissue names available for `version`."""
+
+    def list_genes(self, version: str) -> Optional[List[str]]:
+        """Return gene names available in this database, or None if unrestricted.
+
+        None means the caller should use its own gene source (e.g. GENCODE) without
+        filtering.  A list (including an empty one) means only those genes are
+        available.
+        """
+        return None
 
     @abstractmethod
     def get_eqtl_data(

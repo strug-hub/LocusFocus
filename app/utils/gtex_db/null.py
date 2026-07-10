@@ -5,7 +5,7 @@ All methods return empty results, allowing the app to start and serve non-GTEx
 functionality without a live database.
 """
 
-from typing import List
+from typing import List, Optional
 
 import pandas as pd
 
@@ -16,6 +16,9 @@ class NullGTExDatabase(GTExDatabase):
     """GTExDatabase that always returns empty results."""
 
     def list_tissues(self, version: str) -> List[str]:
+        return []
+
+    def list_genes(self, version: str) -> Optional[List[str]]:
         return []
 
     def get_eqtl_data(

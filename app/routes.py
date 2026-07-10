@@ -1273,6 +1273,9 @@ def getGeneNames(build):
 @app.route("/genenames/<build>/<chrom>/<startbp>/<endbp>")
 def getGenesInRange(build, chrom, startbp, endbp):
     genes = get_genes_by_location(build, chrom, startbp, endbp)
+    available = app.extensions["gtex_db"].list_genes(version="V10")
+    if available is not None:
+        genes = [g for g in genes if g in available]
     return jsonify(sorted(genes))
 
 

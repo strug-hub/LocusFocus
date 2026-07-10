@@ -64,7 +64,7 @@ def create_app(config=DEFAULT_CONFIG):
     ext.init_app(app)
     talisman.init_app(app, content_security_policy=app.config["CSP_POLICY"])
 
-    from app.utils.gtex_db import NullGTExDatabase, RealGTExDatabase
+    from app.utils.gtex_db import FakeGTExDatabase, NullGTExDatabase, RealGTExDatabase
 
     is_production = app.config.get("APP_ENV") == "production"
 
@@ -79,13 +79,13 @@ def create_app(config=DEFAULT_CONFIG):
             if is_production:
                 raise RuntimeError("MongoDB connection failed in production") from e
             app.logger.error(f"MongoDB connection failed: {e}")
-            app.logger.warning("Falling back to NullGTExDatabase (no GTEx data available)")
-            app.extensions["gtex_db"] = NullGTExDatabase()
+            app.logger.warning("Falling back to FakeGTExDatabase (synthetic GTEx data)")
+            app.extensions["gtex_db"] = FakeGTExDatabase()
     else:
         if is_production:
             raise RuntimeError("MONGO_CONNECTION_STRING is required in production")
-        app.logger.warning("No MONGO_CONNECTION_STRING set; using NullGTExDatabase (no GTEx data available)")
-        app.extensions["gtex_db"] = NullGTExDatabase()
+        app.logger.warning("No MONGO_CONNECTION_STRING set; using FakeGTExDatabase (synthetic GTEx data)")
+        app.extensions["gtex_db"] = FakeGTExDatabase()
 
     celery_init_app(app)
     cache.init_app(app)
