@@ -1,6 +1,6 @@
 var tableselect = d3.select('#SSguidance-table');
 
-function buildSSguidanceTable(genes, tissues, SSP, SSP2) {
+function buildSSguidanceTable(genes, tissues, SSP, SSP2, smr) {
     var thead = d3.select('#SSguidance-table').select("thead");
     var tbody = d3.select("#SSguidance-table").select("tbody");
 
@@ -30,51 +30,27 @@ function buildSSguidanceTable(genes, tissues, SSP, SSP2) {
         .attr('class', 'th-sm')
         .text('Value');
 
-    var numGTEx = 0;
+    var allSSPs = SSP.flat().concat(smr?.ssp_values || []).concat(SSP2);
+    var numGTEx = tissues.length * genes.length;
+    var numSMR = smr?.ssp_values?.length || 0;
     var numSecondary = SSP2.length;
-    var numNoeQTL = 0;
-    var numFirstStage = 0;
-    var numTested = 0;
-    var numFailed = 0;
-    for (i = 0; i < tissues.length; i++) { // for each tissue
-        for (j = 0; j < genes.length; j++) { // for each gene
-            numGTEx += 1
-            if (SSP[i][j] == -1) {
-                numNoeQTL += 1
-            } else if (SSP[i][j] == -2) {
-                numFirstStage += 1
-            } else if (SSP[i][j] == -3) {
-                numFailed += 1
-            } else if (SSP[i][j] > 0) {
-                numTested += 1
-            } else {
-                numFailed += 1
-            }
-        }
-    }
-    for (i = 0; i < SSP2.length; i++) {
-        if (SSP2[i] == -1) {
-            numNoeQTL += 1
-        } else if (SSP2[i] == -2) {
-            numFirstStage += 1
-        } else if (SSP2[i] == -3) {
-            numFailed += 1
-        } else if (SSP2[i] > 0) {
-            numTested += 1
-        } else {
-            numFailed += 1
-        }
-    }
+    var numNoeQTL = allSSPs.reduce((acc, curr) => (acc + (curr == -1)), 0);
+    var numFirstStage = allSSPs.reduce((acc, curr) => (acc + (curr == -2)), 0);
+    var numTested = allSSPs.reduce((acc, curr) => (acc + (curr > 0)), 0);
+    var numFailed = allSSPs.reduce((acc, curr) => (acc + (curr == -3 || curr == 0)), 0);
 
     var suggested_SSP = numTested > 0 ? -Math.log10(0.05 / numTested) : "N/A (No datasets were tested successfully)";
 
     // Table body:
     var row = tbody.append('tr');
-    row.append('td').text('Total number of secondary datasets (including GTEx)');
-    row.append('td').text(numGTEx + numSecondary);
+    row.append('td').text('Total number of all secondary datasets');
+    row.append('td').text(allSSPs.length);
     var row = tbody.append('tr');
     row.append('td').text('Total number of GTEx datasets');
     row.append('td').text(numGTEx);
+    var row = tbody.append('tr');
+    row.append('td').text('Total number of SMR datasets');
+    row.append('td').text(numSMR);
     var row = tbody.append('tr');
     row.append('td').text('Total number of user-uploaded secondary datasets');
     row.append('td').text(numSecondary);

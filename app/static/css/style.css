@@ -133,3 +133,11 @@ bottom: .5em;
   display: none
 } */
 
+.lf-citation-modal-link {
+  color: #007bff !important;
+  cursor: pointer;
+}
+
+.lf-citation-modal-link:hover {
+  text-decoration: underline;
+}

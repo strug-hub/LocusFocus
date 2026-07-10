@@ -141,6 +141,7 @@ data/gwas.public.txt.gz
 data/uk_biobank/
 data/mQTL_eQTM_SNPs_SAKNORM_For_CoLoc*.txt
 data/Note.txt
+misc/**/test*
 data/slc9a3_gwas_mqtl.html
 data/*lookup_table.txt.gz
 .Rproj.user
@@ -159,3 +160,5 @@ data/cache/*
 !setup-locusfocus-user.sh
 !create-redis-conf.sh
 redis/redis.conf
+data/smr_mqtl/
+misc/smr

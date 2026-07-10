@@ -38,6 +38,9 @@ RUN curl -f -L -O https://hgdownload.cse.ucsc.edu/admin/exe/linux.x86_64/liftOve
   mkdir /usr/local/share/liftOver && \
   mv hg38ToHg19.over.chain.gz hg19ToHg38.over.chain.gz /usr/local/share/liftOver/
 
+# Move smr into image (use setup/setup-smr.sh to pull binary)
+COPY misc/smr /usr/local/bin/
+
 # Install Poetry
 # https://github.com/python-poetry/poetry/issues/6397#issuecomment-1236327500
 ENV POETRY_HOME=/opt/poetry

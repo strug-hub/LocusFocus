@@ -1,0 +1,65 @@
+{#
+  Parameters:
+  - dataset_id: unique element id
+  - name: dataset name
+  - description: dataset description
+  - citations: list of tuples where
+    - tuple[0]: text for citation modal link
+    - tuple[1]: actual citation text, raw HTML
+    - tuple[2]: href link to article
+#}
+<tr data-value="{{ name }}">
+  <td class="text-center">
+    <input
+      type="checkbox"
+      name="xqtl-datasets[]"
+      value="{{ name }}"
+    >
+  </td>
+  <td><b>{{ name }}</b></td>
+  <td>{{ description }}</td>
+  <td>
+    <ul>
+      {% for c in citations %}
+        <li>
+          <a href="#" class="lf-citation-modal-link" data-toggle="modal" data-target="{{ '#' ~ dataset_id ~ '-modal' }}">
+            {{ c[0] }}
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+  </td>
+</tr>
+
+<div id="{{ dataset_id ~ '-modal' }}" class="modal fade" role="dialog">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h4 class="modal-title">
+          Citation for "{{ name }}" dataset
+        </h4>
+        <button type="button" class="close" data-dismiss="modal">×</button>
+      </div>
+      <div class="modal-body">
+        <ul>
+          {% for c in citations %}
+            <li>
+              <a href="{{ c[2] }}">
+                {{ c[1]|safe }}
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+      <div class="modal-footer">
+        <button
+          type="button"
+          class="btn btn-default waves-effect waves-light"
+          data-dismiss="modal"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

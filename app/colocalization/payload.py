@@ -113,6 +113,9 @@ class SessionPayload:
     plot_locus: Optional[str] = None  # regionstr
     simple_sum_locus: Optional[str] = None
     lead_snp_name: Optional[str] = None
+    # smr
+    xqtl_selected: Optional[List[str]] = None
+    xqtl_datasets: Dict[str, pd.DataFrame] = field(default_factory=dict)
 
     # File data
     # GWAS data is user-uploaded, and we update gwas_indices_kept in each stage to "keep" or "discard" SNPs
@@ -402,6 +405,15 @@ class SessionPayload:
             )
         return version
 
+    def get_xqtl_selection(self) -> List[str]:
+        """
+        Get the selected SMR datasets from the form.
+        """
+        if self.xqtl_selected is None:
+            self.xqtl_selected = self.request_form.get("xqtl-datasets[]", [])
+
+        return self.xqtl_selected or []
+
     def get_p_value_threshold(self) -> Union[float, str]:
         """
         Get the user-selected P value threshold for set-based test.
@@ -504,6 +516,11 @@ class SessionPayload:
         if self.reported_gtex_data is not None:
             for tissue, table in self.reported_gtex_data.items():
                 data[tissue] = table
+
+        data["xqtl"] = {}
+        data["xqtl_names"] = self.get_xqtl_selection()
+        for dataset_name in data["xqtl_names"]:
+            data["xqtl"][dataset_name] = self.xqtl_datasets[dataset_name].replace({np.nan: None}).to_dict(orient="records")
 
         if self.coloc2:
             data["secondary_dataset_colnames"] = [

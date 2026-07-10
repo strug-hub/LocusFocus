@@ -2,7 +2,7 @@
  * Populates the #set-based-test-table with results from the first stage significance test.
  */
 function buildFirstStageTable(sessionData) {
-    const isSetBasedTest = sessionData.hasOwnProperty('regions');
+    const isSetBasedTest = sessionData?.hasOwnProperty('regions');
 
     if (isSetBasedTest) {
         return _buildSetBasedTestTable(sessionData);
