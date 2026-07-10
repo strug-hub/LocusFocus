@@ -5,9 +5,14 @@ from app import create_app
 from app.config import DevConfig
 
 
-@pytest.fixture()
+@pytest.fixture(scope="session")
 def flask_app():
-    """Create a Flask app for testing."""
+    """Create a single Flask app shared across all tests.
+
+    Session scope is required because routes.py is cached by Python's module
+    system after first import, so routes only register on the first app
+    instance created per process.
+    """
     config = DevConfig()
     config.SECRET_KEY = "test"
     config.DISABLE_CACHE = True
@@ -15,6 +20,7 @@ def flask_app():
     config.CACHE_TYPE = "NullCache"
     config.MONGO_URI = None
     app = create_app(config=config)
+    app.debug = True  # disables Talisman's force_https redirect in tests
     yield app
 
 
@@ -31,7 +37,9 @@ def fake_gtex_db(flask_app):
     """
     from tests.fake_gtex import FakeGTExDatabase
 
+    original = flask_app.extensions.get("gtex_db")
     fake = FakeGTExDatabase()
     flask_app.extensions["gtex_db"] = fake
     print(f"FakeGTExDatabase injected into app.extensions['gtex_db']")
     yield fake
+    flask_app.extensions["gtex_db"] = original
