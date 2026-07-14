@@ -20,11 +20,11 @@ from flask import (
     jsonify,
     render_template,
     send_file,
-    Markup,
     current_app as app,
 )
 from celery.result import AsyncResult
 from werkzeug.utils import secure_filename
+from markupsafe import Markup
 
 from pymongo.errors import ConnectionFailure
 
@@ -37,9 +37,6 @@ from app.utils.numpy_encoder import NumpyEncoder
 
 from app import ext, mongo
 from app.cache import cache
-
-client = mongo.cx
-db = client.GTEx_V8
 
 # import getSimpleSumStats
 
@@ -1248,7 +1245,7 @@ def handle_server_error(error: ServerError):
 @app.route("/dbstatus")
 def getDBStatus():
     try:
-        db.client.admin.command("ping")
+        mongo.cx.admin.command("ping")
     except ConnectionFailure:  # db is down
         print("Server not available")
         return jsonify({"status": "error"})
@@ -1276,6 +1273,9 @@ def getGeneNames(build):
 @app.route("/genenames/<build>/<chrom>/<startbp>/<endbp>")
 def getGenesInRange(build, chrom, startbp, endbp):
     genes = get_genes_by_location(build, chrom, startbp, endbp)
+    available = app.extensions["gtex_db"].list_genes(version="V10")
+    if available is not None:
+        genes = [g for g in genes if g in available]
     return jsonify(sorted(genes))
 
 
@@ -1285,16 +1285,10 @@ def list_tissues(version):
     version = version.upper()
     if version == "V7":
         raise InvalidUsage("GTEx V7 is no longer available")
-    elif version == "V8":
-        db = client.GTEx_V8
-        tissues = list(db.list_collection_names())
-        tissues.remove("variant_table")
-    elif version == "V10":
-        db = client.GTEx_V10
-        tissues = list(db.list_collection_names())
-        tissues.remove("variant_table")
-
-    return jsonify(sorted(tissues))
+    elif version not in ("V8", "V10"):
+        raise InvalidUsage(f"Unrecognized GTEx version: {version}")
+    tissues = app.extensions["gtex_db"].list_tissues(version)
+    return jsonify(tissues)
 
 
 @app.route("/gtex/<version>/<tissue>/<gene_id>")

@@ -12,7 +12,7 @@ from flask_talisman import Talisman
 from app.config import BaseConfig, DevConfig, ProdConfig
 from app.cache import cache
 
-ConfigClass = ProdConfig if BaseConfig.APP_ENV == "production" else DevConfig
+DEFAULT_CONFIG = ProdConfig() if BaseConfig.APP_ENV == "production" else DevConfig()
 
 ext = Sitemap()
 talisman = Talisman()
@@ -38,7 +38,7 @@ def celery_init_app(app: Flask) -> Celery:
     return celery_app
 
 
-def create_app(config_class=ConfigClass):
+def create_app(config=DEFAULT_CONFIG):
     """
     Create an instance of a Flask app for LocusFocus.
     """
@@ -49,7 +49,7 @@ def create_app(config_class=ConfigClass):
     #    Loading the app a second time while the server is running (e.g., scripts)
     #    will call this line again and raise address conflict, which we swallow
     #    Note also that this will signifcantly slow down the app
-    if ConfigClass.FLASK_APP_DEBUG:
+    if config.FLASK_APP_DEBUG:
         import debugpy
 
         try:
@@ -57,20 +57,36 @@ def create_app(config_class=ConfigClass):
         except RuntimeError:
             pass
 
-    app.config.from_object(config_class())
+    app.config.from_object(config)
     if app.config["SECRET_KEY"] is None or app.config["SECRET_KEY"] == "":
-        raise Exception("SECRET_KEY is not set! Add FLASK_SECRET_KEY to environment!")
+        raise RuntimeError("SECRET_KEY is not set! Add FLASK_SECRET_KEY to environment!")
 
     ext.init_app(app)
     talisman.init_app(app, content_security_policy=app.config["CSP_POLICY"])
-    mongo.init_app(app)
-    # check if mongo is reachable
-    try:
-        app.logger.debug("MongoDB connection test")
-        _version = mongo.cx.server_info().get("version")
-        app.logger.debug(f"Connected to MongoDB {_version}")
-    except Exception as e:
-        app.logger.error(f"MongoDB connection failed: {e}")
+
+    from app.utils.gtex_db import FakeGTExDatabase, NullGTExDatabase, RealGTExDatabase
+
+    is_production = app.config.get("APP_ENV") == "production"
+
+    if app.config.get("MONGO_URI"):
+        mongo.init_app(app)
+        try:
+            app.logger.debug("MongoDB connection test")
+            _version = mongo.cx.server_info().get("version")
+            app.logger.debug(f"Connected to MongoDB {_version}")
+            app.extensions["gtex_db"] = RealGTExDatabase(mongo.cx)
+        except Exception as e:
+            if is_production:
+                raise RuntimeError("MongoDB connection failed in production") from e
+            app.logger.error(f"MongoDB connection failed: {e}")
+            app.logger.warning("Falling back to FakeGTExDatabase (synthetic GTEx data)")
+            app.extensions["gtex_db"] = FakeGTExDatabase()
+    else:
+        if is_production:
+            raise RuntimeError("MONGO_CONNECTION_STRING is required in production")
+        app.logger.warning("No MONGO_CONNECTION_STRING set; using FakeGTExDatabase (synthetic GTEx data)")
+        app.extensions["gtex_db"] = FakeGTExDatabase()
+
     celery_init_app(app)
     cache.init_app(app)
 

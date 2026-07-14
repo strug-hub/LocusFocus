@@ -71,7 +71,7 @@ class BaseConfig:
     MAX_CONTENT_LENGTH = 500 * 1024 * 1024  # 500MB limit
 
     SEND_FILE_MAX_AGE_DEFAULT = 300  # 5 min cache
-    SECRET_KEY = os.environ["FLASK_SECRET_KEY"]
+    SECRET_KEY = os.environ.get("FLASK_SECRET_KEY", None)
 
     LF_DATA_FOLDER = os.path.join(
         os.path.dirname(os.path.dirname(__file__)),  # project root below app folder
@@ -102,6 +102,7 @@ class DevConfig(BaseConfig):
     Configuration options for development environment only.
     """
 
+    APP_ENV = "development"
     DISABLE_CACHE = os.environ.get("DISABLE_CACHE", "False").lower() == "true"
     MONGO_URI = os.environ.get("MONGO_CONNECTION_STRING")
     CACHE_TYPE = "NullCache" if DISABLE_CACHE else "FileSystemCache"
