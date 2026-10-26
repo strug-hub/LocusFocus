@@ -75,7 +75,7 @@ const formFields = {
   htmlCoordinate: {
     selector: "#html-file-coordinate",
     type: "select",
-  }
+  },
 };
 
 function storeFormArgs(e) {
@@ -111,7 +111,7 @@ const setPendingModalOpen = () => {
 const setRunningModalOpen = (stage_index, stage_count) => {
   $("#job-running-modal").modal({ closeClass: "icon-remove" });
   d3.select("#job-running-modal h4.stage").text(
-    `Currently on stage ${stage_index} of ${stage_count}`
+    `Currently on stage ${stage_index} of ${stage_count}`,
   );
 };
 
@@ -152,7 +152,7 @@ $(".inputs-and-upload-form form").on("submit", async (e) => {
       setErrorModalOpen(message);
     } else {
       setErrorModalOpen(
-        "The job failed due to an unexpected error, please try again later."
+        "The job failed due to an unexpected error, please try again later.",
       );
     }
     $("#submit-btn").prop("disabled", false);
@@ -165,14 +165,19 @@ $(".inputs-and-upload-form form").on("submit", async (e) => {
 
 async function openJobModal(sessionId) {
   $("#job-modal .modal-header #sessionid-header-link").text(sessionId);
-  $("#job-modal .modal-header #sessionid-header-link").attr("href", `/session_id/${sessionId}`);
+  $("#job-modal .modal-header #sessionid-header-link").attr(
+    "href",
+    `/session_id/${sessionId}`,
+  );
   $("#job-modal-sessionid-link").text(sessionId);
   $("#job-modal-sessionid-link").attr("href", `/session_id/${sessionId}`);
   $("#job-modal .progress-bar").css("width", "0%");
   $("#job-modal .progress-bar").attr("aria-valuenow", 0);
   $("#job-modal .progress-bar").removeClass("bg-danger bg-success");
   await $("#job-modal #error-section").collapse("hide");
-  $("#job-modal #job-status-text").html(`<i>Your job is currently running...</i>`);
+  $("#job-modal #job-status-text").html(
+    `<i>Your job is currently running...</i>`,
+  );
   $("#job-modal .modal-footer button").hide();
   $("#job-modal .modal-footer button").prop("disabled", true);
   await $("#job-modal .modal-footer").collapse("hide");
@@ -196,27 +201,35 @@ function buildMailToLink(data, sessionId) {
 
     Thanks!
   `;
-  const link = `mailto:mackenzie.frew@sickkids.ca?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  const link = `mailto:shalvi.chirmade@sickkids.ca?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   return link;
 }
 
 function handleError(data, sessionId) {
   $("#error-section #error-title").text(data.error_title);
   $("#error-section #error-message").html(`<code>${data.error_message}</code>`);
-  
+
   if (data.status_code >= 400 && data.status_code < 500) {
-    $("#error-section #error-subtitle").text("This error is due to an issue with your form input or your uploaded files. Please see the error message below for more details.");
+    $("#error-section #error-subtitle").text(
+      "This error is due to an issue with your form input or your uploaded files. Please see the error message below for more details.",
+    );
   } else if (data.status_code >= 500) {
-    $("#error-section #error-subtitle").text("This error is due to an issue with the server. Please see the error message below for more details, and report this to our system administrator using the link below.");
+    $("#error-section #error-subtitle").text(
+      "This error is due to an issue with the server. Please see the error message below for more details, and report this to our system administrator using the link below.",
+    );
     $("#error-section #error-contact-section").collapse("show");
-    $("#error-section #error-contact-link").attr("href", buildMailToLink(data, sessionId));
+    $("#error-section #error-contact-link").attr(
+      "href",
+      buildMailToLink(data, sessionId),
+    );
   }
 
   if (data.payload) {
-    $("error-payload").html(`<pre><code>${JSON.stringify(data.payload, null, 2)}</code></pre>`);
+    $("error-payload").html(
+      `<pre><code>${JSON.stringify(data.payload, null, 2)}</code></pre>`,
+    );
   }
 }
-
 
 /**
  * Handle checking the status of a job and
@@ -256,13 +269,17 @@ async function handleJobStatus(jobStatusURL, sessionId) {
         checks = 0;
         last_stage_index = stage_index;
       }
-      let percent = ((stage_index-0.5) / stage_count) * 100 + (1 - (1/(1+(checks*0.25)))) * gap;
-      
+      let percent =
+        ((stage_index - 0.5) / stage_count) * 100 +
+        (1 - 1 / (1 + checks * 0.25)) * gap;
+
       $("#job-modal .progress-bar").css("width", percent + "%");
       $("#job-modal .progress-bar").attr("aria-valuenow", percent);
 
-      $("#job-modal #job-status-text").html(`<i>Your job is currently running. Stage ${stage_index} of ${stage_count}: <b>"${data.stage_description}..."</b></i>`);
-      
+      $("#job-modal #job-status-text").html(
+        `<i>Your job is currently running. Stage ${stage_index} of ${stage_count}: <b>"${data.stage_description}..."</b></i>`,
+      );
+
       // wait 5 seconds
       await new Promise((resolve) => setTimeout(resolve, 5000));
     }
@@ -277,7 +294,9 @@ async function handleJobStatus(jobStatusURL, sessionId) {
     $("#job-modal .progress-bar").attr("aria-valuenow", 100);
     $("#job-modal .progress-bar").addClass("bg-danger");
     $("#job-modal #error-section").collapse("show");
-    $("#job-modal #job-status-text").html(`<i>Your submission has failed. Please see the error message below.</i>`);
+    $("#job-modal #job-status-text").html(
+      `<i>Your submission has failed. Please see the error message below.</i>`,
+    );
     handleError(data, sessionId);
   } else if (jobStatus == "SUCCESS") {
     $("#job-modal .progress-bar").css("width", "100%");
@@ -292,7 +311,7 @@ var locText = d3.select("#locusText").empty()
   ? null
   : d3.select("#locusText").text();
 d3.select("#locusText").text(
-  `${locText} (max: ${genomicWindowLimit / 1e6} Mbp):`
+  `${locText} (max: ${genomicWindowLimit / 1e6} Mbp):`,
 );
 
 // FUNCTIONS
@@ -356,7 +375,7 @@ function askBetaInput(betaColDiv) {
     .attr("data-toggle", "tooltip")
     .attr(
       "title",
-      "Enter the header text corresponding to the beta column in your txt/tsv file (primary dataset)"
+      "Enter the header text corresponding to the beta column in your txt/tsv file (primary dataset)",
     )
     .text("Beta Column Name:");
   betaColDiv
@@ -370,7 +389,7 @@ function askBetaInput(betaColDiv) {
     .attr("data-html", "true")
     .attr(
       "title",
-      "Enter the header text corresponding to the beta column in your txt/tsv file (primary dataset)"
+      "Enter the header text corresponding to the beta column in your txt/tsv file (primary dataset)",
     );
 }
 function askStdErrInput(stderrColDiv) {
@@ -382,7 +401,7 @@ function askStdErrInput(stderrColDiv) {
     .attr("data-toggle", "tooltip")
     .attr(
       "title",
-      "Enter the header text corresponding to the standard error column in your txt/tsv file (primary dataset)"
+      "Enter the header text corresponding to the standard error column in your txt/tsv file (primary dataset)",
     )
     .text("Standard Error Column Name:");
   stderrColDiv
@@ -396,7 +415,7 @@ function askStdErrInput(stderrColDiv) {
     .attr("data-html", "true")
     .attr(
       "title",
-      "Enter the header text corresponding to the standard error column in your txt/tsv file (primary dataset)"
+      "Enter the header text corresponding to the standard error column in your txt/tsv file (primary dataset)",
     );
 }
 function askNumSamplesInput(numSamplesDiv) {
@@ -408,7 +427,7 @@ function askNumSamplesInput(numSamplesDiv) {
     .attr("data-toggle", "tooltip")
     .attr(
       "title",
-      "Enter the header text corresponding to the number of samples column in your txt/tsv file (primary dataset)"
+      "Enter the header text corresponding to the number of samples column in your txt/tsv file (primary dataset)",
     )
     .text("Number of Samples Column Name:");
   numSamplesDiv
@@ -423,7 +442,7 @@ function askNumSamplesInput(numSamplesDiv) {
     .attr("data-html", "true")
     .attr(
       "title",
-      "Enter the header text corresponding to the number of samples column in your txt/tsv file (primary dataset)"
+      "Enter the header text corresponding to the number of samples column in your txt/tsv file (primary dataset)",
     );
 }
 function askPvalueInput(pvalueColDiv) {
@@ -435,7 +454,7 @@ function askPvalueInput(pvalueColDiv) {
     .attr("data-toggle", "tooltip")
     .attr(
       "title",
-      "Header text corresponding to the p-value column in your txt/tsv file (primary dataset)"
+      "Header text corresponding to the p-value column in your txt/tsv file (primary dataset)",
     )
     .text("P-value Column Name:");
   pvalueColDiv
@@ -449,7 +468,7 @@ function askPvalueInput(pvalueColDiv) {
     .attr("data-html", "true")
     .attr(
       "title",
-      "Enter the header text corresponding to the p-value column in your txt/tsv file (primary dataset)"
+      "Enter the header text corresponding to the p-value column in your txt/tsv file (primary dataset)",
     );
 }
 function askMafInput(mafColDiv) {
@@ -461,7 +480,7 @@ function askMafInput(mafColDiv) {
     .attr("data-toggle", "tooltip")
     .attr(
       "title",
-      "Header text corresponding to the MAF column in your txt/tsv file (primary dataset)"
+      "Header text corresponding to the MAF column in your txt/tsv file (primary dataset)",
     )
     .text("MAF Column Name:");
   mafColDiv
@@ -475,7 +494,7 @@ function askMafInput(mafColDiv) {
     .attr("data-html", "true")
     .attr(
       "title",
-      "Enter the header text corresponding to the MAF column in your txt/tsv file (primary dataset)"
+      "Enter the header text corresponding to the MAF column in your txt/tsv file (primary dataset)",
     );
 }
 function askNumCasesInput(studytype) {
@@ -515,7 +534,7 @@ function askStudytypeInput(studytypeDiv) {
     .attr("data-toggle", "tooltip")
     .attr(
       "title",
-      "Select whether the phenotype is quantitative, or whether  it is a case-control design"
+      "Select whether the phenotype is quantitative, or whether  it is a case-control design",
     )
     .text("Select Study Type:");
   studytypeDivSelect = studytypeDiv
@@ -573,12 +592,12 @@ function inferVariant(snpbox) {
   if (snpbox.checked) {
     $("#variantInputs").hide();
     ["#chrom-col", "#pos-col", "#ref-col", "#alt-col"].forEach((id) =>
-      $(id).prop("disabled", true)
+      $(id).prop("disabled", true),
     );
   } else {
     $("#variantInputs").show();
     ["#chrom-col", "#pos-col", "#ref-col", "#alt-col"].forEach((id) =>
-      $(id).prop("disabled", false)
+      $(id).prop("disabled", false),
     );
   }
   // re-initialize popover and tooltip
@@ -613,10 +632,10 @@ function addColoc2Inputs(colocinput) {
 
 function loadGenes(build, region) {
   var chrom = parseInt(
-    region.split(":")[0].toLowerCase().replace("chr", "").replace("x", "23")
+    region.split(":")[0].toLowerCase().replace("chr", "").replace("x", "23"),
   );
   var startbp = parseInt(
-    region.split(":")[1].split("-")[0].replaceAll(",", "")
+    region.split(":")[1].split("-")[0].replaceAll(",", ""),
   );
   var endbp = parseInt(region.split(":")[1].split("-")[1].replaceAll(",", ""));
   var genesdiv = d3.select("#region-genes");
@@ -648,7 +667,7 @@ function loadGenes(build, region) {
           },
         });
       });
-    }
+    },
   );
 }
 
@@ -708,7 +727,7 @@ function updateChrXWarning() {
   const selectedAssembly = $("#coordinate").val();
   const uploadedFileNames = $.map(
     $("#file-upload").prop("files"),
-    (f) => f.name
+    (f) => f.name,
   );
 
   const hideWarning = !(
@@ -849,19 +868,20 @@ function init() {
 
   // add warning listeners
   ["#locus", "#coordinate", "#file-upload"].forEach((id) =>
-    $(id).on("change", updateChrXWarning)
+    $(id).on("change", updateChrXWarning),
   );
 
   const overlapInput = $("#overlapThresholdText");
 
   // only let users type between 0 and 100, floats allowed
-  overlapInput.on('beforeinput', (e) => {
-    if (['delete', 'insertReplacementText'].includes(e.originalEvent.inputType)) return;
+  overlapInput.on("beforeinput", (e) => {
+    if (["delete", "insertReplacementText"].includes(e.originalEvent.inputType))
+      return;
     const input = overlapInput[0];
-    const nextValue = 
-      input.value.slice(0, input.selectionStart) 
-      + (e.originalEvent.data ?? '')
-      + input.value.slice(input.selectionEnd);
+    const nextValue =
+      input.value.slice(0, input.selectionStart) +
+      (e.originalEvent.data ?? "") +
+      input.value.slice(input.selectionEnd);
 
     const pattern = /^(\d{1,2}(\.(\d+)?)?|100)$/;
 
@@ -871,11 +891,14 @@ function init() {
 
     const num = Number(nextValue);
 
-    if ((nextValue !== '' && !nextValue.endsWith(".") && (num < 0 || num > 100))) {
+    if (
+      nextValue !== "" &&
+      !nextValue.endsWith(".") &&
+      (num < 0 || num > 100)
+    ) {
       e.originalEvent.preventDefault();
     }
   });
 }
 
 init();
-
