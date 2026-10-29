@@ -30,9 +30,9 @@ RUN wget -O /tmp/plink.zip https://s3.amazonaws.com/plink1-assets/plink_linux_x8
   && rm /tmp/*
 
 # install liftover
-RUN curl -f -L -O https://hgdownload.cse.ucsc.edu/admin/exe/linux.x86_64/liftOver \
-  -f -L -O https://hgdownload.cse.ucsc.edu/goldenpath/hg19/liftOver/hg19ToHg38.over.chain.gz \
-  -f -L -O https://hgdownload.cse.ucsc.edu/goldenpath/hg38/liftOver/hg38ToHg19.over.chain.gz && \
+RUN curl -f -L -O https://hgdownload.soe.ucsc.edu/admin/exe/linux.x86_64/liftOver \
+  -f -L -O https://hgdownload.soe.ucsc.edu/goldenpath/hg19/liftOver/hg19ToHg38.over.chain.gz \
+  -f -L -O https://hgdownload.soe.ucsc.edu/goldenpath/hg38/liftOver/hg38ToHg19.over.chain.gz && \
   chmod +x ./liftOver && \
   mv liftOver /usr/local/bin/liftOver && \
   mkdir /usr/local/share/liftOver && \
