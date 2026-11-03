@@ -312,7 +312,7 @@ function plot_gwas(data, genesdata,
       lead_snp_index = i;
       ld_colors[i] = lead_snp_color;
     }
-    else if (ld_values[i] === -1 || ld_values[i] < 0) {
+    else if (ld_values[i] == null || isNaN(ld_values[i])) {
       no_ld_info_snps.push(i);
       ld_colors[i] = no_ld_info_snps_color;
     }

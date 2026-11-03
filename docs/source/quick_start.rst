@@ -306,7 +306,7 @@ an example run would be:
 .. code-block:: console
    :caption: *Example PLINK command for calculating the LD matrix*
 
-   plink --bfile <plink_filename> --r2 square --make-bed --out <output_filename>
+   plink --bfile <plink_filename> --r square --make-bed --out <output_filename>
 
 In the above command, please replace plink_filename and output_filename with appropriate substitutes.
 
