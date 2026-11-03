@@ -157,7 +157,7 @@ def plink_ld_pairwise(build, pop, chrom, snp_positions, snp_pvalues, outfilename
         str(positions_in_1kg_df["pos"].max()),
         "--ld-snp",
         lead_snp,
-        "--r2",
+        "--r",
         "--ld-window-r2",
         "0",
         "--ld-window",
@@ -191,18 +191,18 @@ def plink_ld_pairwise(build, pop, chrom, snp_positions, snp_pvalues, outfilename
 
     if plinkrun.returncode != 0:
         raise InvalidUsage(plinkrun.stdout.decode("utf-8"), status_code=410)
-    ld_results = pd.read_csv(outfilename + ".ld", delim_whitespace=True)
-    available_r2_positions = ld_results[["BP_B", "R2"]]
+    ld_results = pd.read_csv(outfilename + ".ld", sep=r"\s+")
+    available_r_positions = ld_results[["BP_B", "R"]]
     pos_df = pd.DataFrame({"pos": snp_positions})
     merged_df = pd.merge(
         pos_df,
-        available_r2_positions,
+        available_r_positions,
         how="left",
         left_on="pos",
         right_on="BP_B",
         sort=False,
-    )[["pos", "R2"]]
-    merged_df.fillna(-1, inplace=True)
+    )[["pos", "R"]]
+    # NaN (not -1) marks missing LD info, since -1 is a valid r value (perfect negative LD)
     return merged_df, new_lead_snp_position
 
 
@@ -245,7 +245,7 @@ def plink_ldmat(
         from_bp,
         "--to-bp",
         to_bp,
-        "--r2",
+        "--r",
         "square",
         "--make-bed",
         "--threads",

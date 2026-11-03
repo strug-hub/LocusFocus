@@ -20,7 +20,7 @@ class GetLDMatrixStage(PipelineStage):
 
     If no GWAS data is in the session, then an error is raised.
 
-    Will also determine lead SNP and R2 values for the gwas dataset.
+    Will also determine lead SNP and LD (r) values for the gwas dataset.
 
     In the case where an LD matrix is created, the gwas_data is subset
     to only the SNPs in the generated LD matrix.
@@ -105,7 +105,7 @@ class GetLDMatrixStage(PipelineStage):
                 status_code=410,
             )
 
-        payload.r2 = list(ld_mat.iloc[:, payload.get_lead_snp_index()])  # type: ignore
+        payload.r = list(ld_mat.iloc[:, payload.get_lead_snp_index()])  # type: ignore
 
         ld_mat = np.matrix(ld_mat)
 
@@ -153,7 +153,7 @@ class GetLDMatrixStage(PipelineStage):
             region=payload.get_locus_tuple(),
         )
 
-        # Update lead SNP if needed, and set R2
+        # Update lead SNP if needed, and set LD (r) values
         temp_ld_mat, new_lead_snp_position = plink_ld_pairwise(
             build=payload.get_coordinate(),
             pop=payload.get_ld_population(),
@@ -174,7 +174,7 @@ class GetLDMatrixStage(PipelineStage):
         ld_indices = payload.gwas_data["POS"].isin(ld_snps_df["POS"])
         payload.gwas_indices_kept &= ld_indices
 
-        payload.r2 = list(temp_ld_mat["R2"])
+        payload.r = list(temp_ld_mat["R"])
         payload.ld_snps_bim_df = ld_snps_df
 
         return np.matrix(ldmat), ld_snps_df

@@ -165,7 +165,7 @@ class SessionPayload:
 
     # Other
     success: bool = False
-    r2: List[float] = field(default_factory=list)
+    r: List[float] = field(default_factory=list)
     liftover_lead_snp_warning: str = ""
     lifted_over_coordinate: Optional[str] = None
 
@@ -518,7 +518,9 @@ class SessionPayload:
             if self.gwas_data is not None
             else None
         )
-        data["ld_values"] = self.r2
+        # NaN isn't valid JSON; use None for missing LD info so the frontend can
+        # tell it apart from a real r value (which, unlike r^2, can be -1)
+        data["ld_values"] = [None if pd.isna(x) else x for x in self.r]
         data["positions"] = (
             list(self.gwas_data_kept["POS"]) if self.gwas_data is not None else []
         )
