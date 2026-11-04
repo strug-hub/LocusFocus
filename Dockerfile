@@ -10,6 +10,11 @@ RUN mkdir code \
   && chown -R ${USER_UID}:${USER_GID} /code
 
 RUN apt-get update && \
+  apt-get upgrade -y && \
+  apt-get install -y --only-upgrade libbrotli1 && \
+  rm -rf /var/lib/apt/lists/*
+
+RUN apt-get update && \
   apt-get install -y \
   build-essential \
   curl \
