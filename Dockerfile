@@ -12,7 +12,7 @@ RUN mkdir code \
 RUN apt-get update && \
   apt-get upgrade -y && \
   apt-get install -y --only-upgrade libbrotli1 && \
-  apt-get upgrade libio-compress-brotli-perl && \
+  apt-get upgrade -y libio-compress-brotli-perl && \
   rm -rf /var/lib/apt/lists/*
 
 RUN apt-get update && \
