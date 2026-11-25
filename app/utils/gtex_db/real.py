@@ -6,12 +6,45 @@ collection; each document holds all eQTL variants for one gene.  A separate
 `variant_table` collection maps variant IDs to rs IDs and positional info.
 """
 
+import functools
+import logging
+import time
 from typing import List
 
 import pandas as pd
 from pymongo import MongoClient
+from pymongo.errors import AutoReconnect, ConnectionFailure, NetworkTimeout
 
 from app.utils.gtex_db.base import GTExDatabase
+
+logger = logging.getLogger(__name__)
+
+# How many times to retry a query while MongoDB is unreachable, and how long
+# to wait between attempts, before giving up and letting the error surface.
+# MongoClient reconnects to the server in the background on its own; these
+# retries just give it time to do so instead of failing on the first blip.
+_RECONNECT_ATTEMPTS = 3
+_RECONNECT_DELAY_SECONDS = 2
+
+
+def _retry_on_disconnect(method):
+    """Retry a MongoDB query a few times if the connection drops mid-call."""
+
+    @functools.wraps(method)
+    def wrapper(*args, **kwargs):
+        for attempt in range(1, _RECONNECT_ATTEMPTS + 1):
+            try:
+                return method(*args, **kwargs)
+            except (AutoReconnect, ConnectionFailure, NetworkTimeout):
+                if attempt == _RECONNECT_ATTEMPTS:
+                    raise
+                logger.warning(
+                    "MongoDB connection lost (attempt %d/%d), retrying in %ds...",
+                    attempt, _RECONNECT_ATTEMPTS, _RECONNECT_DELAY_SECONDS,
+                )
+                time.sleep(_RECONNECT_DELAY_SECONDS)
+
+    return wrapper
 
 
 class RealGTExDatabase(GTExDatabase):
@@ -22,12 +55,14 @@ class RealGTExDatabase(GTExDatabase):
 
     # ------------------------------------------------------------------
 
+    @_retry_on_disconnect
     def list_tissues(self, version: str) -> List[str]:
         if version.upper() not in ("V8", "V10"):
             raise ValueError(f"Invalid GTEx version: {version}")
         db = self._client[f"GTEx_{version.upper()}"]
         return sorted(n for n in db.list_collection_names() if n != "variant_table")
 
+    @_retry_on_disconnect
     def get_eqtl_data(
         self, version: str, tissue: str, ensg_id_prefix: str
     ) -> pd.DataFrame:
@@ -57,6 +92,7 @@ class RealGTExDatabase(GTExDatabase):
 
         return pd.merge(eqtl_df, variants_df, on="variant_id")
 
+    @_retry_on_disconnect
     def get_variants_by_region(
         self, start: int, end: int, chrom: str, version: str
     ) -> pd.DataFrame:
