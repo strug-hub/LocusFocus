@@ -69,7 +69,17 @@ def create_app(config=DEFAULT_CONFIG):
     is_production = app.config.get("APP_ENV") == "production"
 
     if app.config.get("MONGO_URI"):
-        mongo.init_app(app)
+        # Without these, a dead socket just hangs indefinitely instead of
+        # raising, so the app never notices MongoDB went down (or came back)
+        # until something external kills the worker. Bounded timeouts make
+        # connection loss fail fast with AutoReconnect, which callers retry.
+        mongo.init_app(
+            app,
+            serverSelectionTimeoutMS=5000,
+            connectTimeoutMS=5000,
+            socketTimeoutMS=10000,
+            retryReads=True,
+        )
         try:
             app.logger.debug("MongoDB connection test")
             _version = mongo.cx.server_info().get("version")
